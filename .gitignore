@@ -172,3 +172,5 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+qcrbox_frontend.sublime-project
+qcrbox_frontend.sublime-workspace
