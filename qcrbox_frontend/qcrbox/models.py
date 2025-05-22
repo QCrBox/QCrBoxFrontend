@@ -3,7 +3,7 @@ from django.contrib.auth.models import User, Group
 
 # Create your models here.
 
-class process_step(models.Model):
+class ProcessStep(models.Model):
     application = models.CharField(max_length=255,)
     infile_uuid = models.CharField(max_length=255,)
     outfile_uuid = models.CharField(max_length=255, blank=True, null=True,)
