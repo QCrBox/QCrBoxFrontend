@@ -38,8 +38,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "qcrbox",
-    'django_plotly_dash.apps.DjangoPlotlyDashConfig',
-    'dpd_static_support',
+    "django_plotly_dash.apps.DjangoPlotlyDashConfig",
+    "dpd_static_support",
 ]
 
 MIDDLEWARE = [
@@ -50,7 +50,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'django_plotly_dash.middleware.ExternalRedirectionMiddleware',
+    "django_plotly_dash.middleware.ExternalRedirectionMiddleware",
+    "django_plotly_dash.middleware.BaseMiddleware",
 ]
 
 ROOT_URLCONF = "core.urls"

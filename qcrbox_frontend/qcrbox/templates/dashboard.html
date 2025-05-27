@@ -3,5 +3,11 @@
 {% block title %}QCrBox Dashboard{% endblock %}
 
 {% block content %}
-  dashboard here
+
+    {% load plotly_dash %}
+
+    {% plotly_header %}
+    {% plotly_direct name='Workflow' %}
+    {% plotly_footer %}
+    
 {% endblock %}
