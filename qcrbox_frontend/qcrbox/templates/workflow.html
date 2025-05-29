@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}QCrBox Workflow{% endblock %}
+
+{% block content %}
+
+<table>
+    {% for prior_step in prior_steps %}
+        <tr>
+            <td>
+                <i class="fa-solid fa-square"></i>
+            </td>
+            <td>
+                {{prior_step.infile.filename}}
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <i class="fa-solid fa-arrow-down"></i>
+            </td>
+            <td>
+                {{prior_step.application}}
+            </td>
+        </tr>
+    {% endfor %}
+    <tr>
+        <td>
+            <i class="fa-regular fa-square"></i>
+        </td>
+        <td>
+            {{file.filename}}
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        </td>
+        <td>
+            {{form}}
+        </td>
+    </tr>
+
+</table>
+{% endblock %}

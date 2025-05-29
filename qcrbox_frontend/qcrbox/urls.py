@@ -19,6 +19,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path('',views.dashboard, name='home'),
+    path('', views.landing, name='landing'),
+    path('workflow', views.initialise_workflow, name='initialise_workflow'),
+    path('workflow/<file_id>', views.workflow, name='workflow'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
