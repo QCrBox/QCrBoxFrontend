@@ -38,7 +38,7 @@ workflow_card = dbc.Card([
 
     # Body (White area below)
     dbc.CardBody([
-        html.Div([components.processing_step(0)],id='output-workflow-body')
+        html.Div([],id='output-workflow-body')
     ]),
 ])
 
@@ -69,7 +69,7 @@ app.layout = dbc.Container(
     fluid='xxl',
     children=[
         # Non-rendered components
-        dcc.Store(id="store-main"),
+        dcc.Store(data={'current_step':0}, id="store-main"),
 
         # Rendered Components
         dbc.Row([
@@ -88,38 +88,32 @@ app.layout = dbc.Container(
 # Cache current step number
 @app.callback(
     Output("store-main", "data"),
-    Input({"type": "input-processing-button", "index": ALL}, "n_clicks"),
+    Input({"type": "input-status-button", "index": ALL}, "n_clicks"),
 )
 def update_step(n_clicks):
-    if n_clicks[0]!=None:
-        print(n_clicks)
+    if n_clicks:
         n_buttons_pressed = int(np.sum(np.array(n_clicks)>0))
         return {'current_step':n_buttons_pressed}
 
-# Deliver cache number to 
+
+# Populate columns from cached step number
 @app.callback(
-    Output("output-status-body", "children"),
-    Input("store-main", "data"),
-)
-def status_output(data):
-    if data:
-        return [components.status_step(data['current_step'])]
-
-
-
-@app.callback(
-    Output("output-processing-body", "children"),
-    Input({"type": "input-status-button", "index": ALL}, "n_clicks"),
-    Input("store-main", "data"),
-)
-def processing_output(n_clicks, data):
-    if data:
-        current_step = data['current_step']
+    [
+        Output('output-workflow-body', 'children'),
+        Output('output-status-body', 'children'),
+    ],
+    Input("store-main", "data")
+    )
+def update_display_containers(data):
+    if not data:
+        current_step=0
     else:
-        current_step = 0
-    if n_clicks:
-        if n_click[data[current_step]] > 0:
+        current_step=data['current_step']
 
-            processing_content = [components.processing_step(i) for i in range(current_step+2)]
-
-            return [processing_content]
+    workflow_body = [
+        components.workflow_step(i) for i in range(current_step+1)
+    ]
+    status_body = [
+        components.status_step(i) for i in range(current_step+1)
+    ]
+    return [workflow_body, status_body]

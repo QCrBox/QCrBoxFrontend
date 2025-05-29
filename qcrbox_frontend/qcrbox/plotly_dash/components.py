@@ -4,7 +4,7 @@ from dash import dcc, html
 
 # Left panel content
 
-def processing_step(i):
+def workflow_step(i):
     return html.Button('File:',id={"type": "input-processing-button", "index": i})
 
 
