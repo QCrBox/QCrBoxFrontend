@@ -47,6 +47,22 @@ def initialise_workflow(request):
 
 def workflow(request, file_id):
 
+    context = {}
+
+    if request.method == "POST":
+
+        if 'application' in request.POST:
+            context['current_application']=models.Application.objects.get(pk=request.POST['application'])
+
+            # Handle starting the external applications:
+
+            if 'startup' in request.POST:
+                print('startup here')
+
+                context['session_in_progress'] = True
+
+                ##################################
+
     load_file = models.FileMetaData.objects.get(pk=file_id)
 
     prior_steps = []
@@ -61,11 +77,8 @@ def workflow(request, file_id):
         if not hasattr(current_file,'processed_by'):
             break
 
-    return render(
-        request,
-        'workflow.html',
-        {
-            'file' : load_file,
-            'prior_steps' : prior_steps,
-        }
-    )
+    context['file'] = load_file
+    context['prior_steps'] = prior_steps
+    context['select_application_form'] = forms.SelectApplicationForm()
+
+    return render(request, 'workflow.html', context)

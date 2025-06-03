@@ -10,3 +10,8 @@ class FileMetaDataAdmin(admin.ModelAdmin):
 class ProcessStepAdmin(admin.ModelAdmin):
     list_display=('infile','application','outfile')
     ordering=('infile','application','outfile')
+
+@admin.register(Application)
+class ProcessStepAdmin(admin.ModelAdmin):
+    list_display=('name','version')
+    ordering=('name','version')

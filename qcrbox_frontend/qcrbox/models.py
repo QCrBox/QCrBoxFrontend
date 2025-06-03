@@ -8,8 +8,14 @@ class FileMetaData(models.Model):
     backend_uuid = models.CharField(max_length=255, null=True)
     user = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
     group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    filetype = models.CharField(max_length=255, null=True)
+
+class Application(models.Model):
+    name = models.CharField(max_length=255)
+    url = models.CharField(max_length=255)
+    version = models.CharField(max_length=255)
 
 class ProcessStep(models.Model):
-    application = models.CharField(max_length=255, blank=True, null=True,)
+    application = models.ForeignKey(Application, null=True, on_delete=models.SET_NULL)
     infile = models.ForeignKey(FileMetaData, null=True, on_delete=models.SET_NULL, related_name='processed_to')
     outfile = models.ForeignKey(FileMetaData, null=True, on_delete=models.SET_NULL, related_name='processed_by')

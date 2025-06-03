@@ -3,32 +3,38 @@
 {% block title %}QCrBox Workflow{% endblock %}
 
 {% block content %}
-<table width=100%>
-    <thead>
-        <td>Load Existing File:</td>
-        <td>Upload New File:</td>
-    </thead>
-    <tr>
+
+<div class="container">
+  <div class="row justify-content-center">
+    <table width=100%>
+      <thead>
+        <td width=50%>Load Existing File:</td>
+        <td width=50%>Upload New File:</td>
+      </thead>
+      <tr>
         <td>
-            <form action="" method="POST" enctype="multipart/form-data">
-                {% csrf_token %}
-                {{ loadfile_form.as_p }}
-                <br/>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-download"></i> Load
-                </button>
-            </form>
+          <form action="" method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ loadfile_form.as_p }}
+            <br/>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-download"></i> Load
+            </button>
+          </form>
         </td>
         <td>
-            <form action="" method="POST" enctype="multipart/form-data">
-                {% csrf_token %}
-                {{ newfile_form.as_p }}
-                <br/>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-upload"></i> Upload
-                </button>
-            </form>
+          <form action="" method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ newfile_form.as_p }}
+            <br/>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-upload"></i> Upload
+            </button>
+          </form>
         </td>
-    </tr>
-</table>
+      </tr>
+    </table>
+  </div>
+</div>
+
 {% endblock %}

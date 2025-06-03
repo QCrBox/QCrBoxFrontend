@@ -4,41 +4,89 @@
 
 {% block content %}
 
-<table>
-    {% for prior_step in prior_steps %}
-        <tr>
-            <td>
+<div class="container">
+  <div class="row justify-content-center">
+    <table width=100%>
+      <tr>
+        <th width=35%><h3>Workflow</h3></th>
+        <th width=65%><h3>Processing</h3></th>  
+      </tr>
+      <tr style="vertical-align:top">
+        <td>
+          <table width=100%>
+            {% for prior_step in prior_steps %}
+              <tr>
+                <td align='right' width=25%>
+                  <i class="fa-regular fa-square"></i>
+                </td>
+                <td align='left' width=25%>
+                  &nbsp{{prior_step.infile.filename}}
+                </td>
+              </tr>
+              <tr>
+                <td align='right'>
+                  <i class="fa-solid fa-arrow-down"></i>
+                </td>
+                <td align='left'>
+                  <i>&nbsp{{prior_step.application.name}}</i>
+                </td>
+              </tr>
+            {% endfor %}
+            <tr>
+              <td align='right'>
                 <i class="fa-solid fa-square"></i>
-            </td>
-            <td>
-                {{prior_step.infile.filename}}
-            </td>
-        </tr>
-        <tr>
-            <td>
-                <i class="fa-solid fa-arrow-down"></i>
-            </td>
-            <td>
-                {{prior_step.application}}
-            </td>
-        </tr>
-    {% endfor %}
-    <tr>
-        <td>
-            <i class="fa-regular fa-square"></i>
+              </td>
+              <td align='left'>
+                <b>&nbsp{{file.filename}}</b>
+              </td>
+            </tr>
+          </table>
         </td>
-        <td>
-            {{file.filename}}
+        <td vertical-align="top">
+          <div class="card">
+            {% if not current_application %}
+              <h4>Dataset Metadata</h4>
+              <ul>
+                <li>Dataset ID: {{file.backend_uuid}}</li>
+                <li>Filetype: {{file.filetype}}</li>
+              </ul>
+              <i>Please select an application from the workflow to continue processing.</i>
+            {% else %}
+              <h4>{{current_application.name}}</h4>
+              <ul>
+                <li>Version: {{current_application.version}}</li>
+                <li>Website: <a href="{{current_application.url}}">{{ current_application.name }}</a>
+              </ul>
+              {% if session_in_progress %}
+                Cancel button here
+              {% else %}
+                <form action="" method="POST" enctype="multipart/form-data">
+                  {% csrf_token %}
+                  <input type="hidden" id="startup" name="startup" value=True>
+                  <input type="hidden" id="application" name="application" value={{ current_application.pk }}>
+                  <button type="submit" class="btn btn-primary">
+                    Launch Application
+                  </button>
+                </form>
+              {% endif %}
+            {% endif %}
+            {% if session_in_progress %}
+            {% else %}
+              <hr>
+              <center>
+                <form action="" method="POST" enctype="multipart/form-data">
+                  {% csrf_token %}
+                  {{ select_application_form.as_p }}
+                  <button type="submit" class="btn btn-primary">
+                    Select Application
+                  </button>
+                </form>
+              </center>
+            {% endif %}
+          </div>
         </td>
-    </tr>
-    <tr>
-        <td>
-            <i class="fa-solid fa-arrow-right-from-bracket"></i>
-        </td>
-        <td>
-            {{form}}
-        </td>
-    </tr>
-
-</table>
+      </tr>
+    </table>
+  </div>
+</div>
 {% endblock %}
