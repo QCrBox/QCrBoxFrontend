@@ -44,6 +44,11 @@
               <td align='left'>
                 <b>&nbsp{{file.filename}}</b>
               </td>
+              <td align='left' width=10%>
+                <a href="{% url 'download' file.pk %}">
+                  <i class="fas fa-download"></i>
+                </a>
+              </td>
             </tr>
           </table>
         </td>
