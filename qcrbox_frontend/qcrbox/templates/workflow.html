@@ -13,14 +13,19 @@
       </tr>
       <tr style="vertical-align:top">
         <td>
-          <table width=100%>
+          <table width=35%>
             {% for prior_step in prior_steps %}
               <tr>
-                <td align='right' width=25%>
+                <td align='right' width=15%>
                   <i class="fa-regular fa-square"></i>
                 </td>
-                <td align='left' width=25%>
+                <td align='left' width=5%>
                   &nbsp{{prior_step.infile.filename}}
+                </td>
+                <td align='left' width=10%>
+                  <a href="{% url 'download' prior_step.infile.pk %}">
+                    <i class="fas fa-download"></i>
+                  </a>
                 </td>
               </tr>
               <tr>

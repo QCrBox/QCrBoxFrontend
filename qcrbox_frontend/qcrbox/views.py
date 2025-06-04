@@ -1,5 +1,7 @@
 from django.shortcuts import render, redirect
-from .plotly_dash import plotly_app
+from django.contrib import messages
+from django.core.exceptions import PermissionDenied
+from django.http import HttpResponse
 
 import random
 import string
@@ -7,7 +9,7 @@ import string
 from . import forms
 from . import models
 
-# Create your views here.
+# Workflow
 
 def landing(request):
 
@@ -34,7 +36,7 @@ def initialise_workflow(request):
             newfile = models.FileMetaData(
                 filename= str(file),
                 user=request.user,
-                group=request.user.groups.first()
+                group=request.user.groups.first() # need a better way to do this
             )
             newfile.save()
 
@@ -51,6 +53,7 @@ def initialise_workflow(request):
             'newfile_form':forms.UploadFileForm(),
         }
     )
+
 
 def workflow(request, file_id):
 
@@ -77,44 +80,61 @@ def workflow(request, file_id):
 
                 # API HOOK get info of newly processed file from backend
 
-                # -==-==-==-==-Placeholder file creation-==-==-==-==-
+                # -==-==-==-==-Placeholder assume new file is created-==-==-==-==-
 
-                try:
-                    old_name = load_file.filename.split('_')
-                    new_name = '_'.join(old_name[:-1])+'_'+str(int(old_name[-1])+1)
-                except:
-                    new_name = load_file.filename + '_1'
-
-                new_uuid = ''.join(random.choices(string.ascii_letters, k=10))
-
-                new_filetype = '.something'
+                run_complete = True
 
                 # -==-==-==-==- Placeholder End -==-==-==-==-
 
-                # Create record for new file's metadata
+                if run_complete:
 
-                newfile = models.FileMetaData(
-                    filename= new_name,
-                    user=request.user,
-                    group=request.user.groups.first(),
-                    backend_uuid=new_uuid,
-                    filetype= new_filetype
-                )
-                newfile.save()
-                newfile.pk
+                    # -==-==-==-==-Placeholder file creation-==-==-==-==-
 
-                # Create record for workflow step
+                    try:
+                        old_name = load_file.filename.split('_')
+                        new_name = '_'.join(old_name[:-1])+'_'+str(int(old_name[-1])+1)
+                    except:
+                        new_name = load_file.filename + '_1'
 
-                newprocessstep = models.ProcessStep(
-                    application = current_application,
-                    infile = load_file,
-                    outfile = newfile,
+                    new_uuid = ''.join(random.choices(string.ascii_letters, k=10))
+
+                    new_filetype = '.something'
+
+                    # -==-==-==-==- Placeholder End -==-==-==-==-
+
+                    # Create record for new file's metadata
+
+                    newfile = models.FileMetaData(
+                        filename= new_name,
+                        user=request.user,
+                        group=load_file.group,
+                        backend_uuid=new_uuid,
+                        filetype= new_filetype
                     )
-                newprocessstep.save()
+                    newfile.save()
+                    newfile.pk
 
-                # Redirect to workflow for new file
+                    # Create record for workflow step
 
-                return redirect('workflow', file_id=newfile.pk)
+                    newprocessstep = models.ProcessStep(
+                        application = current_application,
+                        infile = load_file,
+                        outfile = newfile,
+                    )
+                    newprocessstep.save()
+
+                    # Redirect to workflow for new file
+
+                    return redirect('workflow', file_id=newfile.pk)
+
+                else:
+
+                    # If session did not produce output file
+
+                    messages.warning(request, 'No output was produced in the interactive session.')
+                    context['session_in_progress'] = True
+
+                    # Then proceed normally
 
 
     prior_steps = []
@@ -134,3 +154,42 @@ def workflow(request, file_id):
     context['select_application_form'] = forms.SelectApplicationForm()
 
     return render(request, 'workflow.html', context)
+
+
+def download(request, file_id):
+    allowed_groups = request.user.groups.all()
+    
+    download_file_meta = models.FileMetaData.objects.get(pk=file_id)
+
+    # Stop user accessing data from a group they have no access to
+    if download_file_meta.group not in allowed_groups:
+        raise PermissionDenied
+
+    # API HOOK get file from backend to give to frontend
+
+    # -==-==-==-==-Placeholder generating dummy file to serve-==-==-==-==-
+
+    import csv
+    from io import StringIO
+
+    csvfile = StringIO()
+    csvwriter = csv.writer(csvfile)
+
+    def read_and_flush():
+        csvfile.seek(0)
+        data = csvfile.read()
+        csvfile.seek(0)
+        csvfile.truncate()
+        return data
+
+    def data():
+        csvwriter.writerow(['name','uuid','type'])
+        csvwriter.writerow([download_file_meta.filename, download_file_meta.backend_uuid, download_file_meta.filetype])
+        data = read_and_flush()
+        yield data
+
+    # -==-==-==-==- Placeholder End -==-==-==-==-
+
+    response = HttpResponse(data())
+    response['Content-Disposition'] = 'attachment; filename='+download_file_meta.filename
+    return response
