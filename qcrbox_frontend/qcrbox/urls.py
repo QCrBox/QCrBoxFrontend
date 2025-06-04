@@ -24,4 +24,7 @@ urlpatterns = [
     path('workflow/<file_id>', views.workflow, name='workflow'),
     path('download/<file_id>', views.download, name='download'),
 
+    path('login', views.login_view, name='login'),
+    path('logout', views.logout_view, name='logout'),
+
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

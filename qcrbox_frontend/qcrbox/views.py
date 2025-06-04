@@ -1,6 +1,8 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import Group
+from django.contrib.auth.decorators import permission_required, login_required
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 
@@ -10,12 +12,15 @@ import string
 from . import forms
 from . import models
 
-# Workflow
 
+# Workflow-related views
+
+@login_required(login_url='login')
 def landing(request):
 
     return redirect('initialise_workflow')
 
+@login_required(login_url='login')
 def initialise_workflow(request):
 
     if request.method == "POST":
@@ -55,7 +60,7 @@ def initialise_workflow(request):
         }
     )
 
-
+@login_required(login_url='login')
 def workflow(request, file_id):
 
     context = {}
@@ -156,7 +161,7 @@ def workflow(request, file_id):
 
     return render(request, 'workflow.html', context)
 
-
+@login_required(login_url='login')
 def download(request, file_id):
     allowed_groups = request.user.groups.all()
     
@@ -194,3 +199,29 @@ def download(request, file_id):
     response = HttpResponse(data())
     response['Content-Disposition'] = 'attachment; filename='+download_file_meta.filename
     return response
+
+
+# User management-related views
+
+def login_view(request):
+    if request.method == "POST":
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request,user)
+            messages.success(request,'Login successful: Welcome, '+str(request.user))
+            return redirect('landing')
+        else:
+            messages.warning(request,('Login failed, try again!'))
+
+    return render(request, 'login.html', {})
+
+@login_required(login_url='login')
+def logout_view(request):
+
+    username = request.user.username
+    logout(request)
+    messages.success(request,('Logout Successful!'))
+
+    return redirect('login')
