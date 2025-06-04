@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 
@@ -36,7 +37,7 @@ def initialise_workflow(request):
             newfile = models.FileMetaData(
                 filename= str(file),
                 user=request.user,
-                group=request.user.groups.first() # need a better way to do this
+                group=Group.objects.get(pk=request.POST['group'])
             )
             newfile.save()
 
@@ -50,7 +51,7 @@ def initialise_workflow(request):
         'initial.html',
         {
             'loadfile_form':forms.LoadFileForm(user=request.user),
-            'newfile_form':forms.UploadFileForm(),
+            'newfile_form':forms.UploadFileForm(user=request.user),
         }
     )
 
