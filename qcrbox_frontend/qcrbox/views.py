@@ -225,3 +225,4 @@ def logout_view(request):
     messages.success(request,('Logout Successful!'))
 
     return redirect('login')
+    

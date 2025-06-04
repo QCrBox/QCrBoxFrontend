@@ -19,3 +19,16 @@ class ProcessStep(models.Model):
     application = models.ForeignKey(Application, null=True, on_delete=models.SET_NULL)
     infile = models.ForeignKey(FileMetaData, null=True, on_delete=models.SET_NULL, related_name='processed_to')
     outfile = models.ForeignKey(FileMetaData, null=True, on_delete=models.SET_NULL, related_name='processed_by')
+
+# Create an empty model to assign global permissions to to be independent of models
+class DataPermissionSupport(models.Model):   
+    class Meta:
+        
+        managed = False  # No database table creation or deletion  \
+                         # operations will be performed for this model. 
+                
+        default_permissions = () 
+        permissions = ( 
+            ('edit_users', 'Can add, edit, delete other users, by default just within their groups.'),
+            ('global_user_permissions', 'Can CRUD users outside of their group(s).')
+        )
