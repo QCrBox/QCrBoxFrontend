@@ -58,7 +58,14 @@
                 <li>Website: <a href="{{current_application.url}}">{{ current_application.name }}</a>
               </ul>
               {% if session_in_progress %}
-                Cancel button here
+                <form action="" method="POST" enctype="multipart/form-data">
+                  {% csrf_token %}
+                  <input type="hidden" id="end_session" name="end_session" value=True>
+                  <input type="hidden" id="application" name="application" value={{ current_application.pk }}>
+                  <button type="submit" class="btn btn-primary">
+                    End Session
+                  </button>
+                </form>
               {% else %}
                 <form action="" method="POST" enctype="multipart/form-data">
                   {% csrf_token %}

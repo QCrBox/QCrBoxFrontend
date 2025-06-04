@@ -1,5 +1,9 @@
 from django.shortcuts import render, redirect
 from .plotly_dash import plotly_app
+
+import random
+import string
+
 from . import forms
 from . import models
 
@@ -24,6 +28,9 @@ def initialise_workflow(request):
             # If user uploads new file
 
             file = request.FILES['file']
+
+            # API HOOK upload file to backend, fetch file backend UUID
+
             newfile = models.FileMetaData(
                 filename= str(file),
                 user=request.user,
@@ -49,10 +56,13 @@ def workflow(request, file_id):
 
     context = {}
 
+    load_file = models.FileMetaData.objects.get(pk=file_id)
+
     if request.method == "POST":
 
         if 'application' in request.POST:
-            context['current_application']=models.Application.objects.get(pk=request.POST['application'])
+            current_application = models.Application.objects.get(pk=request.POST['application'])
+            context['current_application']=current_application
 
             # Handle starting the external applications:
 
@@ -61,9 +71,51 @@ def workflow(request, file_id):
 
                 context['session_in_progress'] = True
 
-                ##################################
+                # API HOOK start interactive session in new tab here
 
-    load_file = models.FileMetaData.objects.get(pk=file_id)
+            elif 'end_session' in request.POST:
+
+                # API HOOK get info of newly processed file from backend
+
+                # -==-==-==-==-Placeholder file creation-==-==-==-==-
+
+                try:
+                    old_name = load_file.filename.split('_')
+                    new_name = '_'.join(old_name[:-1])+'_'+str(int(old_name[-1])+1)
+                except:
+                    new_name = load_file.filename + '_1'
+
+                new_uuid = ''.join(random.choices(string.ascii_letters, k=10))
+
+                new_filetype = '.something'
+
+                # -==-==-==-==- Placeholder End -==-==-==-==-
+
+                # Create record for new file's metadata
+
+                newfile = models.FileMetaData(
+                    filename= new_name,
+                    user=request.user,
+                    group=request.user.groups.first(),
+                    backend_uuid=new_uuid,
+                    filetype= new_filetype
+                )
+                newfile.save()
+                newfile.pk
+
+                # Create record for workflow step
+
+                newprocessstep = models.ProcessStep(
+                    application = current_application,
+                    infile = load_file,
+                    outfile = newfile,
+                    )
+                newprocessstep.save()
+
+                # Redirect to workflow for new file
+
+                return redirect('workflow', file_id=newfile.pk)
+
 
     prior_steps = []
     current_file = load_file
