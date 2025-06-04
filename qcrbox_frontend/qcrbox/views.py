@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import User, Group, Permission
 from django.contrib.auth.decorators import permission_required, login_required
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
@@ -210,7 +210,7 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request,user)
-            messages.success(request,'Login successful: Welcome, '+str(request.user))
+            messages.success(request,'Login Successful: Welcome, '+str(request.user))
             return redirect('landing')
         else:
             messages.warning(request,('Login failed, try again!'))
@@ -225,4 +225,39 @@ def logout_view(request):
     messages.success(request,('Logout Successful!'))
 
     return redirect('login')
-    
+
+@permission_required('qcrbox.edit_users', raise_exception = True)
+def create_user(request):
+
+    if request.method == 'POST':
+
+        form = forms.RegisterUserForm(request.POST,user=request.user)
+        if form.is_valid():
+            form.save()
+            username = form.cleaned_data['username']
+
+            # Collect pk of desired user type from form checkboxes
+            user_groups = form.cleaned_data['user_groups']
+
+            # Fetch the user we just created
+            new_user = User.objects.get(username=username)
+
+            # Add user to the selected user group
+            for user_group in user_groups.all():
+
+                user_group.user_set.add(new_user)
+
+            # Add non-group related permissions
+            if form.cleaned_data['group_manager']:
+                print(Permission.objects.first())
+                new_user.user_permissions.add(Permission.objects.get(codename='edit_users') )
+
+            if form.cleaned_data['global_access']:
+                new_user.user_permissions.add(Permission.objects.get(codename='global_access') )
+
+            messages.success(request,'Registration Successful!')
+            form = forms.RegisterUserForm(user=request.user)
+    else:
+        form = forms.RegisterUserForm(user=request.user)
+
+    return render(request, 'create_user.html',{'form':form})

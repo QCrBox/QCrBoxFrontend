@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Create New User{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-8 form-container">
+
+      {% if form.errors %}
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+          There were errors when signing up!
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+      {% endif %}
+
+      <h1 class="mb-4">Register</h1>
+
+      <form action="{% url 'create_user' %}" method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <br/>
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
