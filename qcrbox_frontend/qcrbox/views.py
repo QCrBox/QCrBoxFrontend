@@ -18,27 +18,28 @@ from . import models
 @login_required(login_url='login')
 def landing(request):
 
+    # Landing page redirects to workflow initialisation, or login if user not logged in
     return redirect('initialise_workflow')
 
 @login_required(login_url='login')
 def initialise_workflow(request):
 
+    # Check if user submitted a form
     if request.method == "POST":
 
         if 'file' in request.POST:
 
-            # If user loaded pre-existing file
-
+            # If user chose to load pre-existing file, fetch that file's ID
             redirect_pk = request.POST['file']
 
         else:
 
             # If user uploads new file
-
             file = request.FILES['file']
 
             # API HOOK upload file to backend, fetch file backend UUID
 
+            # Save file's metadata in local db
             newfile = models.FileMetaData(
                 filename= str(file),
                 user=request.user,
@@ -48,9 +49,10 @@ def initialise_workflow(request):
 
             redirect_pk = newfile.pk
 
+        # Redirect to workflow page for the selected file either way
         return redirect('workflow', file_id=redirect_pk)
 
-
+    # Else return initialise workflow page
     return render(
         request,
         'initial.html',
@@ -63,18 +65,25 @@ def initialise_workflow(request):
 @login_required(login_url='login')
 def workflow(request, file_id):
 
+    # Setup context dict to be populated throughout
     context = {}
 
+    # Fetch the current file from the file_id passed in url
     load_file = models.FileMetaData.objects.get(pk=file_id)
+    context['file'] = load_file
 
+    # Fetch the app selection form for session selection
+    context['select_application_form'] = forms.SelectApplicationForm()
+
+    # Check if user submitted a form
     if request.method == "POST":
 
+        # Check user actually picked an application
         if 'application' in request.POST:
             current_application = models.Application.objects.get(pk=request.POST['application'])
             context['current_application']=current_application
 
-            # Handle starting the external applications:
-
+            # Check if user submitted using the 'start session' form
             if 'startup' in request.POST:
                 print('startup here')
 
@@ -82,6 +91,7 @@ def workflow(request, file_id):
 
                 # API HOOK start interactive session in new tab here
 
+            # Check if user submitted using the 'end session' form
             elif 'end_session' in request.POST:
 
                 # API HOOK get info of newly processed file from backend
@@ -92,6 +102,7 @@ def workflow(request, file_id):
 
                 # -==-==-==-==- Placeholder End -==-==-==-==-
 
+                # If it was possible to get an outfile from the session via the API
                 if run_complete:
 
                     # -==-==-==-==-Placeholder file creation-==-==-==-==-
@@ -109,7 +120,6 @@ def workflow(request, file_id):
                     # -==-==-==-==- Placeholder End -==-==-==-==-
 
                     # Create record for new file's metadata
-
                     newfile = models.FileMetaData(
                         filename= new_name,
                         user=request.user,
@@ -121,7 +131,6 @@ def workflow(request, file_id):
                     newfile.pk
 
                     # Create record for workflow step
-
                     newprocessstep = models.ProcessStep(
                         application = current_application,
                         infile = load_file,
@@ -130,41 +139,50 @@ def workflow(request, file_id):
                     newprocessstep.save()
 
                     # Redirect to workflow for new file
-
                     return redirect('workflow', file_id=newfile.pk)
 
                 else:
 
                     # If session did not produce output file
-
                     messages.warning(request, 'No output was produced in the interactive session.')
                     context['session_in_progress'] = True
 
                     # Then proceed normally
 
-
+    # Populate the workflow diagram with all steps leading up to the current file
     prior_steps = []
     current_file = load_file
 
+    # While working on a step with a creation history...
     while current_file.processed_by.all():
         prior_step = current_file.processed_by.first()
         prior_steps = [prior_step] + prior_steps
+
+        # Move one step back if possible
         current_file = prior_step.infile
 
         # Failsafe for if the prior step is malformed
         if not hasattr(current_file,'processed_by'):
             break
 
-    context['file'] = load_file
+    # Add results of the prior step finder to the context
     context['prior_steps'] = prior_steps
-    context['select_application_form'] = forms.SelectApplicationForm()
 
     return render(request, 'workflow.html', context)
 
+
 @login_required(login_url='login')
 def download(request, file_id):
-    allowed_groups = request.user.groups.all()
-    
+
+    # Fetch permitted groups based on the user's membership
+    if request.user.has_perm('qcrbox.global_access'):
+        # If user has the global access permission, ALL groups are visible
+        allowed_groups = Group.objects.all()
+    else:
+        # Else, restrict downloads to files linked the groups the user is a member of
+        allowed_groups = request.user.groups.all()
+
+    # Fetch the metadata
     download_file_meta = models.FileMetaData.objects.get(pk=file_id)
 
     # Stop user accessing data from a group they have no access to
@@ -196,6 +214,7 @@ def download(request, file_id):
 
     # -==-==-==-==- Placeholder End -==-==-==-==-
 
+    # Deliver the file using the filename stored in metadata
     response = HttpResponse(data())
     response['Content-Disposition'] = 'attachment; filename='+download_file_meta.filename
     return response
@@ -203,6 +222,7 @@ def download(request, file_id):
 
 # User management-related views
 
+# Basic login view
 def login_view(request):
     if request.method == "POST":
         username = request.POST['username']
@@ -217,6 +237,7 @@ def login_view(request):
 
     return render(request, 'login.html', {})
 
+# Basic logout view
 @login_required(login_url='login')
 def logout_view(request):
 

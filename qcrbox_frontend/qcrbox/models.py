@@ -1,8 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User, Group
 
-# Create your models here.
-
+# Metadata on available files
 class FileMetaData(models.Model):
     filename = models.CharField(max_length=255)
     backend_uuid = models.CharField(max_length=255, null=True)
@@ -10,11 +9,13 @@ class FileMetaData(models.Model):
     group = models.ForeignKey(Group, on_delete=models.CASCADE)
     filetype = models.CharField(max_length=255, null=True)
 
+# Metadata on available applications for interactive sessions
 class Application(models.Model):
     name = models.CharField(max_length=255)
     url = models.CharField(max_length=255)
     version = models.CharField(max_length=255)
 
+# Metadata on a session; what file was given as input, which application was used, what file was output
 class ProcessStep(models.Model):
     application = models.ForeignKey(Application, null=True, on_delete=models.SET_NULL)
     infile = models.ForeignKey(FileMetaData, null=True, on_delete=models.SET_NULL, related_name='processed_to')
@@ -24,8 +25,7 @@ class ProcessStep(models.Model):
 class DataPermissionSupport(models.Model):
     class Meta:
         
-        managed = False  # No database table creation or deletion  \
-                         # operations will be performed for this model. 
+        managed = False  # No database table creation or deletion operations will be performed for this model. 
                 
         default_permissions = () 
         permissions = ( 
