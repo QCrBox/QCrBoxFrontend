@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Create New User{% endblock %}
+{% block title %}Create New {{ instance_name }}{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -9,16 +9,16 @@
 
       {% if form.errors %}
         <div class="alert alert-warning alert-dismissible fade show" role="alert">
-          There were errors when signing up!
+          There were errors in the form: No New {{ instance_name }} Created!
           <button type="button" class="close" data-dismiss="alert" aria-label="Close">
             <span aria-hidden="true">&times;</span>
           </button>
         </div>
       {% endif %}
 
-      <h1 class="mb-4">Register</h1>
+      <h1 class="mb-4">Create New {{ instance_name }}</h1>
 
-      <form action="{% url 'create_user' %}" method="POST">
+      <form action="" method="POST">
         {% csrf_token %}
         {{ form.as_p }}
         <br/>

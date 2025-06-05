@@ -17,7 +17,7 @@
             {% for prior_step in prior_steps %}
               <tr>
                 <td align='right' width=15%>
-                  <i class="fa-regular fa-square"></i>
+                  <a href="{% url 'workflow' prior_step.infile.pk %}"><i class="fa-regular fa-square"></i></a>
                 </td>
                 <td align='left' width=5%>
                   &nbsp{{prior_step.infile.filename}}

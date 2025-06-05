@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "qcrbox",
     "django_plotly_dash.apps.DjangoPlotlyDashConfig",
     "dpd_static_support",
+    "querystring_tag",
 ]
 
 MIDDLEWARE = [

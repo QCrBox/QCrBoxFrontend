@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User, Group, Permission
 from django.contrib.auth.decorators import permission_required, login_required
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 
@@ -11,6 +12,20 @@ import string
 
 from . import forms
 from . import models
+
+# Utiliy functions/classes
+
+# Define a collection of field properties to pass to tabular display pages
+class display_field(object):
+    def __init__(self,name,attr,is_header=False,is_queryset=False):
+        # the human-readable name of the attribute
+        self.name = name
+        # the name of the related model field
+        self.attr = attr
+        # allow for conditional styling of 'header' field data
+        self.is_header = is_header
+        # allow for displaying data which is kept as a queryset (e.g. a user's groups)
+        self.is_queryset = is_queryset
 
 
 # Workflow-related views
@@ -263,6 +278,12 @@ def create_user(request):
             # Fetch the user we just created
             new_user = User.objects.get(username=username)
 
+            # Populate the user info
+            new_user.first_name = form.cleaned_data['first_name']
+            new_user.last_name = form.cleaned_data['last_name']
+            new_user.email = form.cleaned_data['email']
+            new_user.save()
+
             # Add user to the selected user group
             for user_group in user_groups.all():
 
@@ -281,4 +302,66 @@ def create_user(request):
     else:
         form = forms.RegisterUserForm(user=request.user)
 
-    return render(request, 'create_user.html',{'form':form})
+    return render(request, 'create_generic.html',{
+        'form':form,
+        'instance_name':'User',
+    })
+
+@login_required(login_url='login')
+def view_users(request):
+
+    fields = [
+        display_field('Username','username',is_header=True),
+        display_field('First Name','first_name'),
+        display_field('Last Name','last_name'),
+        display_field('Group(s)','groups',is_queryset=True),
+        ]
+
+    # If a user can view unaffiliated data, they can view it all
+    if request.user.has_perm('qcrbox.global_access'):
+        object_list=User.objects.all()
+    else:
+        object_list=User.objects.filter(groups__in=request.user.groups.all())
+
+    object_list=object_list.order_by('username')
+    p = Paginator(object_list, 13)
+    page=request.GET.get('page')
+
+    try:
+        objects = p.get_page(page)
+    except PageNotAnInteger:
+        objects = p.page(1)
+    except EmptyPage:
+        objects = p.page(p.num_pages)
+
+    return render(request,'view_list_generic.html',{
+        'objects': objects,
+        'type':'User',
+        'fields':fields,
+        'edit_link':'',
+        'delete_link':'',
+    })
+
+
+# Group Management related views
+
+# Can only edit groups if user has the global access perm
+@permission_required('qcrbox.global_access')
+def create_group(request):
+
+    if request.method == 'POST':
+
+        # Get the posted form
+        form = forms.GroupForm(request.POST)
+
+        if form.is_valid():
+            name = form.data['name']
+            form.save()
+            messages.success(request,(f'New Group "{name}" added!'))
+    else:
+        form = forms.GroupForm()
+
+    return render(request,'create_generic.html',{
+        'form':form,
+        'instance_name':'Group',
+    })

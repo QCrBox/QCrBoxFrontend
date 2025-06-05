@@ -18,6 +18,11 @@
           <a class="nav-link" href="{% url 'create_user' %}">Create User</a>
         </li>
       {% endif %}
+      {% if perms.qcrbox.global_access %}
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'create_group' %}">Create Group</a>
+        </li>
+      {% endif %}
     </ul>
 
     <!-- Right-aligned items -->
