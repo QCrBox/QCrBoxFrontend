@@ -3,13 +3,23 @@
 {% load querystring_tag %}
 
 {% load getattribute %}
-{% load getmtmattribute %}
+{% load getspecial %}
 
 {% block title %}{{type}} List{% endblock %}
 
 {% block content %}
 <div class="container">
   <h1 class="mb-4">{{ type }} List</h1>
+  {% if perms.qcrbox.edit_users %}
+    {% if create_link %}
+      <br/>
+      <form action="{% url create_link %}">
+        <button type="submit" class="btn btn-primary mb-3">
+          <i class="fa-solid fa-plus"></i> Create New {{type}}
+        </button>
+      </form>
+    {% endif %}
+  {% endif %}
 
   <!-- Styled Table -->
   <table class="table table-bordered table-hover table-striped">
@@ -30,8 +40,8 @@
           {% for field in fields %}
             <td>
               {% if field.is_header %}<b>{% endif %}
-              {% if field.is_queryset %}
-                {{ object|getmtmattribute:field.attr }}
+              {% if field.is_special %}
+                {{ object|getspecial:field.attr }}
               {% else %}
                 {{ object|getattribute:field.attr }}
               {% endif %}

@@ -17,15 +17,15 @@ from . import models
 
 # Define a collection of field properties to pass to tabular display pages
 class display_field(object):
-    def __init__(self,name,attr,is_header=False,is_queryset=False):
+    def __init__(self,name,attr,is_header=False,is_special=False):
         # the human-readable name of the attribute
         self.name = name
         # the name of the related model field
         self.attr = attr
         # allow for conditional styling of 'header' field data
         self.is_header = is_header
-        # allow for displaying data which is kept as a queryset (e.g. a user's groups)
-        self.is_queryset = is_queryset
+        # allow for displaying data with some other format
+        self.is_special = is_special
 
 
 # Workflow-related views
@@ -291,7 +291,6 @@ def create_user(request):
 
             # Add non-group related permissions
             if form.cleaned_data['group_manager']:
-                print(Permission.objects.first())
                 new_user.user_permissions.add(Permission.objects.get(codename='edit_users') )
 
             if form.cleaned_data['global_access']:
@@ -307,14 +306,14 @@ def create_user(request):
         'instance_name':'User',
     })
 
-@login_required(login_url='login')
+@permission_required('qcrbox.edit_users', raise_exception = True)
 def view_users(request):
 
     fields = [
         display_field('Username','username',is_header=True),
         display_field('First Name','first_name'),
         display_field('Last Name','last_name'),
-        display_field('Group(s)','groups',is_queryset=True),
+        display_field('Group(s)','groups',is_special=True),
         ]
 
     # If a user can view unaffiliated data, they can view it all
@@ -338,8 +337,10 @@ def view_users(request):
         'objects': objects,
         'type':'User',
         'fields':fields,
+        'edit_perms':request.user.has_perm('qcrbox.edit_users'),
         'edit_link':'',
         'delete_link':'',
+        'create_link':'create_user',
     })
 
 
@@ -364,4 +365,40 @@ def create_group(request):
     return render(request,'create_generic.html',{
         'form':form,
         'instance_name':'Group',
+    })
+
+@login_required(login_url='login')
+def view_groups(request):
+
+    fields = [
+        display_field('Name','name',is_header=True),
+        display_field('Owner(s)','owners',is_special=True),
+        display_field('# Members','membership',is_special=True),
+        ]
+
+    # If a user can view unaffiliated data, they can view it all
+    if request.user.has_perm('qcrbox.global_access'):
+        object_list=Group.objects.all()
+    else:
+        object_list=request.user.groups.all()
+
+    object_list=object_list.order_by('name')
+    p = Paginator(object_list, 13)
+    page=request.GET.get('page')
+
+    try:
+        objects = p.get_page(page)
+    except PageNotAnInteger:
+        objects = p.page(1)
+    except EmptyPage:
+        objects = p.page(p.num_pages)
+
+    return render(request,'view_list_generic.html',{
+        'objects': objects,
+        'type':'Group',
+        'fields':fields,
+        'edit_perms':request.user.has_perm('qcrbox.global_access'),
+        'edit_link':'',
+        'delete_link':'',
+        'create_link':'create_group',
     })
