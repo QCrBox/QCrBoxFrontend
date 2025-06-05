@@ -10,7 +10,7 @@
 {% block content %}
 <div class="container">
   <h1 class="mb-4">{{ type }} List</h1>
-  {% if perms.qcrbox.edit_users %}
+  {% if edit_perms %}
     {% if create_link %}
       <br/>
       <form action="{% url create_link %}">
@@ -54,7 +54,7 @@
             <td class="text-center">
               <a class="btn btn-outline-primary btn-sm" href="" role="button"><i class="fas fa-edit"></i> Edit</a></td>
             <td class="text-center">
-              <a class="btn btn-outline-danger btn-sm" href="" role="button" onclick="return confirm('Are you sure you want to delete {{type}} \'{{object}}\'?');">
+              <a class="btn btn-outline-danger btn-sm" href="{% url delete_link object.pk %}" role="button" onclick="return confirm('Are you sure you want to delete {{type}} \'{{object}}\'?');">
                 <i class="fas fa-trash-alt"></i> Delete
               </a>
             </td>

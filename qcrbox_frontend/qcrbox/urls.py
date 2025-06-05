@@ -29,8 +29,10 @@ urlpatterns = [
 
     path('view_users', views.view_users, name='view_users'),
     path('create_user', views.create_user, name='create_user'),
+    path('delete_user/<user_id>', views.delete_user, name='delete_user'),
 
     path('view_groups', views.view_groups, name='view_groups'),
     path('create_group', views.create_group, name='create_group'),
+    path('delete_group/<group_id>', views.delete_group, name='delete_group'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

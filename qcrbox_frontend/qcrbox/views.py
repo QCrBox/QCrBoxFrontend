@@ -13,7 +13,9 @@ import string
 from . import forms
 from . import models
 
-# Utiliy functions/classes
+# ==============================================
+# ========== Utiliy functions/classes ==========
+# ==============================================
 
 # Define a collection of field properties to pass to tabular display pages
 class display_field(object):
@@ -27,8 +29,35 @@ class display_field(object):
         # allow for displaying data with some other format
         self.is_special = is_special
 
+# Generic deletion view
+def delete_generic(request,Model,type,link_suffix,id,user_is_affiliated):
 
-# Workflow-related views
+    # If user is flagged as able to access unaffiliated data, always continue
+    if request.user.has_perm('qcrbox.global_access'):
+        pass
+
+    # Allow for an access-point check if a user is affiliated with the company to with the data pertains,
+    # to prevent users editing things they shouldnt
+    elif not user_is_affiliated:
+        raise PermissionDenied()
+
+    try:
+        instance=Model.objects.get(pk=id)
+
+    except Model.DoesNotExist:
+        messages.success(request, f'{type} was deleted succesfully.')    
+        return redirect('view_'+link_suffix)
+
+    instance_string=str(instance)
+    instance.delete()
+
+    messages.success(request,f'{type} "{instance_string}" was deleted succesfully!')
+    return redirect('view_'+link_suffix)
+
+
+# ============================================
+# ========== Workflow-related views ==========
+# ============================================
 
 @login_required(login_url='login')
 def landing(request):
@@ -76,6 +105,7 @@ def initialise_workflow(request):
             'newfile_form':forms.UploadFileForm(user=request.user),
         }
     )
+
 
 @login_required(login_url='login')
 def workflow(request, file_id):
@@ -235,7 +265,9 @@ def download(request, file_id):
     return response
 
 
-# User management-related views
+# ===================================================
+# ========== User management-related views ==========
+# ===================================================
 
 # Basic login view
 def login_view(request):
@@ -339,12 +371,31 @@ def view_users(request):
         'fields':fields,
         'edit_perms':request.user.has_perm('qcrbox.edit_users'),
         'edit_link':'',
-        'delete_link':'',
+        'delete_link':'delete_user',
         'create_link':'create_user',
     })
 
+@permission_required('qcrbox.edit_users', raise_exception=True)
+def delete_user(request,user_id):
 
-# Group Management related views
+    deletion_user_groups = User.objects.get(pk=user_id).groups.all()
+    current_user_groups = request.user.groups.all()
+
+    shared_groups = deletion_user_groups & current_user_groups
+    print(shared_groups)
+
+    return delete_generic(
+        request=request,
+        Model=User,
+        type='User',
+        link_suffix='users',
+        id=user_id,
+        user_is_affiliated = not(shared_groups.exists())
+    )
+
+# ====================================================
+# ========== Group Management related views ==========
+# ====================================================
 
 # Can only edit groups if user has the global access perm
 @permission_required('qcrbox.global_access')
@@ -399,6 +450,22 @@ def view_groups(request):
         'fields':fields,
         'edit_perms':request.user.has_perm('qcrbox.global_access'),
         'edit_link':'',
-        'delete_link':'',
+        'delete_link':'delete_group',
         'create_link':'create_group',
     })
+
+@permission_required('qcrbox.global_access', raise_exception=True)
+def delete_group(request,group_id):
+
+    # User should have both global access AND edit permissions to be able to do this
+    if not request.user.has_perm('qcrbox.edit_users'):
+        raise PermissionDenied
+
+    return delete_generic(
+        request=request,
+        Model=Group,
+        type='Group',
+        link_suffix='groups',
+        id=group_id,
+        user_is_affiliated = True,
+    )
