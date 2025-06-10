@@ -348,7 +348,9 @@ def view_users(request):
         display_field('Username','username',is_header=True),
         display_field('First Name','first_name'),
         display_field('Last Name','last_name'),
+        display_field('Email','email'),
         display_field('Group(s)','groups',is_special=True),
+        display_field('Role','role',is_special=True),
         ]
 
     # If a user can view unaffiliated data, they can view it all

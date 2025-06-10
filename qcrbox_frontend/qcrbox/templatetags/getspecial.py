@@ -26,6 +26,22 @@ def getspecial(value, arg):
 
         return ', '.join(grouplist)
 
+    if arg=='role':
+        roles=[]
+
+        for (perm, name) in [
+            ('global_access', 'Admin'),
+            ('edit_data', 'Data Manager'),
+            ('edit_users', 'Group Manager'),
+        ]:
+            if value.has_perm('qcrbox.'+perm):
+                roles.append(name)
+
+        if len(roles)==0:
+            return 'User'
+        else:
+            return ', '.join(roles)
+
 
     # Special group values:
 
