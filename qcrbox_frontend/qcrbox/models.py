@@ -30,5 +30,6 @@ class DataPermissionSupport(models.Model):
         default_permissions = () 
         permissions = ( 
             ('edit_users', 'Can add, edit, delete other users, by default just within their groups.'),
-            ('global_access', 'Can CRUD everything outside of their group(s).')
+            ('edit_data', 'Can edit/delete the metadata for uploaded/created files.'),
+            ('global_access', 'Can CRUD everything outside of their group(s).'),
         )

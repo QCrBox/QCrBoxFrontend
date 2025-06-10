@@ -325,6 +325,9 @@ def create_user(request):
             if form.cleaned_data['group_manager']:
                 new_user.user_permissions.add(Permission.objects.get(codename='edit_users') )
 
+            if form.cleaned_data['data_manager']:
+                new_user.user_permissions.add(Permission.objects.get(codename='edit_data') )
+
             if form.cleaned_data['global_access']:
                 new_user.user_permissions.add(Permission.objects.get(codename='global_access') )
 

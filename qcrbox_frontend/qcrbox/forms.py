@@ -74,6 +74,7 @@ class RegisterUserForm(UserCreationForm):
 
     # Add option to give new users the 'edit users' (group manager) and 'global access' permissions
     group_manager = forms.BooleanField(required=False)
+    data_manager = forms.BooleanField(required=False)
 
     # Disable the global_access checkbox by default
     global_access = forms.BooleanField(required=False, disabled=True, widget=forms.HiddenInput())
