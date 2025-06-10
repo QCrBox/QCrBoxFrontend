@@ -10,7 +10,7 @@ dash-core-components==2.0.0
 dash-html-components==2.0.0
 dash-table==5.0.0
 dash_mantine_components==1.3.0
-Django==5.2.1
+Django==5.2.2
 django-plotly-dash==2.4.6
 django-querystring-tag==1.0.3
 dpd-components==0.1.0
@@ -26,7 +26,7 @@ nest-asyncio==1.6.0
 numpy==2.2.6
 packaging==25.0
 plotly==6.1.1
-requests==2.32.3
+requests==2.32.4
 retrying==1.3.4
 six==1.17.0
 sqlparse==0.5.3
