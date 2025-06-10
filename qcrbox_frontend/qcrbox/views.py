@@ -597,11 +597,30 @@ def delete_dataset(request,dataset_id):
 
     shared_groups = (deletion_data_group in current_user_groups)
 
-    return delete_generic(
-        request=request,
-        Model=models.FileMetaData,
-        type='Dataset',
-        link_suffix='datasets',
-        id=dataset_id,
-        user_is_affiliated = shared_groups
-    )
+    # Check credentials before invoking the generic delete, as API will also need calling
+    if shared_groups or request.user.has_perm('qcrbox.global_access'):
+
+        # API HOOK send request to delete data from backend here
+
+        # -==-==-==-==-Placeholder assume backend deletion went OK-==-==-==-==-
+
+        delete_successful=True
+
+        # -==-==-==-==- Placeholder End -==-==-==-==-
+
+    else:
+        raise PermissionDenied
+
+    if delete_successful:
+        return delete_generic(
+            request=request,
+            Model=models.FileMetaData,
+            type='Dataset',
+            link_suffix='datasets',
+            id=dataset_id,
+            user_is_affiliated = True
+        )
+
+    else:
+        messages.warning(request,'API delete request unsuccessful: file not deleted!')
+        return redirect('view_datasets')
