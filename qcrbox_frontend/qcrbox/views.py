@@ -29,8 +29,36 @@ class display_field(object):
         # allow for displaying data with some other format
         self.is_special = is_special
 
+# Generic update/edit view
+def update_generic(request,Model,ModelForm,type,link_suffix,id,user_is_affiliated=False,**kwargs):
+
+    # If user is flagged as able to access unaffiliated data, always continue
+    if request.user.has_perm('qcrbox.global_access'):
+        pass
+
+    # Allow for an access-point check if a user is affiliated with the company to with the data pertains,
+    # to prevent users editing things they shouldnt    
+    elif not user_is_affiliated:
+        raise PermissionDenied()
+
+    instance=Model.objects.get(pk=id)
+    form=ModelForm(request.POST or None, instance=instance, **kwargs)
+
+    if form.is_valid():
+        form.save()
+
+        messages.success(request,('Changes to '+str(instance)+' saved!'))
+        return redirect('view_'+link_suffix)
+
+    return render(request,'update_generic.html',{
+        'type':type,
+        'object':instance,
+        'form':form,
+        'view_link':'view_'+link_suffix,
+        })
+
 # Generic deletion view
-def delete_generic(request,Model,type,link_suffix,id,user_is_affiliated):
+def delete_generic(request,Model,type,link_suffix,id,user_is_affiliated=False):
 
     # If user is flagged as able to access unaffiliated data, always continue
     if request.user.has_perm('qcrbox.global_access'):
@@ -375,19 +403,41 @@ def view_users(request):
         'type':'User',
         'fields':fields,
         'edit_perms':request.user.has_perm('qcrbox.edit_users'),
-        'edit_link':'',
+        'edit_link':'edit_user',
         'delete_link':'delete_user',
         'create_link':'create_user',
     })
 
 @permission_required('qcrbox.edit_users', raise_exception=True)
+def update_user(request,user_id):
+
+    edit_user_groups = User.objects.get(pk=user_id).groups.all()
+    current_user_groups = request.user.groups.all()
+
+    shared_groups = edit_user_groups & current_user_groups
+
+    return update_generic(
+        request=request,
+        Model=User,
+        ModelForm=forms.UpdateUserForm,
+        type='User',
+        link_suffix='users',
+        id=user_id,
+        user_is_affiliated = shared_groups.exists()
+    )
+
+@permission_required('qcrbox.edit_users', raise_exception=True)
 def delete_user(request,user_id):
+
+    # Stop an admin accidentally deleting themself
+    if int(request.user.pk) == int(user_id):
+        messages.warning(request,'Cannot delete current account from this view; to delete your own account, navigate to profile settings.')
+        return redirect('view_users')
 
     deletion_user_groups = User.objects.get(pk=user_id).groups.all()
     current_user_groups = request.user.groups.all()
 
     shared_groups = deletion_user_groups & current_user_groups
-    print(shared_groups)
 
     return delete_generic(
         request=request,
@@ -395,7 +445,7 @@ def delete_user(request,user_id):
         type='User',
         link_suffix='users',
         id=user_id,
-        user_is_affiliated = not(shared_groups.exists())
+        user_is_affiliated = shared_groups.exists()
     )
 
 # ====================================================
@@ -454,10 +504,27 @@ def view_groups(request):
         'type':'Group',
         'fields':fields,
         'edit_perms':request.user.has_perm('qcrbox.global_access'),
-        'edit_link':'',
+        'edit_link':'edit_group',
         'delete_link':'delete_group',
         'create_link':'create_group',
     })
+
+@permission_required('qcrbox.global_access', raise_exception=True)
+def update_group(request,group_id):
+
+    # User should have both global access AND edit permissions to be able to do this
+    if not request.user.has_perm('qcrbox.edit_users'):
+        raise PermissionDenied
+
+    return update_generic(
+        request=request,
+        Model=Group,
+        ModelForm=forms.GroupForm,
+        type='Group',
+        link_suffix='groups',
+        id=group_id,
+        user_is_affiliated = True
+    )
 
 @permission_required('qcrbox.global_access', raise_exception=True)
 def delete_group(request,group_id):

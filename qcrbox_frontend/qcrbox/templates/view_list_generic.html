@@ -52,7 +52,7 @@
           <!-- Edit and Delete Buttons -->
           {% if edit_perms %}
             <td class="text-center">
-              <a class="btn btn-outline-primary btn-sm" href="" role="button"><i class="fas fa-edit"></i> Edit</a></td>
+              <a class="btn btn-outline-primary btn-sm" href="{% url edit_link object.pk %}" role="button"><i class="fas fa-edit"></i> Edit</a></td>
             <td class="text-center">
               <a class="btn btn-outline-danger btn-sm" href="{% url delete_link object.pk %}" role="button" onclick="return confirm('Are you sure you want to delete {{type}} \'{{object}}\'?');">
                 <i class="fas fa-trash-alt"></i> Delete

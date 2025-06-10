@@ -26,6 +26,7 @@ def getspecial(value, arg):
 
         return ', '.join(grouplist)
 
+    # Convert a user's permissions set into a human-readable list
     if arg=='role':
         roles=[]
 

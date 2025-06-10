@@ -99,6 +99,12 @@ class RegisterUserForm(UserCreationForm):
             # Let user pick groups for new user based on membership of creating user
             self.fields['user_groups'].queryset=user.groups.all()
 
+class UpdateUserForm(forms.ModelForm):
+
+    class Meta:
+        model=User
+        fields=['first_name','last_name','email','groups']
+
 
 # Group management forms
 
