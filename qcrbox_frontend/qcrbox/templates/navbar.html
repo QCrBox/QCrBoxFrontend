@@ -15,6 +15,9 @@
           <a class="nav-link" href="{% url 'initialise_workflow' %}">Home</a>
         </li>
         <li class="nav-item">
+          <a class="nav-link" href="{% url 'view_datasets' %}">Data</a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link" href="{% url 'view_groups' %}">Groups</a>
         </li>
         {% if perms.qcrbox.edit_users %}

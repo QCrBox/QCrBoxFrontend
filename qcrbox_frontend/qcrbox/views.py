@@ -369,7 +369,7 @@ def create_user(request):
         'instance_name':'User',
     })
 
-@permission_required('qcrbox.edit_users', raise_exception = True)
+@login_required(login_url='login')
 def view_users(request):
 
     fields = [
@@ -447,6 +447,7 @@ def delete_user(request,user_id):
         id=user_id,
         user_is_affiliated = shared_groups.exists()
     )
+
 
 # ====================================================
 # ========== Group Management related views ==========
@@ -540,4 +541,67 @@ def delete_group(request,group_id):
         link_suffix='groups',
         id=group_id,
         user_is_affiliated = True,
+    )
+
+
+# ====================================================
+# ========== Data Management related views ==========
+# ====================================================
+
+# No view for dataset creation (handled through the workflow initialisation page)
+
+@login_required(login_url='login')
+def view_datasets(request):
+
+    fields = [
+        display_field('Filename','filename',is_header=True),
+        display_field('Group','group'),
+        display_field('Created By','user'),
+        display_field('At Time','creation_time'),
+        display_field('From File','created_from',is_special=True),
+        display_field('With App','created_app', is_special=True),
+        ]
+
+    object_list=models.FileMetaData.objects.all()
+
+    # If a user can view unaffiliated data, they can view it all
+    if request.user.has_perm('qcrbox.global_access'):
+        pass
+    else:
+        object_list=object_list.filter(group__in=request.user.groups.objects.all())
+
+    object_list=object_list.order_by('group__name','filename')
+    p = Paginator(object_list, 13)
+    page=request.GET.get('page')
+
+    try:
+        objects = p.get_page(page)
+    except PageNotAnInteger:
+        objects = p.page(1)
+    except EmptyPage:
+        objects = p.page(p.num_pages)
+
+    return render(request,'view_list_generic.html',{
+        'objects': objects,
+        'type':'Dataset',
+        'fields':fields,
+        'edit_perms':request.user.has_perm('qcrbox.edit_data'),
+        'delete_link':'delete_dataset',
+    })
+
+@permission_required('qcrbox.edit_data', raise_exception=True)
+def delete_dataset(request,dataset_id):
+
+    deletion_data_group = models.FileMetaData.objects.get(pk=dataset_id).group
+    current_user_groups = request.user.groups.all()
+
+    shared_groups = (deletion_data_group in current_user_groups)
+
+    return delete_generic(
+        request=request,
+        Model=models.FileMetaData,
+        type='Dataset',
+        link_suffix='datasets',
+        id=dataset_id,
+        user_is_affiliated = shared_groups
     )

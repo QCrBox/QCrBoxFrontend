@@ -37,4 +37,7 @@ urlpatterns = [
     path('edit_group/<group_id>', views.update_group, name='edit_group'),
     path('delete_group/<group_id>', views.delete_group, name='delete_group'),
 
+    path('view_datasets', views.view_datasets, name='view_datasets'),
+    path('delete_dataset/<dataset_id>', views.delete_dataset, name='delete_dataset'),
+
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

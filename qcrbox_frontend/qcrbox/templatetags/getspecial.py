@@ -64,5 +64,21 @@ def getspecial(value, arg):
 
         return ', '.join(ownerlist)
 
+
+    # Special metadata values:
+    elif arg=='created_from':
+        if value.processed_by.all():
+            process = value.processed_by.first()
+            if process.infile:
+                return process.infile
+        return '-'
+
+    elif arg=='created_app':
+        if value.processed_by.all():
+            process = value.processed_by.first()
+            if process.application:
+                return process.application
+        return '-'
+
     else:
         raise NotImplementedError
