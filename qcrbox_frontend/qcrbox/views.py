@@ -1,3 +1,6 @@
+import random
+import string
+
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -7,9 +10,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 
-import random
-import string
-
+from . import api
 from . import forms
 from . import models
 

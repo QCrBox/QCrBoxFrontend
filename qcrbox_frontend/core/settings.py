@@ -133,3 +133,6 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Plotly-related settings
 X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+# API settings
+API_BASE_URL = 'http://127.0.0.1:11000'
