@@ -110,13 +110,18 @@ def initialise_workflow(request):
             # If user uploads new file
             file = request.FILES['file']
 
-            # API HOOK upload file to backend, fetch file backend UUID
+            backend_file_id = api.upload_dataset(file.file)
+
+            if not backend_file_id:
+                messages.warning(request, 'File failed to upload!')
+                return redirect('initialise_workflow')
 
             # Save file's metadata in local db
             newfile = models.FileMetaData(
                 filename= str(file),
                 user=request.user,
-                group=Group.objects.get(pk=request.POST['group'])
+                group=Group.objects.get(pk=request.POST['group']),
+                backend_uuid=backend_file_id
             )
             newfile.save()
 

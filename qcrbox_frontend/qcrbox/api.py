@@ -18,4 +18,18 @@ from django.conf import settings
 
 # Quick-reference function to create new client
 def get_client():
-	client = Client(base_url=settings.API_BASE_URL)
+    client = Client(base_url=settings.API_BASE_URL)
+    return client
+
+def upload_dataset(file_bytes):
+    client = get_client()
+
+    payload_file = File(file_bytes)
+    upload_payload = CreateDatasetBody(payload_file)
+
+    response = create_dataset.sync(client=client, body=upload_payload)
+    if isinstance(response, QCrBoxErrorResponse):
+        return None
+
+    dataset_id = response.payload.datasets[0].qcrbox_dataset_id
+    return dataset_id
