@@ -110,11 +110,14 @@ def initialise_workflow(request):
             # If user uploads new file
             file = request.FILES['file']
 
-            backend_file_id = api.upload_dataset(file.file)
+            api_response = api.upload_dataset(file)
 
-            if not backend_file_id:
-                messages.warning(request, 'File failed to upload!')
+            if not api_response.is_valid:
+                messages.warning(request, 'File failed to upload! '+str(api_response.payload))
                 return redirect('initialise_workflow')
+
+            else:
+                backend_file_id = api_response.payload
 
             # Save file's metadata in local db
             newfile = models.FileMetaData(
@@ -164,7 +167,6 @@ def workflow(request, file_id):
 
             # Check if user submitted using the 'start session' form
             if 'startup' in request.POST:
-                print('startup here')
 
                 context['session_in_progress'] = True
 
@@ -268,35 +270,18 @@ def download(request, file_id):
     if download_file_meta.group not in allowed_groups:
         raise PermissionDenied
 
-    # API HOOK get file from backend to give to frontend
+    api_response = api.download_dataset(download_file_meta.backend_uuid)
 
-    # -==-==-==-==-Placeholder generating dummy file to serve-==-==-==-==-
-
-    import csv
-    from io import StringIO
-
-    csvfile = StringIO()
-    csvwriter = csv.writer(csvfile)
-
-    def read_and_flush():
-        csvfile.seek(0)
-        data = csvfile.read()
-        csvfile.seek(0)
-        csvfile.truncate()
-        return data
-
-    def data():
-        csvwriter.writerow(['name','uuid','type'])
-        csvwriter.writerow([download_file_meta.filename, download_file_meta.backend_uuid, download_file_meta.filetype])
-        data = read_and_flush()
-        yield data
-
-    # -==-==-==-==- Placeholder End -==-==-==-==-
+    if not api_response.is_valid:
+        messages.warning(request,'Could not fetch the requested file! '+str(api_response.payload))
+        return redirect('initialise_workflow')
+    else:
+        data = api_response.payload
 
     # Deliver the file using the filename stored in metadata
-    response = HttpResponse(data())
-    response['Content-Disposition'] = 'attachment; filename='+download_file_meta.filename
-    return response
+    httpresponse = HttpResponse(data)
+    httpresponse['Content-Disposition'] = 'attachment; filename='+download_file_meta.filename
+    return httpresponse
 
 
 # ===================================================
