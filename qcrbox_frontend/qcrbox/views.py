@@ -583,7 +583,8 @@ def view_datasets(request):
 @permission_required('qcrbox.edit_data', raise_exception=True)
 def delete_dataset(request,dataset_id):
 
-    deletion_data_group = models.FileMetaData.objects.get(pk=dataset_id).group
+    deletion_data_meta = models.FileMetaData.objects.get(pk=dataset_id)
+    deletion_data_group = deletion_data_meta.group
     current_user_groups = request.user.groups.all()
 
     shared_groups = (deletion_data_group in current_user_groups)
@@ -591,18 +592,12 @@ def delete_dataset(request,dataset_id):
     # Check credentials before invoking the generic delete, as API will also need calling
     if shared_groups or request.user.has_perm('qcrbox.global_access'):
 
-        # API HOOK send request to delete data from backend here
-
-        # -==-==-==-==-Placeholder assume backend deletion went OK-==-==-==-==-
-
-        delete_successful=True
-
-        # -==-==-==-==- Placeholder End -==-==-==-==-
+        api_response = api.delete_dataset(deletion_data_meta.backend_uuid)
 
     else:
         raise PermissionDenied
 
-    if delete_successful:
+    if api_response.is_valid:
         return delete_generic(
             request=request,
             Model=models.FileMetaData,
@@ -613,5 +608,5 @@ def delete_dataset(request,dataset_id):
         )
 
     else:
-        messages.warning(request,'API delete request unsuccessful: file not deleted!')
+        messages.warning(request,'API delete request unsuccessful: file not deleted!'+str(api_response.payload))
         return redirect('view_datasets')

@@ -55,11 +55,24 @@ def upload_dataset(im_file):
     # Return the ID assigned to the file by the backend
     return response(True, dataset_id)
 
-def download_dataset(file_id):
+# Fetch a datafile from the backend and serve to the user
+def download_dataset(dataset_id):
     client = get_client()
 
-    raw_response = download_dataset_by_id.sync(client=client, id=file_id)
+    raw_response = download_dataset_by_id.sync(client=client, id=dataset_id)
     
+    if isinstance(raw_response, QCrBoxErrorResponse):
+        # If the upload fails, return response with an error flag and error info
+        return response(False, raw_response)
+
+    return response(True, raw_response)
+
+# Instruct the backend to delete a file with a given id
+def delete_dataset(dataset_id):
+    client = get_client()
+
+    raw_response = delete_dataset_by_id.sync(id=dataset_id, client=client)
+
     if isinstance(raw_response, QCrBoxErrorResponse):
         # If the upload fails, return response with an error flag and error info
         return response(False, raw_response)
