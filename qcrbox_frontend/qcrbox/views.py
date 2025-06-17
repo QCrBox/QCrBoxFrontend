@@ -182,67 +182,72 @@ def workflow(request, file_id):
             # Check if user submitted using the 'end session' form
             elif 'end_session' in request.POST:
                 
+                # If cookie is lost, abort
                 if 'app_session_id' not in request.session:
+                    messages.warning(request,'Session timed out! Please try again.')
+                    return redirect('initialise_workflow')
 
-                    messages.warning(request,'Session timed out!')
+                app_session_id = request.session['app_session_id']
+                api_response = api.get_session(app_session_id)
 
-                else:
+                # If session can't be found, abort
+                if not api_response.is_valid:
+                    messages.warning(request,'Session not found! Please try again. ' + str(api_response.body))
+                    return redirect('initialise_workflow')
+                
+                # -==-==-==-==-Placeholder assume new file is created-==-==-==-==-
 
-                    app_session_id = request.session['app_session_id']
-                    api_response = api.get_session(app_session_id)
-                    
-                    # -==-==-==-==-Placeholder assume new file is created-==-==-==-==-
+                outfile_exists = False
 
-                    run_complete = False
+                # -==-==-==-==- Placeholder End -==-==-==-==-
+
+                api.close_session(app_session_id)
+
+                # If it was possible to get an outfile from the session via the API
+                if outfile_exists:
+
+                    # -==-==-==-==-Placeholder file creation-==-==-==-==-
+
+                    try:
+                        old_name = load_file.filename.split('_')
+                        new_name = '_'.join(old_name[:-1])+'_'+str(int(old_name[-1])+1)
+                    except:
+                        new_name = load_file.filename + '_1'
+
+                    new_uuid = ''.join(random.choices(string.ascii_letters, k=10))
+
+                    new_filetype = '.something'
 
                     # -==-==-==-==- Placeholder End -==-==-==-==-
 
-                    # If it was possible to get an outfile from the session via the API
-                    if run_complete:
+                    # Create record for new file's metadata
+                    newfile = models.FileMetaData(
+                        filename= new_name,
+                        user=request.user,
+                        group=load_file.group,
+                        backend_uuid=new_uuid,
+                        filetype= new_filetype
+                    )
+                    newfile.save()
+                    newfile.pk
 
-                        # -==-==-==-==-Placeholder file creation-==-==-==-==-
+                    # Create record for workflow step
+                    newprocessstep = models.ProcessStep(
+                        application = current_application,
+                        infile = load_file,
+                        outfile = newfile,
+                    )
+                    newprocessstep.save()
 
-                        try:
-                            old_name = load_file.filename.split('_')
-                            new_name = '_'.join(old_name[:-1])+'_'+str(int(old_name[-1])+1)
-                        except:
-                            new_name = load_file.filename + '_1'
+                    # Redirect to workflow for new file
+                    return redirect('workflow', file_id=newfile.pk)
 
-                        new_uuid = ''.join(random.choices(string.ascii_letters, k=10))
+                else:
 
-                        new_filetype = '.something'
+                    # If session did not produce output file, issue a warning
+                    messages.warning(request, 'No output was produced in the interactive session.')
 
-                        # -==-==-==-==- Placeholder End -==-==-==-==-
-
-                        # Create record for new file's metadata
-                        newfile = models.FileMetaData(
-                            filename= new_name,
-                            user=request.user,
-                            group=load_file.group,
-                            backend_uuid=new_uuid,
-                            filetype= new_filetype
-                        )
-                        newfile.save()
-                        newfile.pk
-
-                        # Create record for workflow step
-                        newprocessstep = models.ProcessStep(
-                            application = current_application,
-                            infile = load_file,
-                            outfile = newfile,
-                        )
-                        newprocessstep.save()
-
-                        # Redirect to workflow for new file
-                        return redirect('workflow', file_id=newfile.pk)
-
-                    else:
-
-                        # If session did not produce output file
-                        messages.warning(request, 'No output was produced in the interactive session.')
-                        context['session_in_progress'] = True
-
-                        # Then proceed normally
+                    # Then proceed normally
 
     # Populate the workflow diagram with all steps leading up to the current file
     prior_steps = []

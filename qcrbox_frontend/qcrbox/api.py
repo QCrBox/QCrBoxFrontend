@@ -111,3 +111,10 @@ def get_session(session_id):
     raw_response = get_interactive_session_by_id.sync(client=client, id=session_id)
 
     return response(raw_response)
+
+def close_session(session_id):
+    client = get_client()
+
+    raw_response = close_interactive_session.sync(client=client, id=session_id)
+
+    return response(raw_response)
