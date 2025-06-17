@@ -1,7 +1,13 @@
-from qcrboxapiclient.api.datasets import create_dataset, delete_dataset_by_id, download_dataset_by_id
+from qcrboxapiclient.api.datasets import (
+    create_dataset,
+    delete_dataset_by_id,
+    download_dataset_by_id,
+    get_dataset_by_id
+)
 from qcrboxapiclient.api.interactive_sessions import (
     close_interactive_session,
     create_interactive_session_with_arguments,
+    get_interactive_session_by_id,
 )
 from qcrboxapiclient.client import Client
 from qcrboxapiclient.models import (
@@ -13,6 +19,7 @@ from qcrboxapiclient.models import (
 from qcrboxapiclient.types import File
 
 from django.conf import settings
+from . import models
 
 # Utility class for returning API responses / errors
 
@@ -72,12 +79,35 @@ def delete_dataset(dataset_id):
 
 # ----- Session Functionality -----
 
-def start_Session(app_id):
+def start_session(app_id, dataset_id):
+    client = get_client()
 
+    # Get relevant metadata instances from local db
     app = models.Application.objects.get(pk=app_id)
+    dataset_metadata = models.FileMetaData.objects.get(backend_uuid=dataset_id)
 
-    arguments = CreateInteractiveSessionArguments.from_dict({"input_file": {"data_file_id": data_file_id}})
-    create_session = CreateInteractiveSession("olex2", "1.5-alpha", arguments)
+    # Sessions are started with a data_file_id (not a dataset_id), so need to fetch that ID from a dataset
+    raw_get_response = get_dataset_by_id.sync(client=client, id=dataset_id)
+
+    # Check a dataset was actually found
+    if isinstance(raw_get_response, QCrBoxErrorResponse):
+        return response(raw_get_response)
+
+    # Get the associated data_file's ID
+    datafile_id = raw_get_response.payload.datasets[0].data_files[dataset_metadata.filename].qcrbox_file_id
+
+    # Set up arguments
+    arguments = CreateInteractiveSessionArguments.from_dict({"input_file": {"data_file_id": datafile_id}})
+    create_session = CreateInteractiveSession(app.name, app.version, arguments)
+
+    # Initialise session
     raw_response = create_interactive_session_with_arguments.sync(client=client, body=create_session)
+
+    return response(raw_response)
+
+def get_session(session_id):
+    client = get_client()
+
+    raw_response = get_interactive_session_by_id.sync(client=client, id=session_id)
 
     return response(raw_response)
