@@ -113,11 +113,11 @@ def initialise_workflow(request):
             api_response = api.upload_dataset(file)
 
             if not api_response.is_valid:
-                messages.warning(request, 'File failed to upload! '+str(api_response.payload))
+                messages.warning(request, 'File failed to upload! '+str(api_response.body))
                 return redirect('initialise_workflow')
 
             else:
-                backend_file_id = api_response.payload
+                backend_file_id = api_response.body.payload.datasets[0].qcrbox_dataset_id
 
             # Save file's metadata in local db
             newfile = models.FileMetaData(
@@ -273,10 +273,10 @@ def download(request, file_id):
     api_response = api.download_dataset(download_file_meta.backend_uuid)
 
     if not api_response.is_valid:
-        messages.warning(request,'Could not fetch the requested file! '+str(api_response.payload))
+        messages.warning(request,'Could not fetch the requested file! '+str(api_response.body))
         return redirect('initialise_workflow')
     else:
-        data = api_response.payload
+        data = api_response.body
 
     # Deliver the file using the filename stored in metadata
     httpresponse = HttpResponse(data)
@@ -608,5 +608,5 @@ def delete_dataset(request,dataset_id):
         )
 
     else:
-        messages.warning(request,'API delete request unsuccessful: file not deleted!'+str(api_response.payload))
+        messages.warning(request,'API delete request unsuccessful: file not deleted!'+str(api_response.body))
         return redirect('view_datasets')

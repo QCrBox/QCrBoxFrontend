@@ -1,5 +1,3 @@
-from json import JSONDecodeError
-
 from qcrboxapiclient.api.datasets import create_dataset, delete_dataset_by_id, download_dataset_by_id
 from qcrboxapiclient.api.interactive_sessions import (
     close_interactive_session,
@@ -19,9 +17,15 @@ from django.conf import settings
 # Utility class for returning API responses / errors
 
 class response(object):
-    def __init__(self, is_valid, payload=None):
-        self.is_valid = is_valid
-        self.payload = payload
+    def __init__(self, payload=None):
+        self.body = payload
+
+        if isinstance(self.body, QCrBoxErrorResponse):
+            # If the upload fails, give response an error flag
+            self.is_valid = False
+
+        else:
+            self.is_valid = True
 
 
 # ==========================================
@@ -47,25 +51,15 @@ def upload_dataset(im_file):
 
     raw_response = create_dataset.sync(client=client, body=upload_payload)
     
-    if isinstance(raw_response, QCrBoxErrorResponse):
-        # If the upload fails, return response with an error flag and error info
-        return response(False, raw_response)
-
-    dataset_id = raw_response.payload.datasets[0].qcrbox_dataset_id
-    # Return the ID assigned to the file by the backend
-    return response(True, dataset_id)
+    return response(raw_response)
 
 # Fetch a datafile from the backend and serve to the user
 def download_dataset(dataset_id):
     client = get_client()
 
     raw_response = download_dataset_by_id.sync(client=client, id=dataset_id)
-    
-    if isinstance(raw_response, QCrBoxErrorResponse):
-        # If the upload fails, return response with an error flag and error info
-        return response(False, raw_response)
 
-    return response(True, raw_response)
+    return response(raw_response)
 
 # Instruct the backend to delete a file with a given id
 def delete_dataset(dataset_id):
@@ -73,8 +67,17 @@ def delete_dataset(dataset_id):
 
     raw_response = delete_dataset_by_id.sync(id=dataset_id, client=client)
 
-    if isinstance(raw_response, QCrBoxErrorResponse):
-        # If the upload fails, return response with an error flag and error info
-        return response(False, raw_response)
+    return response(raw_response)
 
-    return response(True, raw_response)
+
+# ----- Session Functionality -----
+
+def start_Session(app_id):
+
+    app = models.Application.objects.get(pk=app_id)
+
+    arguments = CreateInteractiveSessionArguments.from_dict({"input_file": {"data_file_id": data_file_id}})
+    create_session = CreateInteractiveSession("olex2", "1.5-alpha", arguments)
+    raw_response = create_interactive_session_with_arguments.sync(client=client, body=create_session)
+
+    return response(raw_response)
