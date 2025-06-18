@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 
+import logging.config
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -133,6 +135,38 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Plotly-related settings
 X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+# Override default Django logging
+LOGGING_CONFIG = None
+LOGGING = {
+    'version': 1,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'class':'logging.handlers.RotatingFileHandler',
+            'filename': 'qcrbox.log',
+            'maxBytes': 1024*1024*5, # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        '': {
+            'level': 'INFO',
+            'handlers': ['file'],
+        },
+    },
+}
+logging.config.dictConfig(LOGGING)
 
 # API settings
 API_BASE_URL = 'http://127.0.0.1:11000'

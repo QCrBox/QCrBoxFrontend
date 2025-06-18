@@ -1,5 +1,6 @@
 import random
 import string
+import logging
 
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -13,6 +14,8 @@ from django.http import HttpResponse
 from . import api
 from . import forms
 from . import models
+
+logger = logging.getLogger(__name__)
 
 # ==============================================
 # ========== Utiliy functions/classes ==========
@@ -40,6 +43,7 @@ def update_generic(request,Model,ModelForm,type,link_suffix,id,user_is_affiliate
     # Allow for an access-point check if a user is affiliated with the company to with the data pertains,
     # to prevent users editing things they shouldnt    
     elif not user_is_affiliated:
+        logger.info(f'User {request.user.username} denied permission to modify {type} "{instance}" (unaffiliated)')
         raise PermissionDenied()
 
     instance=Model.objects.get(pk=id)
@@ -48,7 +52,8 @@ def update_generic(request,Model,ModelForm,type,link_suffix,id,user_is_affiliate
     if form.is_valid():
         form.save()
 
-        messages.success(request,('Changes to '+str(instance)+' saved!'))
+        logger.info(f'User {request.user.username} updated {type} "{instance}"')
+        messages.success(request,(f'Changes to "{instance}" saved!'))
         return redirect('view_'+link_suffix)
 
     return render(request,'update_generic.html',{
@@ -68,18 +73,21 @@ def delete_generic(request,Model,type,link_suffix,id,user_is_affiliated=False):
     # Allow for an access-point check if a user is affiliated with the company to with the data pertains,
     # to prevent users editing things they shouldnt
     elif not user_is_affiliated:
+        logger.info(f'User {request.user.username} denied permission to delete {type} "{instance}" (unaffiliated)')
         raise PermissionDenied()
 
     try:
         instance=Model.objects.get(pk=id)
 
     except Model.DoesNotExist:
+        logger.info(f'User {request.user.username} attempted to delete non-existent {type} (pk={id})')
         messages.success(request, f'{type} was deleted succesfully.')    
         return redirect('view_'+link_suffix)
 
     instance_string=str(instance)
     instance.delete()
 
+    logger.info(f'User {request.user.username} deleted {type} "{instance_string}"')
     messages.success(request,f'{type} "{instance_string}" was deleted succesfully!')
     return redirect('view_'+link_suffix)
 
@@ -110,9 +118,11 @@ def initialise_workflow(request):
             # If user uploads new file
             file = request.FILES['file']
 
+            logger.info(f'User {request.user.username} uploading file "{str(file)}"')
             api_response = api.upload_dataset(file)
 
             if not api_response.is_valid:
+                logger.error(f'File "{str(file)}" failed to upload!')
                 messages.warning(request, 'File failed to upload! '+str(api_response.body))
                 return redirect('initialise_workflow')
 
@@ -127,6 +137,7 @@ def initialise_workflow(request):
                 backend_uuid=backend_file_id
             )
             newfile.save()
+            logger.info(f'Metadata for file {str(file)} saved, backend_uuid={backend_file_id}')
 
             redirect_pk = newfile.pk
 
@@ -168,8 +179,7 @@ def workflow(request, file_id):
             # Check if user submitted using the 'start session' form
             if 'startup' in request.POST:
 
-                context['session_in_progress'] = True
-
+                logger.info(f'User {request.user.username} starting interactive "{current_application.name}" session')
                 api_response = api.start_session(app_id = current_application.pk, dataset_id = load_file.backend_uuid)
 
                 if api_response.is_valid:
@@ -177,13 +187,17 @@ def workflow(request, file_id):
                     request.session['app_session_id'] = api_response.body.payload.interactive_session_id
 
                 else:
+                    logger.error(f'Session failed to start!')
                     messages.warning(request,'Could not start session! ' + str(api_response.body))
 
             # Check if user submitted using the 'end session' form
             elif 'end_session' in request.POST:
                 
+                logger.info(f'User {request.user.username} closing active session')
+
                 # If cookie is lost, abort
                 if 'app_session_id' not in request.session:
+                    logger.warning('No session cookie found!')
                     messages.warning(request,'Session timed out! Please try again.')
                     return redirect('initialise_workflow')
 
@@ -192,6 +206,7 @@ def workflow(request, file_id):
 
                 # If session can't be found, abort
                 if not api_response.is_valid:
+                    logger.error('Could not close session!')
                     messages.warning(request,'Session not found! Please try again. ' + str(api_response.body))
                     return redirect('initialise_workflow')
                 
@@ -245,6 +260,7 @@ def workflow(request, file_id):
                 else:
 
                     # If session did not produce output file, issue a warning
+                    logger.info('No outfile associated with the session was found.')
                     messages.warning(request, 'No output was produced in the interactive session.')
 
                     # Then proceed normally
@@ -287,12 +303,15 @@ def download(request, file_id):
 
     # Stop user accessing data from a group they have no access to
     if download_file_meta.group not in allowed_groups:
+        logger.info(f'User {request.user.username} denied permission to download dataset "{download_file_meta.filename}" (unaffiliated)')
         raise PermissionDenied
 
+    logger.info(f'User {request.user.username} downloading dataset "{download_file_meta.filename}"')
     api_response = api.download_dataset(download_file_meta.backend_uuid)
 
     if not api_response.is_valid:
         messages.warning(request,'Could not fetch the requested file! '+str(api_response.body))
+        logger.error(f'Could not find requested dataset!')
         return redirect('initialise_workflow')
     else:
         data = api_response.body
@@ -315,9 +334,11 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request,user)
+            logger.info(f'User {request.user.username} logged in')
             messages.success(request,'Login Successful: Welcome, '+str(request.user))
             return redirect('landing')
         else:
+            logger.info(f'User {request.user.username} failed to log in')
             messages.warning(request,('Login failed, try again!'))
 
     return render(request, 'login.html', {})
@@ -328,6 +349,7 @@ def logout_view(request):
 
     username = request.user.username
     logout(request)
+    logger.info(f'User {username} logged out')
     messages.success(request,('Logout Successful!'))
 
     return redirect('login')
@@ -369,6 +391,7 @@ def create_user(request):
             if form.cleaned_data['global_access']:
                 new_user.user_permissions.add(Permission.objects.get(codename='global_access') )
 
+            logger.info(f'User {request.user.username} created new user "{new_user.username}"')
             messages.success(request,'Registration Successful!')
             form = forms.RegisterUserForm(user=request.user)
     else:
@@ -475,6 +498,7 @@ def create_group(request):
         if form.is_valid():
             name = form.data['name']
             form.save()
+            logger.info(f'User {request.user.username} created new group "{name}"')
             messages.success(request,(f'New Group "{name}" added!'))
     else:
         form = forms.GroupForm()
@@ -611,6 +635,7 @@ def delete_dataset(request,dataset_id):
     # Check credentials before invoking the generic delete, as API will also need calling
     if shared_groups or request.user.has_perm('qcrbox.global_access'):
 
+        logger.info(f'User {request.user.username} deleting dataset {deletion_data_meta.filename}')
         api_response = api.delete_dataset(deletion_data_meta.backend_uuid)
 
     else:
@@ -627,5 +652,6 @@ def delete_dataset(request,dataset_id):
         )
 
     else:
+        logger.error('Could not delete dataset!')
         messages.warning(request,'API delete request unsuccessful: file not deleted!'+str(api_response.body))
         return redirect('view_datasets')

@@ -1,3 +1,5 @@
+import logging
+
 from qcrboxapiclient.api.datasets import (
     create_dataset,
     delete_dataset_by_id,
@@ -21,6 +23,8 @@ from qcrboxapiclient.types import File
 from django.conf import settings
 from . import models
 
+logger = logging.getLogger(__name__)
+
 # Utility class for returning API responses / errors
 
 class response(object):
@@ -28,10 +32,12 @@ class response(object):
         self.body = payload
 
         if isinstance(self.body, QCrBoxErrorResponse):
-            # If the upload fails, give response an error flag
+            # If the upload fails, give response an error flag, log it
+            logger.error(f'Error response from API: {self.body}')
             self.is_valid = False
 
         else:
+            logger.info(f'Response from API: {self.body}')
             self.is_valid = True
 
 
@@ -56,6 +62,7 @@ def upload_dataset(im_file):
     payload_file = File(file_bytes, file_name)
     upload_payload = CreateDatasetBody(payload_file)
 
+    logger.info(f'API call: create_dataset')
     raw_response = create_dataset.sync(client=client, body=upload_payload)
     
     return response(raw_response)
@@ -64,6 +71,7 @@ def upload_dataset(im_file):
 def download_dataset(dataset_id):
     client = get_client()
 
+    logger.info(f'API call: download_dataset_by_id, id={dataset_id}')
     raw_response = download_dataset_by_id.sync(client=client, id=dataset_id)
 
     return response(raw_response)
@@ -72,6 +80,7 @@ def download_dataset(dataset_id):
 def delete_dataset(dataset_id):
     client = get_client()
 
+    logger.info(f'API call: delete_dataset_by_id, id={dataset_id}')
     raw_response = delete_dataset_by_id.sync(id=dataset_id, client=client)
 
     return response(raw_response)
@@ -87,11 +96,13 @@ def start_session(app_id, dataset_id):
     dataset_metadata = models.FileMetaData.objects.get(backend_uuid=dataset_id)
 
     # Sessions are started with a data_file_id (not a dataset_id), so need to fetch that ID from a dataset
+    logger.info(f'API call: get_dataset_by_id, id={dataset_id}')
     raw_get_response = get_dataset_by_id.sync(client=client, id=dataset_id)
 
     # Check a dataset was actually found
-    if isinstance(raw_get_response, QCrBoxErrorResponse):
-        return response(raw_get_response)
+    get_response = response(raw_get_response)
+    if not get_response.is_valid:
+        return get_response
 
     # Get the associated data_file's ID
     datafile_id = raw_get_response.payload.datasets[0].data_files[dataset_metadata.filename].qcrbox_file_id
@@ -101,6 +112,7 @@ def start_session(app_id, dataset_id):
     create_session = CreateInteractiveSession(app.name, app.version, arguments)
 
     # Initialise session
+    logger.info(f'API call: create_interactive_session_with_arguments')
     raw_response = create_interactive_session_with_arguments.sync(client=client, body=create_session)
 
     return response(raw_response)
@@ -108,6 +120,7 @@ def start_session(app_id, dataset_id):
 def get_session(session_id):
     client = get_client()
 
+    logger.info(f'API call: get_interactive_session_by_id, id={session_id}')
     raw_response = get_interactive_session_by_id.sync(client=client, id=session_id)
 
     return response(raw_response)
@@ -115,6 +128,7 @@ def get_session(session_id):
 def close_session(session_id):
     client = get_client()
 
+    logger.info(f'API call: close_interactive_session, id={session_id}')
     raw_response = close_interactive_session.sync(client=client, id=session_id)
 
     return response(raw_response)

@@ -17,15 +17,25 @@
             {% for prior_step in prior_steps %}
               <tr>
                 <td align='right' width=15%>
-                  <a href="{% url 'workflow' prior_step.infile.pk %}"><i class="fa-regular fa-square"></i></a>
+                  {% if prior_step.infile %}
+                    <a href="{% url 'workflow' prior_step.infile.pk %}"><i class="fa-regular fa-square"></i></a>
+                  {% else %}
+                    <i class="fa-regular fa-square"></i>
+                  {% endif %}
                 </td>
                 <td align='left' width=5%>
-                  &nbsp{{prior_step.infile.filename}}
+                  &nbsp{% if prior_step.infile %}
+                    {{prior_step.infile.filename}}
+                  {% else %}
+                    <i>Deleted</i>
+                  {% endif %}
                 </td>
                 <td align='left' width=10%>
-                  <a href="{% url 'download' prior_step.infile.pk %}">
-                    <i class="fas fa-download"></i>
-                  </a>
+                  {% if prior_step.infile %}
+                    <a href="{% url 'download' prior_step.infile.pk %}">
+                      <i class="fas fa-download"></i>
+                    </a>
+                  {% endif %}
                 </td>
               </tr>
               <tr>
