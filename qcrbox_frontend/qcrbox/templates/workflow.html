@@ -116,4 +116,15 @@
     </table>
   </div>
 </div>
+
+{% if session_in_progress %}
+  <script>
+    let hostname = window.location.hostname;
+    var interactiveWindow = window.open(`http://${hostname}:{{ current_application.port }}/vnc.html?path=vnc&autoconnect=true&resize=remote&reconnect=true&show_dot=true`, '_blank');
+    window.onunload = function() {      
+      interactiveWindow.close();
+    };
+  </script>
+{% endif %}
+
 {% endblock %}

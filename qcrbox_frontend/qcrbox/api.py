@@ -26,7 +26,7 @@ from . import models
 logger = logging.getLogger(__name__)
 
 # Set the string length above which non-error API responses will be truncated in the logs
-max_length_api_log = 100
+max_length_api_log = 10000
 
 # Utility class for returning API responses / errors
 
