@@ -25,6 +25,9 @@ from . import models
 
 logger = logging.getLogger(__name__)
 
+# Set the string length above which non-error API responses will be truncated in the logs
+max_length_api_log = 100
+
 # Utility class for returning API responses / errors
 
 class response(object):
@@ -37,7 +40,11 @@ class response(object):
             self.is_valid = False
 
         else:
-            logger.info(f'Response from API: {self.body}')
+            # Truncate the API response to sent to the logger if its a success
+            logtext = str(self.body)
+            if len(logtext)>max_length_api_log:
+                logtext=logtext[:max_length_api_log-2]+' ... '+logtext[-2:]
+            logger.info(f'Response from API: {logtext}')
             self.is_valid = True
 
 
