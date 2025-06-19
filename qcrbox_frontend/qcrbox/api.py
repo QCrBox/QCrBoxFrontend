@@ -4,7 +4,7 @@ from qcrboxapiclient.api.datasets import (
     create_dataset,
     delete_dataset_by_id,
     download_dataset_by_id,
-    get_dataset_by_id
+    get_dataset_by_id,
 )
 from qcrboxapiclient.api.interactive_sessions import (
     close_interactive_session,
@@ -92,6 +92,15 @@ def delete_dataset(dataset_id):
 
     return response(raw_response)
 
+# Fetch a dataset's backend metadata
+def get_dataset(dataset_id):
+    client = get_client()
+
+    logger.info(f'API call: get_dataset_by_id, id={dataset_id}')
+    raw_response = get_dataset_by_id.sync(client=client, id=dataset_id)
+
+    return response(raw_response)
+
 
 # ----- Session Functionality -----
 
@@ -103,16 +112,14 @@ def start_session(app_id, dataset_id):
     dataset_metadata = models.FileMetaData.objects.get(backend_uuid=dataset_id)
 
     # Sessions are started with a data_file_id (not a dataset_id), so need to fetch that ID from a dataset
-    logger.info(f'API call: get_dataset_by_id, id={dataset_id}')
-    raw_get_response = get_dataset_by_id.sync(client=client, id=dataset_id)
+    get_response = get_dataset(dataset_id)
 
     # Check a dataset was actually found
-    get_response = response(raw_get_response)
     if not get_response.is_valid:
         return get_response
 
     # Get the associated data_file's ID
-    datafile_id = raw_get_response.payload.datasets[0].data_files[dataset_metadata.filename].qcrbox_file_id
+    datafile_id = get_response.body.payload.datasets[0].data_files[dataset_metadata.filename].qcrbox_file_id
 
     # Set up arguments
     arguments = CreateInteractiveSessionArguments.from_dict({"input_file": {"data_file_id": datafile_id}})

@@ -123,7 +123,7 @@ def initialise_workflow(request):
 
             if not api_response.is_valid:
                 logger.error(f'File "{str(file)}" failed to upload!')
-                messages.warning(request, 'File failed to upload! '+str(api_response.body))
+                messages.warning(request, 'File failed to upload!')
                 return redirect('initialise_workflow')
 
             else:
@@ -202,60 +202,56 @@ def workflow(request, file_id):
                     return redirect('initialise_workflow')
 
                 app_session_id = request.session['app_session_id']
-                api_response = api.get_session(app_session_id)
+                
+                # Close the session and fetch the response from the API
+                api_response = api.close_session(app_session_id)
 
                 # If session can't be found, abort
                 if not api_response.is_valid:
                     logger.error('Could not close session!')
-                    messages.warning(request,'Session not found! Please try again. ' + str(api_response.body))
+                    messages.warning(request,'Session could not be closed! Please try again.')
                     return redirect('initialise_workflow')
-                
-                # -==-==-==-==-Placeholder assume new file is created-==-==-==-==-
 
-                outfile_exists = False
+                session_closure = api_response.body.payload.interactive_sessions[0]
 
-                # -==-==-==-==- Placeholder End -==-==-==-==-
-
-                api.close_session(app_session_id)
+                # If session failed to close for any other reason, abort
+                if session_closure.status!='successful':
+                    logger.error('Could not close session!')
+                    messages.warning(request,'Session could not be closed! Please try again.')
+                    return redirect('initialise_workflow')
 
                 # If it was possible to get an outfile from the session via the API
-                if outfile_exists:
+                if hasattr(session_closure,'output_dataset_id') and session_closure.output_dataset_id:
 
-                    # -==-==-==-==-Placeholder file creation-==-==-==-==-
+                    api_response = api.get_dataset(session_closure.output_dataset_id)
 
-                    try:
-                        old_name = load_file.filename.split('_')
-                        new_name = '_'.join(old_name[:-1])+'_'+str(int(old_name[-1])+1)
-                    except:
-                        new_name = load_file.filename + '_1'
+                    if api_response.is_valid:
 
-                    new_uuid = ''.join(random.choices(string.ascii_letters, k=10))
+                        outset_meta = api_response.body.payload.datasets[0]
+                        outfile_meta_dict = outset_meta.data_files.additional_properties
+                        outfile_meta = next(iter(outfile_meta_dict.values()))
 
-                    new_filetype = '.something'
+                        # Create record for new file's metadata
+                        newfile = models.FileMetaData(
+                            filename= outfile_meta.filename,
+                            user=request.user,
+                            group=load_file.group,
+                            backend_uuid=outset_meta.qcrbox_dataset_id,
+                            filetype=outfile_meta.filetype,
+                        )
+                        newfile.save()
+                        newfile.pk
 
-                    # -==-==-==-==- Placeholder End -==-==-==-==-
+                        # Create record for workflow step
+                        newprocessstep = models.ProcessStep(
+                            application = current_application,
+                            infile = load_file,
+                                outfile = newfile,
+                        )
+                        newprocessstep.save()
 
-                    # Create record for new file's metadata
-                    newfile = models.FileMetaData(
-                        filename= new_name,
-                        user=request.user,
-                        group=load_file.group,
-                        backend_uuid=new_uuid,
-                        filetype= new_filetype
-                    )
-                    newfile.save()
-                    newfile.pk
-
-                    # Create record for workflow step
-                    newprocessstep = models.ProcessStep(
-                        application = current_application,
-                        infile = load_file,
-                        outfile = newfile,
-                    )
-                    newprocessstep.save()
-
-                    # Redirect to workflow for new file
-                    return redirect('workflow', file_id=newfile.pk)
+                        # Redirect to workflow for new file
+                        return redirect('workflow', file_id=newfile.pk)
 
                 else:
 
@@ -310,7 +306,7 @@ def download(request, file_id):
     api_response = api.download_dataset(download_file_meta.backend_uuid)
 
     if not api_response.is_valid:
-        messages.warning(request,'Could not fetch the requested file! '+str(api_response.body))
+        messages.warning(request,'Could not fetch the requested file!')
         logger.error(f'Could not find requested dataset!')
         return redirect('initialise_workflow')
     else:
@@ -653,5 +649,5 @@ def delete_dataset(request,dataset_id):
 
     else:
         logger.error('Could not delete dataset!')
-        messages.warning(request,'API delete request unsuccessful: file not deleted!'+str(api_response.body))
+        messages.warning(request,'API delete request unsuccessful: file not deleted!')
         return redirect('view_datasets')
