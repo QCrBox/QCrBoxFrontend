@@ -1,6 +1,5 @@
-import random
-import string
 import logging
+import re
 
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -182,13 +181,35 @@ def workflow(request, file_id):
                 logger.info(f'User {request.user.username} starting interactive "{current_application.name}" session')
                 api_response = api.start_session(app_id = current_application.pk, dataset_id = load_file.backend_uuid)
 
+                # Prepare regex to parse error string if needed
+                check_pattern = re.compile('Failed to create interactive session: Chosen client.*is not available')
+
                 if api_response.is_valid:
                     context['session_in_progress'] = True
                     request.session['app_session_id'] = api_response.body.payload.interactive_session_id
 
-                else:
+                # else, if the client is busy and there's a session cookie, try to close it
+                elif check_pattern.match(api_response.body.error.message) and 'app_session_id' in request.session:
+                    logger.warning('Client is busy; attempting to close previous session')
+
+                    app_session_id = request.session['app_session_id']
+                    closure_api_response = api.close_session(app_session_id)
+
+                    if not closure_api_response.is_valid:
+                        logger.error(f'Could not close blocking session!')
+
+                    # Try again to open the session
+                    else:
+                        api_response = api.start_session(app_id = current_application.pk, dataset_id = load_file.backend_uuid)
+
+                        if api_response.is_valid:
+                            context['session_in_progress'] = True
+                            request.session['app_session_id'] = api_response.body.payload.interactive_session_id
+
+                # If no session was opened even after all that, handle the error
+                if not 'session_in_progress' in context:
                     logger.error(f'Session failed to start!')
-                    messages.warning(request,'Could not start session! ' + str(api_response.body))
+                    messages.warning(request,f'Could not start session!  Check if there is a session of {current_application.name} already running and, if so, close it.')
 
             # Check if user submitted using the 'end session' form
             elif 'end_session' in request.POST:
@@ -209,7 +230,7 @@ def workflow(request, file_id):
                 # If session can't be found, abort
                 if not api_response.is_valid:
                     logger.error('Could not close session!')
-                    messages.warning(request,'Session could not be closed! Please try again.')
+                    messages.warning(request,'Session information could not be found! Please start again.')
                     return redirect('initialise_workflow')
 
                 session_closure = api_response.body.payload.interactive_sessions[0]
@@ -217,11 +238,11 @@ def workflow(request, file_id):
                 # If session failed to close for any other reason, abort
                 if session_closure.status!='successful':
                     logger.error('Could not close session!')
-                    messages.warning(request,'Session could not be closed! Please try again.')
-                    return redirect('initialise_workflow')
+                    messages.warning(request,f'Session could not be closed! Check if there is a session of {current_application.name} still running and, if so, close it.')
+                    context['session_in_progress'] = True
 
                 # If it was possible to get an outfile from the session via the API
-                if hasattr(session_closure,'output_dataset_id') and session_closure.output_dataset_id:
+                elif hasattr(session_closure,'output_dataset_id') and session_closure.output_dataset_id:
 
                     api_response = api.get_dataset(session_closure.output_dataset_id)
 
