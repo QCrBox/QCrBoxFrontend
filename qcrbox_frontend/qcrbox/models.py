@@ -4,11 +4,14 @@ from django.contrib.auth.models import User, Group
 # Metadata on available files
 class FileMetaData(models.Model):
     filename = models.CharField(max_length=255)
+    display_filename = models.CharField(max_length=255)
     backend_uuid = models.CharField(max_length=255, null=True)
     user = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
     group = models.ForeignKey(Group, on_delete=models.CASCADE)
     filetype = models.CharField(max_length=255, null=True)
     creation_time = models.DateTimeField(auto_now_add=True)
+
+    active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.filename

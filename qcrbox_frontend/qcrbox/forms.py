@@ -43,8 +43,8 @@ class LoadFileForm(forms.Form):
         else:
             permitted_groups = user.groups.all()
 
-        qset = FileMetaData.objects.filter(group__in=permitted_groups)
-        CHOICES = [(f.pk, f.filename) for f in qset.all()]
+        qset = FileMetaData.objects.filter(active=True).filter(group__in=permitted_groups)
+        CHOICES = [(f.pk, f.display_filename) for f in qset.all()]
 
         self.fields['file'].choices = CHOICES
 
