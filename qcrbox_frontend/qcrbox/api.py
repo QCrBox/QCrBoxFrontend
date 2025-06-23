@@ -1,5 +1,8 @@
 import logging
 
+from qcrboxapiclient.api.applications import (
+    list_applications,
+)
 from qcrboxapiclient.api.datasets import (
     create_dataset,
     delete_dataset_by_id,
@@ -123,7 +126,7 @@ def start_session(app_id, dataset_id):
 
     # Set up arguments
     arguments = CreateInteractiveSessionArguments.from_dict({"input_file": {"data_file_id": datafile_id}})
-    create_session = CreateInteractiveSession(app.name, app.version, arguments)
+    create_session = CreateInteractiveSession(app.slug, app.version, arguments)
 
     # Initialise session
     logger.info(f'API call: create_interactive_session_with_arguments')
@@ -144,5 +147,16 @@ def close_session(session_id):
 
     logger.info(f'API call: close_interactive_session, id={session_id}')
     raw_response = close_interactive_session.sync(client=client, id=session_id)
+
+    return response(raw_response)
+
+
+# ----- Fetching Application Metadata -----
+
+def get_applications():
+    client = get_client()
+
+    logger.info(f'API call: list_applications')
+    raw_response = list_applications.sync(client=client)
 
     return response(raw_response)

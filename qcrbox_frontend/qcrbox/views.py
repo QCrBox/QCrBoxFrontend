@@ -13,6 +13,7 @@ from django.http import HttpResponse
 from . import api
 from . import forms
 from . import models
+from . import utility
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +145,7 @@ def initialise_workflow(request):
         return redirect('workflow', file_id=redirect_pk)
 
     # Else return initialise workflow page
+
     return render(
         request,
         'initial.html',
@@ -163,6 +165,18 @@ def workflow(request, file_id):
     # Fetch the current file from the file_id passed in url
     load_file = models.FileMetaData.objects.get(pk=file_id)
     context['file'] = load_file
+
+    # Get the most recent app list from the API at the start of each workflow, sync the local list
+    if not (request.POST and 'application' in request.POST):
+        update_response = utility.update_applications()
+        if not update_response:
+            messages.warning('Warning: could not update applications list!')
+            logger.log('Could not sync local frontend applications list!')
+        else:
+            new_apps = ', '.join(str(pk) for pk in update_response['new_apps'])
+            deprecated_apps = ', '.join(str(pk) for pk in update_response['deactivated_apps'])
+            logger.info(f'New apps synced to frontend: [{new_apps}]')
+            logger.info(f'Deprecated apps: [{deprecated_apps}]')
 
     # Fetch the app selection form for session selection
     context['select_application_form'] = forms.SelectApplicationForm()
@@ -280,7 +294,7 @@ def workflow(request, file_id):
                     logger.info('No outfile associated with the session was found.')
                     messages.warning(request, 'No output was produced in the interactive session.')
 
-                    # Then proceed normally
+                    # Then proceed normally 
 
     # Populate the workflow diagram with all steps leading up to the current file
     prior_steps = []

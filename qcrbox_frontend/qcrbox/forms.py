@@ -59,7 +59,7 @@ class SelectApplicationForm(forms.Form):
         super(SelectApplicationForm, self).__init__(*args, **kwargs)
 
         qset = Application.objects.all()
-        CHOICES = [(a.pk, a.name) for a in qset.all()]
+        CHOICES = [(a.pk, a.name) for a in qset.filter(active=True)]
 
         self.fields['application'].choices = CHOICES
 
