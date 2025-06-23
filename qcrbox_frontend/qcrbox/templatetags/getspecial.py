@@ -70,7 +70,10 @@ def getspecial(value, arg):
         if value.processed_by.all():
             process = value.processed_by.first()
             if process.infile:
-                return process.infile
+                if process.infile.active:
+                    return process.infile
+                else:
+                    return '[File Deleted]'
         return '-'
 
     elif arg=='created_app':

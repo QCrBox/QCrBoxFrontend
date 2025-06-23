@@ -132,6 +132,7 @@ def initialise_workflow(request):
             # Save file's metadata in local db
             newfile = models.FileMetaData(
                 filename= str(file),
+                display_filename = str(file),
                 user=request.user,
                 group=Group.objects.get(pk=request.POST['group']),
                 backend_uuid=backend_file_id
@@ -266,9 +267,24 @@ def workflow(request, file_id):
                         outfile_meta_dict = outset_meta.data_files.additional_properties
                         outfile_meta = next(iter(outfile_meta_dict.values()))
 
+                        # Append disambiguation number to the end of a display filename if needed
+                        current_filenames = models.FileMetaData.objects.filter(active=True).values_list('display_filename', flat=True)
+
+                        if outfile_meta.filename in current_filenames:
+                            i = 2
+                            [new_filename_lead, new_filename_ext] = outfile_meta.filename.split('.')
+                            while f'{new_filename_lead}({i}).{new_filename_ext}' in current_filenames:
+                                i+=1
+                            display_filename = f'{new_filename_lead}({i}).{new_filename_ext}'
+
+                        else:
+
+                            display_filename = outfile_meta.filename
+
                         # Create record for new file's metadata
                         newfile = models.FileMetaData(
-                            filename= outfile_meta.filename,
+                            filename=outfile_meta.filename,
+                            display_filename=display_filename,
                             user=request.user,
                             group=load_file.group,
                             backend_uuid=outset_meta.qcrbox_dataset_id,
@@ -334,10 +350,10 @@ def download(request, file_id):
 
     # Stop user accessing data from a group they have no access to
     if download_file_meta.group not in allowed_groups:
-        logger.info(f'User {request.user.username} denied permission to download dataset "{download_file_meta.filename}" (unaffiliated)')
+        logger.info(f'User {request.user.username} denied permission to download dataset "{download_file_meta.display_filename}" (unaffiliated)')
         raise PermissionDenied
 
-    logger.info(f'User {request.user.username} downloading dataset "{download_file_meta.filename}"')
+    logger.info(f'User {request.user.username} downloading dataset "{download_file_meta.display_filename}"')
     api_response = api.download_dataset(download_file_meta.backend_uuid)
 
     if not api_response.is_valid:
@@ -349,7 +365,7 @@ def download(request, file_id):
 
     # Deliver the file using the filename stored in metadata
     httpresponse = HttpResponse(data)
-    httpresponse['Content-Disposition'] = 'attachment; filename='+download_file_meta.filename
+    httpresponse['Content-Disposition'] = 'attachment; filename='+download_file_meta.display_filename
     return httpresponse
 
 
@@ -619,7 +635,7 @@ def delete_group(request,group_id):
 def view_datasets(request):
 
     fields = [
-        display_field('Filename','filename',is_header=True),
+        display_field('Filename','display_filename',is_header=True),
         display_field('Group','group'),
         display_field('Created By','user'),
         display_field('At Time','creation_time'),
@@ -627,7 +643,7 @@ def view_datasets(request):
         display_field('With App','created_app', is_special=True),
         ]
 
-    object_list=models.FileMetaData.objects.all()
+    object_list=models.FileMetaData.objects.filter(active=True)
 
     # If a user can view unaffiliated data, they can view it all
     if request.user.has_perm('qcrbox.global_access'):
@@ -666,21 +682,29 @@ def delete_dataset(request,dataset_id):
     # Check credentials before invoking the generic delete, as API will also need calling
     if shared_groups or request.user.has_perm('qcrbox.global_access'):
 
-        logger.info(f'User {request.user.username} deleting dataset {deletion_data_meta.filename}')
+        logger.info(f'User {request.user.username} deleting dataset {deletion_data_meta.display_filename}')
         api_response = api.delete_dataset(deletion_data_meta.backend_uuid)
 
     else:
         raise PermissionDenied
 
     if api_response.is_valid:
-        return delete_generic(
-            request=request,
-            Model=models.FileMetaData,
-            type='Dataset',
-            link_suffix='datasets',
-            id=dataset_id,
-            user_is_affiliated = True
-        )
+
+        try:
+            instance=models.FileMetaData.objects.get(pk=dataset_id)
+
+        except models.FileMetaData.DoesNotExist:
+            logger.info(f'User {request.user.username} attempted to deactivate non-existent File Metadata (pk={dataset_id})')
+            messages.success(request, f'Dataset was deleted succesfully.')    
+            return redirect('view_datasets')
+
+        # Don't actually delete the local metadata, just flag it as inactive so history can be preserved
+        instance.active = False
+        instance.save()
+
+        logger.info(f'User {request.user.username} flagged File Metadata "{instance}" as inactive.')
+        messages.success(request,f'Dataset "{instance}" was deleted succesfully!')
+        return redirect('view_datasets')
 
     else:
         logger.error('Could not delete dataset!')
