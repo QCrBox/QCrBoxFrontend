@@ -91,7 +91,7 @@
                   {% csrf_token %}
                   <input type="hidden" id="startup" name="startup" value=True>
                   <input type="hidden" id="application" name="application" value={{ current_application.pk }}>
-                  <button type="submit" class="btn btn-primary">
+                  <button type="submit" class="btn btn-primary" id="startBtn">
                     Launch Application
                   </button>
                 </form>
@@ -117,13 +117,11 @@
   </div>
 </div>
 
-{% if session_in_progress %}
+{% if current_application %}
   <script>
     let hostname = window.location.hostname;
-    var interactiveWindow = window.open(`http://${hostname}:{{ current_application.port }}/vnc.html?path=vnc&autoconnect=true&resize=remote&reconnect=true&show_dot=true`, '_blank');
-    window.onunload = function() {      
-      interactiveWindow.close();
-    };
+
+    document.getElementById("startBtn").addEventListener("click", function(){ window.open(`http://${hostname}:{{ current_application.port }}/vnc.html?path=vnc&autoconnect=true&resize=remote&reconnect=true&show_dot=true`, '_blank'); }); 
   </script>
 {% endif %}
 
