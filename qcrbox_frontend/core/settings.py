@@ -13,10 +13,13 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 
 import logging.config
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Get environment variables
+get_env = os.environ.get
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -25,9 +28,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-ts$cb&@9ilx_3g2!we7v8bh7!8my^m*aq12na)aw&1@p-hsr_h"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', True)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -80,11 +83,26 @@ WSGI_APPLICATION = "core.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+DB_SQLITE = 'sqlite'
+DB_POSTGRESQL = 'postgresql'
+
+DATABASES_ALL = {
+    DB_SQLITE: {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    },
+    DB_POSTGRESQL: {
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
+        'NAME': os.environ.get('POSTGRES_NAME', 'postgres'),
+        'USER': os.environ.get('POSTGRES_USER', 'postgres'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'postgres'),
+        'PORT': int(os.environ.get('POSTGRES_PORT', '5432')),
+    },
+}
+
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    'default': DATABASES_ALL[os.environ.get('DJANGO_DB', DB_SQLITE)],
 }
 
 
@@ -133,6 +151,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CSRF_TRUSTED_ORIGINS = [
     ]
 
+# Default superuser credentials
+
+ADMIN_EMAIL= get_env('DJANGO_SUPERUSER_USERNAME')
+ADMIN_ACCOUNT = get_env('DJANGO_SUPERUSER_USERNAME')
+ADMIN_PASSWORD = get_env('DJANGO_SUPERUSER_PASSWORD')
+
 # Plotly-related settings
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
@@ -170,3 +194,12 @@ logging.config.dictConfig(LOGGING)
 
 # API settings
 API_BASE_URL = 'http://127.0.0.1:11000'
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/3.2/howto/static-files/
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+# Allow embedding of iframes
+X_FRAME_OPTIONS = 'SAMEORIGIN'
