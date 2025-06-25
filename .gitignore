@@ -174,3 +174,4 @@ cython_debug/
 .pypirc
 qcrbox_frontend.sublime-project
 qcrbox_frontend.sublime-workspace
+environment.env

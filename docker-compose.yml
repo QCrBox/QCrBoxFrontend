@@ -1,0 +1,45 @@
+services:
+    nginx:
+        restart: always
+        image: nginx:1.23-alpine
+        ports:
+            - 80:80
+        volumes:
+            - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf
+            - static_volume:/app/qcrbox_frontend/staticfiles
+        depends_on:
+            - server
+
+    # Web server
+    server:
+        restart: unless-stopped
+        build:
+            context: .
+            dockerfile: ./docker/Dockerfile
+        entrypoint: /app/docker/server-entrypoint.sh
+        volumes:
+            - static_volume:/app/qcrbox_frontend/staticfiles
+        ports:
+            - 8888:8888
+        env_file:
+            - ./environment.env
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+
+
+    db:
+        image: postgres:14.0-alpine
+        restart: unless-stopped
+        volumes:
+            - postgres_data:/var/lib/postgresql/data/
+        environment:
+            POSTGRES_DB: postgres
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+        expose:
+            - 5432
+
+volumes:
+    static_volume: {}
+    postgres_data: {}
+
