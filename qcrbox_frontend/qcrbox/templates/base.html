@@ -35,8 +35,9 @@
     <br/><br/><hr>
     <footer class="footer">
         {% if user.is_superuser %}
-          <h5>Debug</h5>
-          &nbspSession Cookie: {{ request.session.app_session_id }}<br/><hr>
+          &nbsp<h5>Debug</h5>
+          &nbspSession Cookie: {{ request.session.app_session_id }}<br/>
+          &nbsp<a href="{% url 'frontend_logs' %}">Frontend Logs</a><br/><hr>
         {% endif %}
         &nbsp<small>© 2025 QCrBox. All rights reserved.</small>
     </footer>

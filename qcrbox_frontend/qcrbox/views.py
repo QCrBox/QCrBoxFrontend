@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 
 from django.shortcuts import render, redirect
@@ -9,6 +10,7 @@ from django.contrib.auth.decorators import permission_required, login_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
+from django.views.static import serve
 
 from . import api
 from . import forms
@@ -639,7 +641,7 @@ def delete_group(request,group_id):
 
 
 # ====================================================
-# ========== Data Management related views ==========
+# ========== Data Management related views ===========
 # ====================================================
 
 # No view for dataset creation (handled through the workflow initialisation page)
@@ -723,3 +725,16 @@ def delete_dataset(request,dataset_id):
         logger.error('Could not delete dataset!')
         messages.warning(request,'API delete request unsuccessful: file not deleted!')
         return redirect('view_datasets')
+
+
+# ====================================================
+# =================== Debug Tools ====================
+# ====================================================
+
+@login_required(login_url='login')
+def frontend_logs(request):
+    if not request.user.is_superuser:
+        raise PermissionDenied
+    filepath='qcrbox.log'
+    return serve(request, os.path.basename(filepath), os.path.dirname(filepath))
+

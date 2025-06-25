@@ -40,4 +40,6 @@ urlpatterns = [
     path('view_datasets', views.view_datasets, name='view_datasets'),
     path('delete_dataset/<dataset_id>', views.delete_dataset, name='delete_dataset'),
 
+    path('frontend_logs', views.frontend_logs, name='frontend_logs'),
+
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
