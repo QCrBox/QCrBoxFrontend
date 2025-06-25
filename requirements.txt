@@ -31,6 +31,7 @@ nest-asyncio==1.6.0
 numpy==2.2.6
 packaging==25.0
 plotly==6.1.1
+psycopg==3.2.9
 python-dateutil==2.9.0.post0
 QCrBoxAPIClient @ git+https://github.com/QCrBox/QCrBoxAPIClient.git@fc5ca799463a5483d3696b74483bf447d504e65d
 requests==2.32.4
@@ -40,5 +41,6 @@ sniffio==1.3.1
 sqlparse==0.5.3
 typing_extensions==4.13.2
 urllib3==2.4.0
+uwsgi
 Werkzeug==3.0.6
 zipp==3.21.0

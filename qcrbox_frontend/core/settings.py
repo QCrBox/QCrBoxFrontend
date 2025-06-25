@@ -136,12 +136,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-STATIC_URL = "static/"
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -193,7 +187,7 @@ LOGGING = {
 logging.config.dictConfig(LOGGING)
 
 # API settings
-API_BASE_URL = 'http://127.0.0.1:11000'
+API_BASE_URL = os.environ.get('API_BASE_URL', 'http://127.0.0.1:11000')
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
