@@ -115,6 +115,19 @@ def initialise_workflow(request):
 
         else:
 
+            # If no Group selected, fail safely
+            if not ('group' in request.POST and request.POST['group']):
+                messages.warning(request, 'Must select group to assign to new dataset!')
+
+                return render(
+                    request,
+                    'initial.html',
+                    {
+                        'loadfile_form':forms.LoadFileForm(user=request.user),
+                        'newfile_form':forms.UploadFileForm(request.POST or None, user=request.user),
+                    }
+                )
+
             # If user uploads new file
             file = request.FILES['file']
 
