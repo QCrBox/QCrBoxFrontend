@@ -197,3 +197,5 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 # Allow embedding of iframes
 X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+MAX_LENGTH_API_LOG = os.environ.get('MAX_LENGTH_API_LOG', 10000)
