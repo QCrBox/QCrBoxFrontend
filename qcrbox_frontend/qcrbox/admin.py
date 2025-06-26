@@ -1,17 +1,30 @@
+"""QCrBox Admin
+
+Module containing classes which register the various models in models.py
+with the django admin view.
+
+"""
+
 from django.contrib import admin
-from .models import *
+from . import models
 
-@admin.register(FileMetaData)
+@admin.register(models.FileMetaData)
 class FileMetaDataAdmin(admin.ModelAdmin):
-    list_display=('filename','user','group')
-    ordering=('filename','backend_uuid')
+    '''Admin Registration for the FileMetaData model'''
 
-@admin.register(ProcessStep)
-class ProcessStepAdmin(admin.ModelAdmin):
-    list_display=('infile','application','outfile')
-    ordering=('infile','application','outfile')
+    list_display = ('filename', 'user', 'group')
+    ordering = ('filename', 'backend_uuid')
 
-@admin.register(Application)
+@admin.register(models.ProcessStep)
 class ProcessStepAdmin(admin.ModelAdmin):
-    list_display=('name','version')
-    ordering=('name','version')
+    '''Admin Registration for the ProcessStep model'''
+
+    list_display = ('infile', 'application', 'outfile')
+    ordering = ('infile', 'application', 'outfile')
+
+@admin.register(models.Application)
+class ApplicationAdmin(admin.ModelAdmin):
+    '''Admin Registration for the Application class'''
+
+    list_display = ('name', 'version')
+    ordering = ('name', 'version')

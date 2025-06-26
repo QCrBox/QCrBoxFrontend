@@ -1,3 +1,10 @@
+"""QCrBox Utility
+
+Miscellaneous utility functions as required by various parts of the QCrBox
+Django Frontend.
+
+"""
+
 import logging
 
 from . import api
@@ -5,8 +12,26 @@ from . import models
 
 logger = logging.getLogger(__name__)
 
-# Update applications list by syncing with the results of an API polling
 def update_applications():
+    '''Obtain a list of installed QCrBox Applications from the API, and update
+    the Frontend Applications database accordingly.  Applications present in
+    the API-returned list but not present in the Frontend db are added to the
+    Frontend db (along with config info such as port number), whereas
+    applicarions present in the Frontend db but not in the API-returned list
+    are edited to be flagged as inactive in the Frontend db.  Applications are
+    uniquely identified by a tuple of the form (name, version).
+
+    Parameters:
+    None
+
+    Returns:
+    - response(dict): a dictionary containing two lists:
+    -- response['new_apps'](list): lists the Frontend db primary keys of all
+            applications added by this method.
+    -- response['deactivated_apps'](list): lists the Frontend db primary
+            keys of all applications deactivated by this method.
+
+    '''
 
     # Fetch slugs to represent apps known to the frontend
     local_appset = {(app.name, app.version) for app in models.Application.objects.all()}
@@ -58,10 +83,9 @@ def update_applications():
         if (app.name, app.version) in backend_appset:
             continue
 
-        app.active=False
+        app.active = False
         app.save()
 
         response['deactivated_apps'].append(app.pk)
 
     return response
-

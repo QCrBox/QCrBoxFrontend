@@ -1,3 +1,14 @@
+"""QCrBox API Interfact
+
+A collection of methods which deal with making calls to the QCrBox API client
+and parsing the responses of these calls.
+
+All methods in this module return a Response object containing the response to
+the relevant API call and a Boolean flag denoting whether that call was
+successful.
+
+"""
+
 import logging
 
 from qcrboxapiclient.api.applications import (
@@ -33,9 +44,29 @@ max_length_api_log = settings.MAX_LENGTH_API_LOG
 
 # Utility class for returning API responses / errors
 
-class response(object):
-    def __init__(self, payload=None):
-        self.body = payload
+class Response(object):
+    '''A class to package any API response with a boolean flag, allowing
+    modules and methods upstream of this to be fully agnostic to the
+    structure of specific API responses when determining if an API response
+    was successful.
+
+    This is essentially just a simple wrapper around an API object, and has
+    two important attributes:
+    - body: the raw API response object this is a wrapper around
+    - is_valid: a Boolean flag to denote whether the API call was deemed
+            successful
+
+    '''
+
+    def __init__(self, body=None):
+        '''Create a Response object from a raw API response.
+
+        Parameters:
+        - body(QCrBoxResponse or similar): the raw API response to be wrapped.
+
+        '''
+
+        self.body = body
 
         if isinstance(self.body, QCrBoxErrorResponse):
             # If the upload fails, give response an error flag, log it
@@ -45,8 +76,8 @@ class response(object):
         else:
             # Truncate the API response to sent to the logger if its a success
             logtext = str(self.body)
-            if len(logtext)>max_length_api_log:
-                logtext=logtext[:max_length_api_log-2]+' ... '+logtext[-2:]
+            if len(logtext) > max_length_api_log:
+                logtext = logtext[:max_length_api_log-2]+' ... '+logtext[-2:]
             logger.info(f'Response from API: {logtext}')
             self.is_valid = True
 
@@ -55,16 +86,30 @@ class response(object):
 # ========= API functionality here =========
 # ==========================================
 
-# Quick-reference function to create new client
 def get_client():
+    '''A function to return an API client object pointing to the API base URL
+    set in settings.py
+
+    '''
+
     client = Client(base_url=settings.API_BASE_URL)
     return client
 
 
 # ----- Basic API I/O Functionality -----
 
-# Take a django InMemoryFile, prepare it, then send to the API to upload to the backend
+# 
 def upload_dataset(im_file):
+    '''Take a django InMemoryFile, prepare it, then send to the API to upload
+    to the backend
+
+    Parameters:
+    - im_file(InMemoryFile): a byte-like file object stored in memory after
+            being uploaded by a user via the file upload form.
+    
+
+    '''
+
     client = get_client()
     file_bytes = im_file.file
     file_name = str(im_file)
@@ -74,40 +119,80 @@ def upload_dataset(im_file):
 
     logger.info(f'API call: create_dataset')
     raw_response = create_dataset.sync(client=client, body=upload_payload)
-    
-    return response(raw_response)
 
-# Fetch a datafile from the backend and serve to the user
+    return Response(raw_response)
+
+
 def download_dataset(dataset_id):
+    '''Fetch a datafile from the backend and return its contents to be parsed
+    elsewhere for the user to download
+
+    Parameters:
+    - dataset_id(str): the backend ID of the dataset to be downloaded
+            (equivalent to the backend_uuid attribute of the frontend's
+            FileMetaData Model)
+
+    '''
+
     client = get_client()
 
     logger.info(f'API call: download_dataset_by_id, id={dataset_id}')
     raw_response = download_dataset_by_id.sync(client=client, id=dataset_id)
 
-    return response(raw_response)
+    return Response(raw_response)
 
-# Instruct the backend to delete a file with a given id
+
 def delete_dataset(dataset_id):
+    '''Instruct the backend to delete a dataset.
+
+    Parameters:
+    - dataset_id(str): the backend ID of the dataset to be deleted (equivalent
+            to the backend_uuid attribute of the frontend's FileMetaData
+            Model)
+
+    '''
+
     client = get_client()
 
     logger.info(f'API call: delete_dataset_by_id, id={dataset_id}')
     raw_response = delete_dataset_by_id.sync(id=dataset_id, client=client)
 
-    return response(raw_response)
+    return Response(raw_response)
 
-# Fetch a dataset's backend metadata
+
 def get_dataset(dataset_id):
+    '''Fetch a dataset from the backend by ID and return its backend metadata
+
+    Parameters:
+    - dataset_id(str): the backend ID of the dataset to be fetched (equivalent
+            to the backend_uuid attribute of the frontend's FileMetaData
+            Model)
+
+    '''
+
     client = get_client()
 
     logger.info(f'API call: get_dataset_by_id, id={dataset_id}')
     raw_response = get_dataset_by_id.sync(client=client, id=dataset_id)
 
-    return response(raw_response)
+    return Response(raw_response)
 
 
 # ----- Session Functionality -----
 
 def start_session(app_id, dataset_id):
+    '''Command the API to start an Interactive Session using a given
+    Application and Dataset.
+
+    Parameters:
+    - app_id(int): the primary key of the Application to be used as stored on
+            the frontend database.
+    - dataset_id(str): the backend ID of the dataset to be fetched (equivalent
+            to the backend_uuid attribute of the frontend's FileMetaData
+            Model)
+
+    '''
+
     client = get_client()
 
     # Get relevant metadata instances from local db
@@ -132,31 +217,53 @@ def start_session(app_id, dataset_id):
     logger.info(f'API call: create_interactive_session_with_arguments')
     raw_response = create_interactive_session_with_arguments.sync(client=client, body=create_session)
 
-    return response(raw_response)
+    return Response(raw_response)
 
 def get_session(session_id):
+    '''Get the metadata of an Interactive Session
+
+    Parameters:
+    - session_id(str): the backend ID for the session to be fetched
+
+    '''
+
     client = get_client()
 
     logger.info(f'API call: get_interactive_session_by_id, id={session_id}')
     raw_response = get_interactive_session_by_id.sync(client=client, id=session_id)
 
-    return response(raw_response)
+    return Response(raw_response)
 
 def close_session(session_id):
+    '''Command the API to close an Interactive Session.
+
+    Parameters:
+    - session_id(str): the backend ID for the session to be closed
+
+    '''
+
     client = get_client()
 
     logger.info(f'API call: close_interactive_session, id={session_id}')
     raw_response = close_interactive_session.sync(client=client, id=session_id)
 
-    return response(raw_response)
+    return Response(raw_response)
 
 
 # ----- Fetching Application Metadata -----
 
 def get_applications():
+    '''Fetch a list of currently installed QCrBox tools and return config
+    information such as the port they are accessed via.
+
+    Parameters:
+    - None
+
+    '''
+
     client = get_client()
 
     logger.info(f'API call: list_applications')
     raw_response = list_applications.sync(client=client)
 
-    return response(raw_response)
+    return Response(raw_response)

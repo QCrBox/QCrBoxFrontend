@@ -1,8 +1,48 @@
+"""QCrBox Models
+
+The collection of Model classes which determine the structure of the Frontend
+database and provide the endpoints from which to run queries.
+
+"""
+
 from django.db import models
 from django.contrib.auth.models import User, Group
 
-# Metadata on available files
 class FileMetaData(models.Model):
+    '''The FileMetaData model stores information on Datasets; the actual files
+    that make up a Dataset are handled exclusively in the backend and are only
+    touched by the frontend when uploading a new file or downloading a file
+    from the backend via the frontend.
+
+    The FileMetaData model allows the frontend to keep track of Datasets
+    vicariously, including information on their history, ownership, date
+    of creation and the ID by which they are stored on the backend.
+
+    Contains the following attributes:
+    - filename(str): the name of the filename, matching the name of the
+            Datafile within the Dataset created in the backend upon uploading
+            a new file from the frontend
+    - display_filename(str): the filename to be displayed by the frontend.
+            Generally the same as filename, but with a bracketed number (e.g.
+            (2) ) appended to the end of it in cases where files would
+            otherwise have the same name.  Helps to prevent user ambiguity.
+    - backend_uuid(str): the ID string pointing to where the Dataset is stored
+            on the backend
+    - user(User): the User object of the user that uploaded this file or
+            created it as output from an Interactive Session.
+    - group(Group): the Group object of the group to which this file is
+            associated.
+    - filetype(str): the filetype (e.g. extension) of the file
+    - creation_time(datetime): the date/time the file was created
+    - active(bool): a flag to indicate whether the file is 'active'.  This
+            is set to False when the corresponding Dataset has been deleted
+            from the backend, and massively limits the functionality
+            available when working with this dataset (e.g. it cannot be
+            selected to start a workflow, it won't show up when viewing the
+            list of files, etc).
+
+    '''
+
     filename = models.CharField(max_length=255)
     display_filename = models.CharField(max_length=255)
     backend_uuid = models.CharField(max_length=255, null=True)
@@ -14,10 +54,33 @@ class FileMetaData(models.Model):
     active = models.BooleanField(default=True)
 
     def __str__(self):
+        '''Return the filename when an instance of this is parsed as string'''
+
         return self.filename
 
-# Metadata on available applications for interactive sessions
+
 class Application(models.Model):
+    '''The Application model stores information on Applications; e.g. the
+    tools which have been installed as part of QCrBox (not QCrBox Frontend).
+
+    Contains the following attributes:
+    - name(str): the human-readable name of the Application
+    - url(str): a url which links to an external site with more information on
+            the given Application
+    - version(str): the version of the Application
+    - description(str): a short human-readable description of the Application
+    - slug(str): the string used to uniquely refer to the Application in the
+            backend.
+    - port(str): the port through which an Interactive Session of this app
+            can be accessed via the browser
+    - active(bool): a flag to indicate whether the application is 'active'.
+            This is set to False when the corresponding Application has been
+            deleted or upgraded, and massively limits the functionality
+            available when working with this Application (e.g. it cannot be
+            selected to start an Interactive Session).
+
+    '''
+
     name = models.CharField(max_length=255)
     url = models.CharField(max_length=255)
     version = models.CharField(max_length=255)
@@ -30,10 +93,13 @@ class Application(models.Model):
     active = models.BooleanField(default=True)
 
     def __str__(self):
+        '''Return the name when an instance of this is parsed as string'''
+
         return self.name
 
 # Metadata on a session; what file was given as input, which application was used, what file was output
 class ProcessStep(models.Model):
+
     application = models.ForeignKey(Application, null=True, on_delete=models.SET_NULL)
     infile = models.ForeignKey(FileMetaData, null=True, on_delete=models.SET_NULL, related_name='processed_to')
     outfile = models.ForeignKey(FileMetaData, null=True, on_delete=models.SET_NULL, related_name='processed_by')
