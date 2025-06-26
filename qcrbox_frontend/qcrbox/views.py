@@ -126,12 +126,25 @@ def initialise_workflow(request):
                     'initial.html',
                     {
                         'loadfile_form':forms.LoadFileForm(user=request.user),
-                        'newfile_form':forms.UploadFileForm(request.POST or None, user=request.user),
+                        'newfile_form':forms.UploadFileForm(user=request.user),
                     }
                 )
 
             # If user uploads new file
             file = request.FILES['file']
+
+            # Check the uploaded file is actually a cif
+            if str(file)[-4:]!='.cif':
+                messages.warning(request, 'Uploaded files must be .cif!')
+
+                return render(
+                    request,
+                    'initial.html',
+                    {
+                        'loadfile_form':forms.LoadFileForm(user=request.user),
+                        'newfile_form':forms.UploadFileForm(user=request.user),
+                    }
+                )
 
             logger.info(f'User {request.user.username} uploading file "{str(file)}"')
             api_response = api.upload_dataset(file)
