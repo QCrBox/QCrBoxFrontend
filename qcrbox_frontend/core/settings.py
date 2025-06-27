@@ -10,10 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path
-
 import logging.config
 import os
+from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -198,4 +197,4 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 # Allow embedding of iframes
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
-MAX_LENGTH_API_LOG = os.environ.get('MAX_LENGTH_API_LOG', 10000)
+MAX_LENGTH_API_LOG = int(os.environ.get('MAX_LENGTH_API_LOG', 10000))
