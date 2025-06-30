@@ -70,7 +70,10 @@ class Response():
 
         if isinstance(self.body, QCrBoxErrorResponse):
             # If the upload fails, give response an error flag, log it
-            LOGGER.error(f'Error response from API: {self.body}')
+            LOGGER.error(
+                'Error response from API: {e}',
+                e=self.body,
+            )
             self.is_valid = False
 
         else:
@@ -78,7 +81,10 @@ class Response():
             logtext = str(self.body)
             if len(logtext) > MAX_LENGTH_API_LOG:
                 logtext = logtext[:MAX_LENGTH_API_LOG-2]+' ... '+logtext[-2:]
-            LOGGER.info(f'Response from API: {logtext}')
+            LOGGER.info(
+                'Response from API: {r}',
+                r=logtext,
+            )
             self.is_valid = True
 
 
@@ -115,7 +121,7 @@ def upload_dataset(im_file):
     payload_file = File(file_bytes, file_name)
     upload_payload = CreateDatasetBody(payload_file)
 
-    LOGGER.info(f'API call: create_dataset')
+    LOGGER.info('API call: create_dataset')
     raw_response = create_dataset.sync(client=client, body=upload_payload)
 
     return Response(raw_response)
@@ -134,7 +140,10 @@ def download_dataset(dataset_id):
 
     client = get_client()
 
-    LOGGER.info(f'API call: download_dataset_by_id, id={dataset_id}')
+    LOGGER.info(
+        'API call: download_dataset_by_id, id={i}',
+        i=dataset_id,
+    )
     raw_response = download_dataset_by_id.sync(client=client, id=dataset_id)
 
     return Response(raw_response)
@@ -152,7 +161,10 @@ def delete_dataset(dataset_id):
 
     client = get_client()
 
-    LOGGER.info(f'API call: delete_dataset_by_id, id={dataset_id}')
+    LOGGER.info(
+        'API call: delete_dataset_by_id, id={i}',
+        i=dataset_id,
+    )
     raw_response = delete_dataset_by_id.sync(id=dataset_id, client=client)
 
     return Response(raw_response)
@@ -170,7 +182,10 @@ def get_dataset(dataset_id):
 
     client = get_client()
 
-    LOGGER.info(f'API call: get_dataset_by_id, id={dataset_id}')
+    LOGGER.info(
+        'API call: get_dataset_by_id, id={i}',
+        i=dataset_id,
+    )
     raw_response = get_dataset_by_id.sync(client=client, id=dataset_id)
 
     return Response(raw_response)
@@ -197,7 +212,8 @@ def start_session(app_id, dataset_id):
     app = models.Application.objects.get(pk=app_id)
     dataset_metadata = models.FileMetaData.objects.get(backend_uuid=dataset_id)
 
-    # Sessions are started with a data_file_id (not a dataset_id), so need to fetch that ID from a dataset
+    # Sessions are started with a data_file_id (not a dataset_id), so need to fetch that ID from
+    # a dataset
     get_response = get_dataset(dataset_id)
 
     # Check a dataset was actually found
@@ -205,15 +221,21 @@ def start_session(app_id, dataset_id):
         return get_response
 
     # Get the associated data_file's ID
-    datafile_id = get_response.body.payload.datasets[0].data_files[dataset_metadata.filename].qcrbox_file_id
+    dataset = get_response.body.payload.datasets[0]
+    datafile_id = dataset.data_files[dataset_metadata.filename].qcrbox_file_id
 
     # Set up arguments
-    arguments = CreateInteractiveSessionArguments.from_dict({'input_file': {'data_file_id': datafile_id}})
+    arguments = CreateInteractiveSessionArguments.from_dict(
+        {'input_file': {'data_file_id': datafile_id}}
+    )
     create_session = CreateInteractiveSession(app.slug, app.version, arguments)
 
     # Initialise session
-    LOGGER.info(f'API call: create_interactive_session_with_arguments')
-    raw_response = create_interactive_session_with_arguments.sync(client=client, body=create_session)
+    LOGGER.info('API call: create_interactive_session_with_arguments')
+    raw_response = create_interactive_session_with_arguments.sync(
+        client=client,
+        body=create_session,
+    )
 
     return Response(raw_response)
 
@@ -227,7 +249,10 @@ def get_session(session_id):
 
     client = get_client()
 
-    LOGGER.info(f'API call: get_interactive_session_by_id, id={session_id}')
+    LOGGER.info(
+        'API call: get_interactive_session_by_id, id={i}',
+        i=session_id,
+    )
     raw_response = get_interactive_session_by_id.sync(client=client, id=session_id)
 
     return Response(raw_response)
@@ -242,7 +267,10 @@ def close_session(session_id):
 
     client = get_client()
 
-    LOGGER.info(f'API call: close_interactive_session, id={session_id}')
+    LOGGER.info(
+        'API call: close_interactive_session, id={i}',
+        i=session_id,
+    )
     raw_response = close_interactive_session.sync(client=client, id=session_id)
 
     return Response(raw_response)
@@ -261,7 +289,7 @@ def get_applications():
 
     client = get_client()
 
-    LOGGER.info(f'API call: list_applications')
+    LOGGER.info('API call: list_applications')
     raw_response = list_applications.sync(client=client)
 
     return Response(raw_response)

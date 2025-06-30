@@ -85,7 +85,8 @@ class LoadFileForm(forms.Form):
         if user.has_perm('qcrbox.global_access'):
             permitted_groups = Group.objects.all()
 
-        # Otherwise restrict visibility and selection to files attached to groups the user belongs to
+        # Otherwise restrict visibility and selection to files attached to groups the user
+        # belongs to
         else:
             permitted_groups = user.groups.all()
 
@@ -145,9 +146,18 @@ class RegisterUserForm(UserCreationForm):
     '''
 
     email = forms.EmailField(widget=forms.EmailInput(attrs={'class':'form-control'}))
-    first_name = forms.CharField(max_length=30, widget=forms.TextInput(attrs={'class':'form-control'}))
-    last_name = forms.CharField(max_length=30, widget=forms.TextInput(attrs={'class':'form-control'}))
-    user_groups = forms.ModelMultipleChoiceField(queryset=Group.objects.none(), widget=forms.SelectMultiple(attrs={'class': 'form-control'}))
+    first_name = forms.CharField(
+        max_length=30,
+        widget=forms.TextInput(attrs={'class':'form-control'}),
+    )
+    last_name = forms.CharField(
+        max_length=30,
+        widget=forms.TextInput(attrs={'class':'form-control'}),
+    )
+    user_groups = forms.ModelMultipleChoiceField(
+        queryset=Group.objects.none(),
+        widget=forms.SelectMultiple(attrs={'class': 'form-control'}),
+    )
 
     # Add option to give new users the 'edit users' (group manager) and 'global access' permissions
     group_manager = forms.BooleanField(required=False)

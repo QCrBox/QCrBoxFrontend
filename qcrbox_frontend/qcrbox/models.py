@@ -97,7 +97,7 @@ class Application(models.Model):
 
         return self.name
 
-# Metadata on a session; what file was given as input, which application was used, what file was output
+
 class ProcessStep(models.Model):
     '''The ProcessStep model stores information pertaining to any process
     which takes an input Dataset and generates an output Dataset, e.g. an
@@ -141,7 +141,8 @@ class DataPermissionSupport(models.Model):
     class Meta:
         '''Additional model configuration'''
 
-        managed = False  # No database table creation or deletion operations will be performed for this model.
+        managed = False  # No database table creation or deletion operations will be performed
+                         # for this model.
 
         default_permissions = ()
         permissions = (
