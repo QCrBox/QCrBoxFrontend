@@ -3,9 +3,9 @@ from a string name within a Django HTML template'''
 
 from django import template
 
-REGISTER = template.Library()
+register = template.Library()
 
-@REGISTER.filter(name='getattribute')
+@register.filter(name='getattribute')
 def getattribute(value, arg):
     '''Template tag configuration'''
 

@@ -71,8 +71,8 @@ class Response():
         if isinstance(self.body, QCrBoxErrorResponse):
             # If the upload fails, give response an error flag, log it
             LOGGER.error(
-                'Error response from API: {e}',
-                e=self.body,
+                'Error response from API: %s',
+                self.body,
             )
             self.is_valid = False
 
@@ -82,8 +82,8 @@ class Response():
             if len(logtext) > MAX_LENGTH_API_LOG:
                 logtext = logtext[:MAX_LENGTH_API_LOG-2]+' ... '+logtext[-2:]
             LOGGER.info(
-                'Response from API: {r}',
-                r=logtext,
+                'Response from API: %s',
+                logtext,
             )
             self.is_valid = True
 
@@ -141,8 +141,8 @@ def download_dataset(dataset_id):
     client = get_client()
 
     LOGGER.info(
-        'API call: download_dataset_by_id, id={i}',
-        i=dataset_id,
+        'API call: download_dataset_by_id, id=%s',
+        dataset_id,
     )
     raw_response = download_dataset_by_id.sync(client=client, id=dataset_id)
 
@@ -162,8 +162,8 @@ def delete_dataset(dataset_id):
     client = get_client()
 
     LOGGER.info(
-        'API call: delete_dataset_by_id, id={i}',
-        i=dataset_id,
+        'API call: delete_dataset_by_id, id=%s',
+        dataset_id,
     )
     raw_response = delete_dataset_by_id.sync(id=dataset_id, client=client)
 
@@ -183,8 +183,8 @@ def get_dataset(dataset_id):
     client = get_client()
 
     LOGGER.info(
-        'API call: get_dataset_by_id, id={i}',
-        i=dataset_id,
+        'API call: get_dataset_by_id, id=%s',
+        dataset_id,
     )
     raw_response = get_dataset_by_id.sync(client=client, id=dataset_id)
 
@@ -250,8 +250,8 @@ def get_session(session_id):
     client = get_client()
 
     LOGGER.info(
-        'API call: get_interactive_session_by_id, id={i}',
-        i=session_id,
+        'API call: get_interactive_session_by_id, id=%s',
+        session_id,
     )
     raw_response = get_interactive_session_by_id.sync(client=client, id=session_id)
 
@@ -268,8 +268,8 @@ def close_session(session_id):
     client = get_client()
 
     LOGGER.info(
-        'API call: close_interactive_session, id={i}',
-        i=session_id,
+        'API call: close_interactive_session, id=%s',
+        session_id,
     )
     raw_response = close_interactive_session.sync(client=client, id=session_id)
 

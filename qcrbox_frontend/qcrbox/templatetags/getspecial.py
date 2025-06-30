@@ -9,7 +9,7 @@ appropriate line of this tag is run instead and the output value is returned.
 from django import template
 from django.contrib.auth.models import Group, Permission
 
-REGISTER = template.Library()
+register = template.Library()
 
 def get_special_user(value, arg):
     '''Special render options for user-related fields'''
@@ -98,7 +98,7 @@ def get_special_metadata(value, arg):
     raise NotImplementedError
 
 
-@REGISTER.filter(name='getspecial')
+@register.filter(name='getspecial')
 def getspecial(value, arg):
     '''Template tag configuration'''
 

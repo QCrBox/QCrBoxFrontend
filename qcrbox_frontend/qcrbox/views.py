@@ -117,10 +117,10 @@ def update_generic(
     # pertains, to prevent users editing things they shouldnt
     elif not user_is_affiliated:
         LOGGER.info(
-            'User {u} denied permission to modify {t} (pk={i}) (unaffiliated)',
-            u=request.user.username,
-            t=obj_type,
-            i=obj_id,
+            'User %s denied permission to modify %s (pk=%d) (unaffiliated)',
+            request.user.username,
+            obj_type,
+            obj_id,
         )
         raise PermissionDenied()
 
@@ -131,10 +131,10 @@ def update_generic(
         form.save()
 
         LOGGER.info(
-            'User {u} updated {o} "{i}"',
-            u=request.user.username,
-            o=obj_type,
-            i=instance,
+            'User %s updated %s "%s"',
+            request.user.username,
+            obj_type,
+            instance,
         )
         messages.success(request, f'Changes to "{instance}" saved!')
         return redirect('view_'+link_suffix)
@@ -187,10 +187,10 @@ def delete_generic(request, model, obj_type, link_suffix, obj_id, user_is_affili
     # pertains, to prevent users editing things they shouldnt
     elif not user_is_affiliated:
         LOGGER.info(
-            'User {u} denied permission to delete {t} (pk={i}) (unaffiliated)',
-            u=request.user.username,
-            t=obj_type,
-            i=obj_id,
+            'User %s denied permission to delete %s (pk=%d) (unaffiliated)',
+            request.user.username,
+            obj_type,
+            obj_id,
         )
         raise PermissionDenied()
 
@@ -199,10 +199,10 @@ def delete_generic(request, model, obj_type, link_suffix, obj_id, user_is_affili
 
     except model.DoesNotExist:
         LOGGER.info(
-            'User {u} attempted to delete non-existent {t} (pk={i})',
-            u=request.user.username,
-            t=obj_type,
-            i=obj_id,
+            'User %s attempted to delete non-existent %s (pk=%d)',
+            request.user.username,
+            obj_type,
+            obj_id,
         )
         messages.success(request, f'{obj_type} was deleted succesfully.')
         return redirect('view_'+link_suffix)
@@ -211,10 +211,10 @@ def delete_generic(request, model, obj_type, link_suffix, obj_id, user_is_affili
     instance.delete()
 
     LOGGER.info(
-        'User {u} deleted {t} "{s}"',
-        u=request.user.username,
-        t=obj_type,
-        s=instance_string,
+        'User %s deleted %s "%s"',
+        request.user.username,
+        obj_type,
+        instance_string,
     )
     messages.success(request, f'{obj_type} "{instance_string}" was deleted succesfully!')
     return redirect('view_'+link_suffix)
@@ -304,9 +304,9 @@ def initialise_workflow(request):
                 )
 
             LOGGER.info(
-                'User {u} uploading file "{f}"',
-                u=request.user.username,
-                f=str(file),
+                'User %s uploading file "%s"',
+                request.user.username,
+                str(file),
             )
 
             # Attempt to upload dataset via the API
@@ -314,9 +314,9 @@ def initialise_workflow(request):
 
             if not api_response.is_valid:
 
-                LOGGER.warning(
-                    'File "{f}" failed to upload!',
-                    f=str(file),
+                LOGGER.error(
+                    'File "%s" failed to upload!',
+                    str(file),
                 )
 
                 messages.warning(request, 'File failed to upload!')
@@ -334,9 +334,9 @@ def initialise_workflow(request):
             )
             newfile.save()
             LOGGER.info(
-                'Metadata for file {f} saved, backend_uuid={u}',
-                f=str(file),
-                u=backend_file_id,
+                'Metadata for file %s saved, backend_uuid=%s',
+                str(file),
+                backend_file_id,
             )
 
             redirect_pk = newfile.pk
@@ -387,17 +387,17 @@ def workflow(request, file_id):
         update_response = utility.update_applications()
         if not update_response:
             messages.warning(request, 'Warning: could not update applications list!')
-            LOGGER.info('Could not sync local frontend applications list!')
+            LOGGER.warning('Could not sync local frontend applications list!')
         else:
             new_apps = ', '.join(str(pk) for pk in update_response['new_apps'])
             deprecated_apps = ', '.join(str(pk) for pk in update_response['deactivated_apps'])
             LOGGER.info(
-                'New apps synced to frontend: [{n}]',
-                n=new_apps,
+                'New apps synced to frontend: [%s]',
+                new_apps,
             )
             LOGGER.info(
-                'Deprecated apps: [{d}]',
-                d=deprecated_apps,
+                'Deprecated apps: [%s]',
+                deprecated_apps,
             )
 
     # Fetch the app selection form for session selection
@@ -415,9 +415,9 @@ def workflow(request, file_id):
             if 'startup' in request.POST:
 
                 LOGGER.info(
-                    'User {u} starting interactive "{a}" session',
-                    u=request.user.username,
-                    a=current_application.name,
+                    'User %s starting interactive "%s" session',
+                    request.user.username,
+                    current_application.name,
                 )
                 api_response = api.start_session(
                     app_id=current_application.pk,
@@ -470,13 +470,13 @@ def workflow(request, file_id):
             elif 'end_session' in request.POST:
 
                 LOGGER.info(
-                    'User {u} closing active session',
-                    u=request.user.username,
+                    'User %s closing active session',
+                    request.user.username,
                 )
 
                 # If cookie is lost, abort
                 if 'app_session_id' not in request.session:
-                    LOGGER.warning('No session cookie found!')
+                    LOGGER.error('No session cookie found!')
                     messages.warning(request, 'Session timed out! Please try again.')
                     return redirect('initialise_workflow')
 
@@ -609,15 +609,15 @@ def login_view(request):
         if user is not None:
             login(request, user)
             LOGGER.info(
-                'User {u} logged in',
-                u=username,
+                'User %s logged in',
+                username,
             )
             messages.success(request, 'Login Successful: Welcome, '+str(request.user))
             return redirect('landing')
 
         LOGGER.info(
-            'User {u} failed to log in',
-            u=username,
+            'User %s failed to log in',
+            username,
         )
         messages.warning(request, 'Login failed, try again!')
 
@@ -640,8 +640,8 @@ def logout_view(request):
     username = request.user.username
     logout(request)
     LOGGER.info(
-        'User {u} logged out',
-        u=username,
+        'User %s logged out',
+        username,
     )
     messages.success(request, 'Logout Successful!')
 
@@ -697,9 +697,9 @@ def create_user(request):
                 new_user.user_permissions.add(Permission.objects.get(codename='global_access'))
 
             LOGGER.info(
-                'User {u} created new user "{n}"',
-                u=request.user.username,
-                n=new_user.username,
+                'User %s created new user "%s"',
+                request.user.username,
+                new_user.username,
             )
             messages.success(request, 'Registration Successful!')
             form = forms.RegisterUserForm(user=request.user)
@@ -861,9 +861,9 @@ def create_group(request):
             name = form.data['name']
             form.save()
             LOGGER.info(
-                'User {u} created new group "{g}"',
-                u=request.user.username,
-                g=name,
+                'User %s created new group "%s"',
+                request.user.username,
+                name,
             )
             messages.success(request, (f'New Group "{name}" added!'))
     else:
@@ -1074,9 +1074,9 @@ def delete_dataset(request, dataset_id):
     if shared_groups or request.user.has_perm('qcrbox.global_access'):
 
         LOGGER.info(
-            'User {u} deleting dataset {d}',
-            u=request.user.username,
-            d=deletion_data_meta.display_filename,
+            'User %s deleting dataset %s',
+            request.user.username,
+            deletion_data_meta.display_filename,
         )
         api_response = api.delete_dataset(deletion_data_meta.backend_uuid)
 
@@ -1084,7 +1084,7 @@ def delete_dataset(request, dataset_id):
         raise PermissionDenied
 
     if not api_response.is_valid:
-        LOGGER.warning('Could not delete dataset!')
+        LOGGER.error('Could not delete dataset!')
         messages.warning(request, 'API delete request unsuccessful: file not deleted!')
         return redirect('view_datasets')
 
@@ -1093,9 +1093,9 @@ def delete_dataset(request, dataset_id):
 
     except models.FileMetaData.DoesNotExist:
         LOGGER.info(
-            'User {u} attempted to deactivate non-existent File Metadata (pk={i})',
-            u=request.user.username,
-            i=dataset_id,
+            'User %s attempted to deactivate non-existent File Metadata (pk=%d)',
+            request.user.username,
+            dataset_id,
         )
         messages.success(request, f'Dataset was deleted succesfully.')
         return redirect('view_datasets')
@@ -1105,9 +1105,9 @@ def delete_dataset(request, dataset_id):
     instance.save()
 
     LOGGER.info(
-        'User {u} flagged File Metadata "{i}" as inactive.',
-        u=request.user.username,
-        i=str(instance),
+        'User %s flagged File Metadata "%s" as inactive.',
+        request.user.username,
+        instance.display_filename,
     )
     messages.success(request, f'Dataset "{instance}" was deleted succesfully!')
     return redirect('view_datasets')
@@ -1145,16 +1145,16 @@ def download(request, file_id):
     # Stop user accessing data from a group they have no access to
     if download_file_meta.group not in allowed_groups:
         LOGGER.info(
-            'User {u} denied permission to download dataset "{f}" (unaffiliated)',
-            u=request.user.username,
-            f=download_file_meta.display_filename,
+            'User %s denied permission to download dataset "%s" (unaffiliated)',
+            request.user.username,
+            download_file_meta.display_filename,
         )
         raise PermissionDenied
 
     LOGGER.info(
-        'User {u} downloading dataset "{d}"',
-        u=request.user.username,
-        f=download_file_meta.display_filename,
+        'User %s downloading dataset "%s"',
+        request.user.username,
+        download_file_meta.display_filename,
     )
     api_response = api.download_dataset(download_file_meta.backend_uuid)
 
