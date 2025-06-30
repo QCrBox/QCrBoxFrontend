@@ -7,7 +7,6 @@ the browser when their related url is accessed.
 
 import logging
 import os
-import re
 
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -19,10 +18,8 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.views.static import serve
 
-from . import api
-from . import forms
-from . import models
-from . import utility
+from . import api, forms, models
+from . import workflow as wf
 
 LOGGER = logging.getLogger(__name__)
 
@@ -322,21 +319,14 @@ def initialise_workflow(request):
                 messages.warning(request, 'File failed to upload!')
                 return redirect('initialise_workflow')
 
-            backend_file_id = api_response.body.payload.datasets[0].qcrbox_dataset_id
+            # Fetch the group to assign to the dataset
+            group = Group.objects.get(pk=request.POST['group'])
 
-            # Save file's metadata in local db
-            newfile = models.FileMetaData(
-                filename=str(file),
-                display_filename=str(file),
-                user=request.user,
-                group=Group.objects.get(pk=request.POST['group']),
-                backend_uuid=backend_file_id
-            )
-            newfile.save()
-            LOGGER.info(
-                'Metadata for file %s saved, backend_uuid=%s',
-                str(file),
-                backend_file_id,
+            # Save the file's FileMetaData
+            newfile = wf.save_dataset_metadata(
+                request,
+                api_response,
+                group,
             )
 
             redirect_pk = newfile.pk
@@ -384,21 +374,7 @@ def workflow(request, file_id):
 
     # Get the most recent app list from the API at the start of each workflow, sync the local list
     if not (request.POST and 'application' in request.POST):
-        update_response = utility.update_applications()
-        if not update_response:
-            messages.warning(request, 'Warning: could not update applications list!')
-            LOGGER.warning('Could not sync local frontend applications list!')
-        else:
-            new_apps = ', '.join(str(pk) for pk in update_response['new_apps'])
-            deprecated_apps = ', '.join(str(pk) for pk in update_response['deactivated_apps'])
-            LOGGER.info(
-                'New apps synced to frontend: [%s]',
-                new_apps,
-            )
-            LOGGER.info(
-                'Deprecated apps: [%s]',
-                deprecated_apps,
-            )
+        wf.update_apps(request)
 
     # Fetch the app selection form for session selection
     context['select_application_form'] = forms.SelectApplicationForm()
@@ -414,154 +390,28 @@ def workflow(request, file_id):
             # Check if user submitted using the 'start session' form
             if 'startup' in request.POST:
 
-                LOGGER.info(
-                    'User %s starting interactive "%s" session',
-                    request.user.username,
-                    current_application.name,
-                )
-                api_response = api.start_session(
-                    app_id=current_application.pk,
-                    dataset_id=load_file.backend_uuid,
+                open_session = wf.start_session(
+                    request,
+                    load_file,
+                    current_application,
                 )
 
-                # Prepare regex to parse error string if needed
-                check_pattern = re.compile(
-                    'Failed to create interactive session: Chosen client.*is not available'
-                )
-
-                if api_response.is_valid:
-                    session_id = api_response.body.payload.interactive_session_id
+                if open_session:
                     context['session_in_progress'] = True
-                    request.session['app_session_id'] = session_id
-
-                # else, if the client is busy and there's a session cookie, try to close it
-                elif (check_pattern.match(api_response.body.error.message) and
-                      'app_session_id' in request.session):
-                    LOGGER.warning('Client is busy; attempting to close previous session')
-
-                    app_session_id = request.session['app_session_id']
-                    closure_api_response = api.close_session(app_session_id)
-
-                    if not closure_api_response.is_valid:
-                        LOGGER.error('Could not close blocking session!')
-
-                    # Try again to open the session
-                    else:
-                        api_response = api.start_session(
-                            app_id=current_application.pk,
-                            dataset_id=load_file.backend_uuid
-                        )
-
-                        if api_response.is_valid:
-                            session_id = api_response.body.payload.interactive_session_id
-                            context['session_in_progress'] = True
-                            request.session['app_session_id'] = session_id
-
-                # If no session was opened even after all that, handle the error
-                if 'session_in_progress' not in context:
-                    LOGGER.error('Session failed to start!')
-                    messages.warning(
-                        request,
-                        f'Could not start session!  Check if there is a session of'
-                        '{current_application.name} already running and, if so, close it.'
-                    )
 
             # Check if user submitted using the 'end session' form
             elif 'end_session' in request.POST:
 
-                LOGGER.info(
-                    'User %s closing active session',
-                    request.user.username,
+                outfile = wf.close_session(
+                    request,
+                    load_file,
+                    current_application,
                 )
 
-                # If cookie is lost, abort
-                if 'app_session_id' not in request.session:
-                    LOGGER.error('No session cookie found!')
-                    messages.warning(request, 'Session timed out! Please try again.')
-                    return redirect('initialise_workflow')
-
-                app_session_id = request.session['app_session_id']
-
-                # Close the session and fetch the response from the API
-                api_response = api.close_session(app_session_id)
-
-                # If session can't be found, abort
-                if not api_response.is_valid:
-                    LOGGER.error('Could not close session!')
-                    messages.warning(
-                        request,
-                        'Session information could not be found! Please start again.'
-                    )
-                    return redirect('initialise_workflow')
-
-                session_closure = api_response.body.payload.interactive_sessions[0]
-
-                # If session failed to close for any other reason, abort
-                if session_closure.status != 'successful':
-                    LOGGER.error('Could not close session!')
-                    messages.warning(
-                        request,
-                        f'Session could not be closed! Check if there is a session of'
-                        '{current_application.name} still running and, if so, close it.'
-                    )
+                if not outfile:
                     context['session_in_progress'] = True
-
-                # If it was possible to get an outfile from the session via the API
-                elif (hasattr(session_closure, 'output_dataset_id') and
-                      session_closure.output_dataset_id):
-
-                    api_response = api.get_dataset(session_closure.output_dataset_id)
-
-                    if api_response.is_valid:
-
-                        outset_meta = api_response.body.payload.datasets[0]
-                        outfile_meta_dict = outset_meta.data_files.additional_properties
-                        outfile_meta = next(iter(outfile_meta_dict.values()))
-
-                        # Append disambiguation number to the end of a display filename if needed
-                        curr_files = models.FileMetaData.objects.filter(active=True)
-                        curr_filenames = curr_files.values_list('display_filename', flat=True)
-
-                        if outfile_meta.filename in curr_filenames:
-                            i = 2
-                            [new_filename_lead, new_filename_ext] = outfile_meta.filename.split('.')
-                            while f'{new_filename_lead}({i}).{new_filename_ext}' in curr_filenames:
-                                i += 1
-                            display_filename = f'{new_filename_lead}({i}).{new_filename_ext}'
-
-                        else:
-
-                            display_filename = outfile_meta.filename
-
-                        # Create record for new file's metadata
-                        newfile = models.FileMetaData(
-                            filename=outfile_meta.filename,
-                            display_filename=display_filename,
-                            user=request.user,
-                            group=load_file.group,
-                            backend_uuid=outset_meta.qcrbox_dataset_id,
-                            filetype=outfile_meta.filetype,
-                        )
-                        newfile.save()
-
-                        # Create record for workflow step
-                        newprocessstep = models.ProcessStep(
-                            application=current_application,
-                            infile=load_file,
-                            outfile=newfile,
-                        )
-                        newprocessstep.save()
-
-                        # Redirect to workflow for new file
-                        return redirect('workflow', file_id=newfile.pk)
-
-                else:
-
-                    # If session did not produce output file, issue a warning
-                    LOGGER.info('No outfile associated with the session was found.')
-                    messages.warning(request, 'No output was produced in the interactive session.')
-
-                    # Then proceed normally
+                elif outfile != 'NO_OUTPUT':
+                    return redirect('workflow', file_id=outfile.pk)
 
     # Populate the workflow diagram with all steps leading up to the current file
     prior_steps = []
