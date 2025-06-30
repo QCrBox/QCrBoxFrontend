@@ -18,7 +18,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Get environment variables
-get_env = os.environ.get
+GET_ENV = os.environ.get
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -146,9 +146,9 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Default superuser credentials
 
-ADMIN_EMAIL= get_env('DJANGO_SUPERUSER_USERNAME')
-ADMIN_ACCOUNT = get_env('DJANGO_SUPERUSER_USERNAME')
-ADMIN_PASSWORD = get_env('DJANGO_SUPERUSER_PASSWORD')
+ADMIN_EMAIL = GET_ENV('DJANGO_SUPERUSER_USERNAME')
+ADMIN_ACCOUNT = GET_ENV('DJANGO_SUPERUSER_USERNAME')
+ADMIN_PASSWORD = GET_ENV('DJANGO_SUPERUSER_PASSWORD')
 
 # Plotly-related settings
 X_FRAME_OPTIONS = 'SAMEORIGIN'

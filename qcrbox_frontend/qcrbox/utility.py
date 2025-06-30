@@ -1,16 +1,12 @@
-"""QCrBox Utility
+'''QCrBox Utility
 
 Miscellaneous utility functions as required by various parts of the QCrBox
 Django Frontend.
 
-"""
-
-import logging
+'''
 
 from . import api
 from . import models
-
-logger = logging.getLogger(__name__)
 
 def update_applications():
     '''Obtain a list of installed QCrBox Applications from the API, and update
@@ -57,10 +53,6 @@ def update_applications():
 
         # If frontend already knows about the app, do nothing
         if (app.name, app.version) in local_appset:
-            continue
-
-        if not app.gui_port:
-            logger.warning(f'No GUI port found for app {app.name} version {app.version}: skipping!')
             continue
 
         new_app = models.Application(

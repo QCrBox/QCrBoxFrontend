@@ -1,20 +1,22 @@
+'''Template tag to allow getting an attribute of an object dynamically
+from a string name within a Django HTML template'''
+
 from django import template
-from django.conf import settings
 
-register = template.Library()
+REGISTER = template.Library()
 
-@register.filter(name='getattribute')
+@REGISTER.filter(name='getattribute')
 def getattribute(value, arg):
-    """Gets an attribute of an object dynamically from a string name"""
+    '''Template tag configuration'''
 
     # Allow for seeking within child objects using standard django parsing
-    chain=arg.split('__')
+    chain = arg.split('__')
 
-    for arg in chain:
-        if hasattr(value, str(arg)):
-            value=getattr(value, arg)
-        elif hasattr(value, 'has_key') and value.has_key(arg):
-            value=value[arg]
+    for arg_att in chain:
+        if hasattr(value, str(arg_att)):
+            value = getattr(value, arg_att)
+        elif hasattr(value, 'has_key') and value.has_key(arg_att):
+            value = value[arg_att]
         else:
             return ''
 

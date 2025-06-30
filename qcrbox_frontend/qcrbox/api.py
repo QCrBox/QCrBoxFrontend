@@ -1,4 +1,4 @@
-"""QCrBox API Interfact
+'''QCrBox API Interface
 
 A collection of methods which deal with making calls to the QCrBox API client
 and parsing the responses of these calls.
@@ -7,7 +7,7 @@ All methods in this module return a Response object containing the response to
 the relevant API call and a Boolean flag denoting whether that call was
 successful.
 
-"""
+'''
 
 import logging
 
@@ -37,10 +37,10 @@ from qcrboxapiclient.types import File
 from django.conf import settings
 from . import models
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 # Set the string length above which non-error API responses will be truncated in the logs
-max_length_api_log = settings.MAX_LENGTH_API_LOG
+MAX_LENGTH_API_LOG = settings.MAX_LENGTH_API_LOG
 
 # Utility class for returning API responses / errors
 
@@ -70,15 +70,15 @@ class Response():
 
         if isinstance(self.body, QCrBoxErrorResponse):
             # If the upload fails, give response an error flag, log it
-            logger.error(f'Error response from API: {self.body}')
+            LOGGER.error(f'Error response from API: {self.body}')
             self.is_valid = False
 
         else:
             # Truncate the API response to sent to the logger if its a success
             logtext = str(self.body)
-            if len(logtext) > max_length_api_log:
-                logtext = logtext[:max_length_api_log-2]+' ... '+logtext[-2:]
-            logger.info(f'Response from API: {logtext}')
+            if len(logtext) > MAX_LENGTH_API_LOG:
+                logtext = logtext[:MAX_LENGTH_API_LOG-2]+' ... '+logtext[-2:]
+            LOGGER.info(f'Response from API: {logtext}')
             self.is_valid = True
 
 
@@ -98,7 +98,6 @@ def get_client():
 
 # ----- Basic API I/O Functionality -----
 
-# 
 def upload_dataset(im_file):
     '''Take a django InMemoryFile, prepare it, then send to the API to upload
     to the backend
@@ -106,7 +105,6 @@ def upload_dataset(im_file):
     Parameters:
     - im_file(InMemoryFile): a byte-like file object stored in memory after
             being uploaded by a user via the file upload form.
-    
 
     '''
 
@@ -117,7 +115,7 @@ def upload_dataset(im_file):
     payload_file = File(file_bytes, file_name)
     upload_payload = CreateDatasetBody(payload_file)
 
-    logger.info(f'API call: create_dataset')
+    LOGGER.info(f'API call: create_dataset')
     raw_response = create_dataset.sync(client=client, body=upload_payload)
 
     return Response(raw_response)
@@ -136,7 +134,7 @@ def download_dataset(dataset_id):
 
     client = get_client()
 
-    logger.info(f'API call: download_dataset_by_id, id={dataset_id}')
+    LOGGER.info(f'API call: download_dataset_by_id, id={dataset_id}')
     raw_response = download_dataset_by_id.sync(client=client, id=dataset_id)
 
     return Response(raw_response)
@@ -154,7 +152,7 @@ def delete_dataset(dataset_id):
 
     client = get_client()
 
-    logger.info(f'API call: delete_dataset_by_id, id={dataset_id}')
+    LOGGER.info(f'API call: delete_dataset_by_id, id={dataset_id}')
     raw_response = delete_dataset_by_id.sync(id=dataset_id, client=client)
 
     return Response(raw_response)
@@ -172,7 +170,7 @@ def get_dataset(dataset_id):
 
     client = get_client()
 
-    logger.info(f'API call: get_dataset_by_id, id={dataset_id}')
+    LOGGER.info(f'API call: get_dataset_by_id, id={dataset_id}')
     raw_response = get_dataset_by_id.sync(client=client, id=dataset_id)
 
     return Response(raw_response)
@@ -210,11 +208,11 @@ def start_session(app_id, dataset_id):
     datafile_id = get_response.body.payload.datasets[0].data_files[dataset_metadata.filename].qcrbox_file_id
 
     # Set up arguments
-    arguments = CreateInteractiveSessionArguments.from_dict({"input_file": {"data_file_id": datafile_id}})
+    arguments = CreateInteractiveSessionArguments.from_dict({'input_file': {'data_file_id': datafile_id}})
     create_session = CreateInteractiveSession(app.slug, app.version, arguments)
 
     # Initialise session
-    logger.info(f'API call: create_interactive_session_with_arguments')
+    LOGGER.info(f'API call: create_interactive_session_with_arguments')
     raw_response = create_interactive_session_with_arguments.sync(client=client, body=create_session)
 
     return Response(raw_response)
@@ -229,7 +227,7 @@ def get_session(session_id):
 
     client = get_client()
 
-    logger.info(f'API call: get_interactive_session_by_id, id={session_id}')
+    LOGGER.info(f'API call: get_interactive_session_by_id, id={session_id}')
     raw_response = get_interactive_session_by_id.sync(client=client, id=session_id)
 
     return Response(raw_response)
@@ -244,7 +242,7 @@ def close_session(session_id):
 
     client = get_client()
 
-    logger.info(f'API call: close_interactive_session, id={session_id}')
+    LOGGER.info(f'API call: close_interactive_session, id={session_id}')
     raw_response = close_interactive_session.sync(client=client, id=session_id)
 
     return Response(raw_response)
@@ -263,7 +261,7 @@ def get_applications():
 
     client = get_client()
 
-    logger.info(f'API call: list_applications')
+    LOGGER.info(f'API call: list_applications')
     raw_response = list_applications.sync(client=client)
 
     return Response(raw_response)

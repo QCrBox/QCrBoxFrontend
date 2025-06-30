@@ -1,9 +1,9 @@
-"""QCrBox Views
+'''QCrBox Views
 
 Module containing the view methods which generate and serve http responses to
 the browser when their related url is accessed.
 
-"""
+'''
 
 import logging
 import os
@@ -24,7 +24,7 @@ from . import forms
 from . import models
 from . import utility
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 # ==============================================
 # ========== Utiliy functions/classes ==========
@@ -107,7 +107,7 @@ def update_generic(request, Model, ModelForm, obj_type, link_suffix, obj_id, use
     # Allow for an access-point check if a user is affiliated with the company to with the data pertains,
     # to prevent users editing things they shouldnt
     elif not user_is_affiliated:
-        logger.info(f'User {request.user.username} denied permission to modify {obj_type} (pk={obj_id}) (unaffiliated)')
+        LOGGER.info(f'User {request.user.username} denied permission to modify {obj_type} (pk={obj_id}) (unaffiliated)')
         raise PermissionDenied()
 
     instance = Model.objects.get(pk=obj_id)
@@ -116,7 +116,7 @@ def update_generic(request, Model, ModelForm, obj_type, link_suffix, obj_id, use
     if form.is_valid():
         form.save()
 
-        logger.info(f'User {request.user.username} updated {obj_type} "{instance}"')
+        LOGGER.info(f'User {request.user.username} updated {obj_type} "{instance}"')
         messages.success(request, f'Changes to "{instance}" saved!')
         return redirect('view_'+link_suffix)
 
@@ -167,21 +167,21 @@ def delete_generic(request, Model, obj_type, link_suffix, obj_id, user_is_affili
     # Allow for an access-point check if a user is affiliated with the company to with the data pertains,
     # to prevent users editing things they shouldnt
     elif not user_is_affiliated:
-        logger.info(f'User {request.user.username} denied permission to delete {obj_type} (pk={obj_id}) (unaffiliated)')
+        LOGGER.info(f'User {request.user.username} denied permission to delete {obj_type} (pk={obj_id}) (unaffiliated)')
         raise PermissionDenied()
 
     try:
         instance = Model.objects.get(pk=obj_id)
 
     except Model.DoesNotExist:
-        logger.info(f'User {request.user.username} attempted to delete non-existent {obj_type} (pk={obj_id})')
+        LOGGER.info(f'User {request.user.username} attempted to delete non-existent {obj_type} (pk={obj_id})')
         messages.success(request, f'{obj_type} was deleted succesfully.')
         return redirect('view_'+link_suffix)
 
     instance_string = str(instance)
     instance.delete()
 
-    logger.info(f'User {request.user.username} deleted {obj_type} "{instance_string}"')
+    LOGGER.info(f'User {request.user.username} deleted {obj_type} "{instance_string}"')
     messages.success(request, f'{obj_type} "{instance_string}" was deleted succesfully!')
     return redirect('view_'+link_suffix)
 
@@ -225,7 +225,7 @@ def initialise_workflow(request):
     '''
 
     # Check if user submitted a form
-    if request.method == "POST":
+    if request.method == 'POST':
 
         # As the page contains multiple forms, check the contents of POST
         # to identify which was submitted
@@ -269,13 +269,13 @@ def initialise_workflow(request):
                     }
                 )
 
-            logger.info(f'User {request.user.username} uploading file "{str(file)}"')
+            LOGGER.info(f'User {request.user.username} uploading file "{str(file)}"')
 
             # Attempt to upload dataset via the API
             api_response = api.upload_dataset(file)
 
             if not api_response.is_valid:
-                logger.error(f'File "{str(file)}" failed to upload!')
+                LOGGER.error(f'File "{str(file)}" failed to upload!')
                 messages.warning(request, 'File failed to upload!')
                 return redirect('initialise_workflow')
 
@@ -290,7 +290,7 @@ def initialise_workflow(request):
                 backend_uuid=backend_file_id
             )
             newfile.save()
-            logger.info(f'Metadata for file {str(file)} saved, backend_uuid={backend_file_id}')
+            LOGGER.info(f'Metadata for file {str(file)} saved, backend_uuid={backend_file_id}')
 
             redirect_pk = newfile.pk
 
@@ -340,18 +340,18 @@ def workflow(request, file_id):
         update_response = utility.update_applications()
         if not update_response:
             messages.warning(request, 'Warning: could not update applications list!')
-            logger.log('Could not sync local frontend applications list!')
+            LOGGER.info(f'Could not sync local frontend applications list!')
         else:
             new_apps = ', '.join(str(pk) for pk in update_response['new_apps'])
             deprecated_apps = ', '.join(str(pk) for pk in update_response['deactivated_apps'])
-            logger.info(f'New apps synced to frontend: [{new_apps}]')
-            logger.info(f'Deprecated apps: [{deprecated_apps}]')
+            LOGGER.info(f'New apps synced to frontend: [{new_apps}]')
+            LOGGER.info(f'Deprecated apps: [{deprecated_apps}]')
 
     # Fetch the app selection form for session selection
     context['select_application_form'] = forms.SelectApplicationForm()
 
     # Check if user submitted a form
-    if request.method == "POST":
+    if request.method == 'POST':
 
         # Check user actually picked an application
         if 'application' in request.POST:
@@ -361,7 +361,7 @@ def workflow(request, file_id):
             # Check if user submitted using the 'start session' form
             if 'startup' in request.POST:
 
-                logger.info(f'User {request.user.username} starting interactive "{current_application.name}" session')
+                LOGGER.info(f'User {request.user.username} starting interactive "{current_application.name}" session')
                 api_response = api.start_session(app_id=current_application.pk, dataset_id=load_file.backend_uuid)
 
                 # Prepare regex to parse error string if needed
@@ -373,13 +373,13 @@ def workflow(request, file_id):
 
                 # else, if the client is busy and there's a session cookie, try to close it
                 elif check_pattern.match(api_response.body.error.message) and 'app_session_id' in request.session:
-                    logger.warning('Client is busy; attempting to close previous session')
+                    LOGGER.warning('Client is busy; attempting to close previous session')
 
                     app_session_id = request.session['app_session_id']
                     closure_api_response = api.close_session(app_session_id)
 
                     if not closure_api_response.is_valid:
-                        logger.error(f'Could not close blocking session!')
+                        LOGGER.error(f'Could not close blocking session!')
 
                     # Try again to open the session
                     else:
@@ -391,17 +391,17 @@ def workflow(request, file_id):
 
                 # If no session was opened even after all that, handle the error
                 if not 'session_in_progress' in context:
-                    logger.error(f'Session failed to start!')
+                    LOGGER.error(f'Session failed to start!')
                     messages.warning(request, f'Could not start session!  Check if there is a session of {current_application.name} already running and, if so, close it.')
 
             # Check if user submitted using the 'end session' form
             elif 'end_session' in request.POST:
 
-                logger.info(f'User {request.user.username} closing active session')
+                LOGGER.info(f'User {request.user.username} closing active session')
 
                 # If cookie is lost, abort
                 if 'app_session_id' not in request.session:
-                    logger.warning('No session cookie found!')
+                    LOGGER.warning('No session cookie found!')
                     messages.warning(request, 'Session timed out! Please try again.')
                     return redirect('initialise_workflow')
 
@@ -412,7 +412,7 @@ def workflow(request, file_id):
 
                 # If session can't be found, abort
                 if not api_response.is_valid:
-                    logger.error('Could not close session!')
+                    LOGGER.error('Could not close session!')
                     messages.warning(request, 'Session information could not be found! Please start again.')
                     return redirect('initialise_workflow')
 
@@ -420,7 +420,7 @@ def workflow(request, file_id):
 
                 # If session failed to close for any other reason, abort
                 if session_closure.status != 'successful':
-                    logger.error('Could not close session!')
+                    LOGGER.error('Could not close session!')
                     messages.warning(request, f'Session could not be closed! Check if there is a session of {current_application.name} still running and, if so, close it.')
                     context['session_in_progress'] = True
 
@@ -474,7 +474,7 @@ def workflow(request, file_id):
                 else:
 
                     # If session did not produce output file, issue a warning
-                    logger.info('No outfile associated with the session was found.')
+                    LOGGER.info('No outfile associated with the session was found.')
                     messages.warning(request, 'No output was produced in the interactive session.')
 
                     # Then proceed normally
@@ -518,17 +518,17 @@ def login_view(request):
 
     '''
 
-    if request.method == "POST":
+    if request.method == 'POST':
         username = request.POST['username']
         password = request.POST['password']
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            logger.info(f'User {request.user.username} logged in')
+            LOGGER.info(f'User {request.user.username} logged in')
             messages.success(request, 'Login Successful: Welcome, '+str(request.user))
             return redirect('landing')
 
-        logger.info(f'User {request.user.username} failed to log in')
+        LOGGER.info(f'User {request.user.username} failed to log in')
         messages.warning(request, 'Login failed, try again!')
 
     return render(request, 'login.html', {})
@@ -549,7 +549,7 @@ def logout_view(request):
 
     username = request.user.username
     logout(request)
-    logger.info(f'User {username} logged out')
+    LOGGER.info(f'User {username} logged out')
     messages.success(request, 'Logout Successful!')
 
     return redirect('login')
@@ -603,7 +603,7 @@ def create_user(request):
             if form.cleaned_data['global_access']:
                 new_user.user_permissions.add(Permission.objects.get(codename='global_access'))
 
-            logger.info(f'User {request.user.username} created new user "{new_user.username}"')
+            LOGGER.info(f'User {request.user.username} created new user "{new_user.username}"')
             messages.success(request, 'Registration Successful!')
             form = forms.RegisterUserForm(user=request.user)
     else:
@@ -763,7 +763,7 @@ def create_group(request):
         if form.is_valid():
             name = form.data['name']
             form.save()
-            logger.info(f'User {request.user.username} created new group "{name}"')
+            LOGGER.info(f'User {request.user.username} created new group "{name}"')
             messages.success(request, (f'New Group "{name}" added!'))
     else:
         form = forms.GroupForm()
@@ -972,14 +972,14 @@ def delete_dataset(request, dataset_id):
     # Check credentials before invoking the generic delete, as API will also need calling
     if shared_groups or request.user.has_perm('qcrbox.global_access'):
 
-        logger.info(f'User {request.user.username} deleting dataset {deletion_data_meta.display_filename}')
+        LOGGER.info(f'User {request.user.username} deleting dataset {deletion_data_meta.display_filename}')
         api_response = api.delete_dataset(deletion_data_meta.backend_uuid)
 
     else:
         raise PermissionDenied
 
     if not api_response.is_valid:
-        logger.error('Could not delete dataset!')
+        LOGGER.error('Could not delete dataset!')
         messages.warning(request, 'API delete request unsuccessful: file not deleted!')
         return redirect('view_datasets')
 
@@ -987,7 +987,7 @@ def delete_dataset(request, dataset_id):
         instance = models.FileMetaData.objects.get(pk=dataset_id)
 
     except models.FileMetaData.DoesNotExist:
-        logger.info(f'User {request.user.username} attempted to deactivate non-existent File Metadata (pk={dataset_id})')
+        LOGGER.info(f'User {request.user.username} attempted to deactivate non-existent File Metadata (pk={dataset_id})')
         messages.success(request, f'Dataset was deleted succesfully.')
         return redirect('view_datasets')
 
@@ -995,7 +995,7 @@ def delete_dataset(request, dataset_id):
     instance.active = False
     instance.save()
 
-    logger.info(f'User {request.user.username} flagged File Metadata "{instance}" as inactive.')
+    LOGGER.info(f'User {request.user.username} flagged File Metadata "{instance}" as inactive.')
     messages.success(request, f'Dataset "{instance}" was deleted succesfully!')
     return redirect('view_datasets')
 
@@ -1031,15 +1031,15 @@ def download(request, file_id):
 
     # Stop user accessing data from a group they have no access to
     if download_file_meta.group not in allowed_groups:
-        logger.info(f'User {request.user.username} denied permission to download dataset "{download_file_meta.display_filename}" (unaffiliated)')
+        LOGGER.info(f'User {request.user.username} denied permission to download dataset "{download_file_meta.display_filename}" (unaffiliated)')
         raise PermissionDenied
 
-    logger.info(f'User {request.user.username} downloading dataset "{download_file_meta.display_filename}"')
+    LOGGER.info(f'User {request.user.username} downloading dataset "{download_file_meta.display_filename}"')
     api_response = api.download_dataset(download_file_meta.backend_uuid)
 
     if not api_response.is_valid:
         messages.warning(request, 'Could not fetch the requested file!')
-        logger.error(f'Could not find requested dataset!')
+        LOGGER.error(f'Could not find requested dataset!')
         return redirect('initialise_workflow')
 
     data = api_response.body

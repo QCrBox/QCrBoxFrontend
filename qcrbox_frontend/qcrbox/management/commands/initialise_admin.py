@@ -1,9 +1,19 @@
+'''A command to automatically create a superuser account based on the username
+and password set in settings.py.  Will only create a superuser if no users
+currently exist in the database.
+
+Invoke with:
+`python manage.py initialise_admin`
+
+'''
+
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 
 from core import settings
 
 class Command(BaseCommand):
+    '''Config for the Command class'''
 
     def handle(self, *args, **options):
 
@@ -22,7 +32,11 @@ class Command(BaseCommand):
             # Create the admin
             else:
                 print('Creating admin account for "'+username+'"')
-                admin = User.objects.create_superuser(email=email, username=username, password=password)
+                admin = User.objects.create_superuser(
+                    email=email,
+                    username=username,
+                    password=password,
+                )
                 admin.is_active = True
                 admin.is_admin = True
                 admin.is_staff = True

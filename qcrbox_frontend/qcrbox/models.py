@@ -1,9 +1,9 @@
-"""QCrBox Models
+'''QCrBox Models
 
 The collection of Model classes which determine the structure of the Frontend
 database and provide the endpoints from which to run queries.
 
-"""
+'''
 
 from django.db import models
 from django.contrib.auth.models import User, Group

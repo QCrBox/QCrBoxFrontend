@@ -1,9 +1,9 @@
-"""QCrBox Admin
+'''QCrBox Admin
 
 Module containing classes which register the various models in models.py
 with the django admin view.
 
-"""
+'''
 
 from django.contrib import admin
 from . import models

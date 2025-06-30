@@ -1,9 +1,9 @@
-"""QCrBox Forms
+'''QCrBox Forms
 
 A collection of django-created form classes to be passed to templates as
 context arguments to generate interactive HTML forms.
 
-"""
+'''
 
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
@@ -51,8 +51,8 @@ class UploadFileForm(forms.Form):
         else:
             qset = user.groups.all()
 
-        CHOICES = [(g.pk, str(g)) for g in qset.all()]
-        self.fields['group'].choices = CHOICES
+        choices = [(g.pk, str(g)) for g in qset.all()]
+        self.fields['group'].choices = choices
 
 class LoadFileForm(forms.Form):
     '''A Django form to facilitate selecting a previously uploaded dataset
@@ -90,9 +90,9 @@ class LoadFileForm(forms.Form):
             permitted_groups = user.groups.all()
 
         qset = models.FileMetaData.objects.filter(active=True).filter(group__in=permitted_groups)
-        CHOICES = [(f.pk, f.display_filename) for f in qset.all()]
+        choices = [(f.pk, f.display_filename) for f in qset.all()]
 
-        self.fields['file'].choices = CHOICES
+        self.fields['file'].choices = choices
 
 
 # Workflow Forms
@@ -118,9 +118,9 @@ class SelectApplicationForm(forms.Form):
         super(SelectApplicationForm, self).__init__(*args, **kwargs)
 
         qset = models.Application.objects.all()
-        CHOICES = [(a.pk, a.name) for a in qset.filter(active=True)]
+        choices = [(a.pk, a.name) for a in qset.filter(active=True)]
 
-        self.fields['application'].choices = CHOICES
+        self.fields['application'].choices = choices
 
 
 # User management forms
