@@ -194,6 +194,8 @@ class UpdateUserForm(forms.ModelForm):
     '''A Django ModelForm for editing User instances.'''
 
     class Meta:
+        '''Additional ModelForm config'''
+
         model = User
         fields = ['first_name', 'last_name', 'email', 'groups']
 
@@ -204,5 +206,7 @@ class GroupForm(forms.ModelForm):
     '''A Django ModelForm for creating or editing Group instances.'''
 
     class Meta:
+        '''Additional ModelForm config'''
+
         model = Group
         fields = ['name']

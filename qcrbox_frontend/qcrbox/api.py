@@ -44,7 +44,7 @@ max_length_api_log = settings.MAX_LENGTH_API_LOG
 
 # Utility class for returning API responses / errors
 
-class Response(object):
+class Response():
     '''A class to package any API response with a boolean flag, allowing
     modules and methods upstream of this to be fully agnostic to the
     structure of specific API responses when determining if an API response

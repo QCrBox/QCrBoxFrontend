@@ -99,20 +99,62 @@ class Application(models.Model):
 
 # Metadata on a session; what file was given as input, which application was used, what file was output
 class ProcessStep(models.Model):
+    '''The ProcessStep model stores information pertaining to any process
+    which takes an input Dataset and generates an output Dataset, e.g. an
+    Interactive Session, and is used to preserve information on the the
+    creation history and ancestry of a Dataset.
 
-    application = models.ForeignKey(Application, null=True, on_delete=models.SET_NULL)
-    infile = models.ForeignKey(FileMetaData, null=True, on_delete=models.SET_NULL, related_name='processed_to')
-    outfile = models.ForeignKey(FileMetaData, null=True, on_delete=models.SET_NULL, related_name='processed_by')
+    Contains the following attributes:
+    - application(Application): the Application instance which corresponds to
+            the application used for this process.
+    - infile(FileMetaData): the metadata of the Dataset provided as input.
+    - outfile(FileMetaData): the metadata of the Dataset yielded as output.
+
+    '''
+
+    application = models.ForeignKey(
+        Application,
+        null=True,
+        on_delete=models.SET_NULL
+    )
+    infile = models.ForeignKey(
+        FileMetaData,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name='processed_to',
+    )
+    outfile = models.ForeignKey(
+        FileMetaData,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name='processed_by'
+    )
 
 # Create an empty model to assign global permissions to to be independent of models
 class DataPermissionSupport(models.Model):
+    '''A 'model' which exists for the sole purpose of allowing the creation
+    of custom user permissions.  Contains no attributes or instances and is
+    not linked to a database table.
+
+    '''
+
     class Meta:
-        
-        managed = False  # No database table creation or deletion operations will be performed for this model. 
-                
-        default_permissions = () 
-        permissions = ( 
-            ('edit_users', 'Can add, edit, delete other users, by default just within their groups.'),
-            ('edit_data', 'Can edit/delete the metadata for uploaded/created files.'),
-            ('global_access', 'Can CRUD everything outside of their group(s).'),
+        '''Additional model configuration'''
+
+        managed = False  # No database table creation or deletion operations will be performed for this model.
+
+        default_permissions = ()
+        permissions = (
+            (
+                'edit_users',
+                'Can add, edit, delete other users, by default just within their groups.'
+            ),
+            (
+                'edit_data',
+                'Can edit/delete the metadata for uploaded/created files.'
+            ),
+            (
+                'global_access',
+                'Can CRUD things outside of their group(s).'
+            ),
         )
