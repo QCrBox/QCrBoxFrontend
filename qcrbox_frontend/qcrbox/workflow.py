@@ -293,6 +293,8 @@ def update_apps(request):
     else:
         new_apps = ', '.join(str(pk) for pk in update_response['new_apps'])
         deprecated_apps = ', '.join(str(pk) for pk in update_response['deactivated_apps'])
+        reactivated_apps = ', '.join(str(pk) for pk in update_response['reactivated_apps'])
+
         LOGGER.info(
             'New apps synced to frontend: [%s]',
             new_apps,
@@ -300,4 +302,8 @@ def update_apps(request):
         LOGGER.info(
             'Deprecated apps: [%s]',
             deprecated_apps,
+        )
+        LOGGER.info(
+            'Reactivated apps: [%s]',
+            reactivated_apps,
         )

@@ -64,7 +64,8 @@ def update_applications():
     '''
 
     # Fetch slugs to represent apps known to the frontend
-    local_appset = {(app.name, app.version) for app in models.Application.objects.all()}
+    local_appdict = {(app.name, app.version) : app for app in models.Application.objects.filter()}
+    local_appset = set(local_appdict.keys())
 
     api_response = api.get_applications()
 
@@ -75,6 +76,7 @@ def update_applications():
     response = {
         'new_apps' : [],
         'deactivated_apps' : [],
+        'reactivated_apps' : [],
     }
 
     backend_appset = set([])
@@ -85,8 +87,17 @@ def update_applications():
 
         backend_appset = backend_appset | set([(app.name, app.version),])
 
-        # If frontend already knows about the app, do nothing
+        # If frontend already knows about the app, reactivate or skip
         if (app.name, app.version) in local_appset:
+
+            # Handle reactivating an app which was temporarily unavailable
+            current_app = local_appdict[(app.name, app.version)]
+            if not current_app.active:
+                current_app.active = True
+                current_app.save()
+
+                response['reactivated_apps'].append(current_app.pk)
+
             continue
 
         new_app = models.Application(
@@ -102,7 +113,7 @@ def update_applications():
 
         response['new_apps'].append(new_app.pk)
 
-    # Flag local DB entried inactive if no longer present in the backend
+    # Flag local DB entries inactive if no longer present in the backend
 
     for app in models.Application.objects.filter(active=True):
 
