@@ -247,15 +247,14 @@ def close_session(request, infile, application):
 
     session_closure = api_response.body.payload.interactive_sessions[0]
 
-    # If session failed to close for any other reason, abort
+    # If session failed for any reason, log it but continue
     if session_closure.status != 'successful':
-        LOGGER.error('Could not close session!')
+        LOGGER.warning('Session force-closed!')
         messages.warning(
             request,
-            f'Session could not be closed! Check if there is a session of'
-            f'{application.name} still running and, if so, close it.'
+            f'{application.name} did not close properly!  Make sure to close the application in '
+            'the new browser tab before clicking End Session in order to avoid loss of data.'
         )
-        return None
 
     # If it was possible to get an outfile from the session via the API
     if (hasattr(session_closure, 'output_dataset_id') and session_closure.output_dataset_id):
@@ -276,7 +275,7 @@ def close_session(request, infile, application):
 
     # If session did not produce output file, issue a warning
     LOGGER.info('No outfile associated with the session was found.')
-    messages.warning(request, 'No output was produced in the interactive session.')
+    messages.info(request, 'No output was produced in the interactive session.')
 
     return 'NO_OUTPUT'
 
