@@ -24,6 +24,8 @@ The Dockerised Setup for QCrBox Frontend is designed to be a quick and portable 
 3. Copy the environment template with `cp environment.env.template environment.env`
 4. Edit the settings `environment.env` to be used in your Dockerised deployment.  The settings are as follows:
 
+| Setting | Description |
+| --- | --- |
 | `DJANGO_DB` | Determines the architecture of the database used to store metadata for the frontend.  Can be set to either `'postgresql'` or `'sqlite'` |
 | `POSTGRES_HOST` | The host location for the database if `DJANGO_DB` is set to `'postgres'`.  This should be set to `'db'` for Docker deployments. |
 | `POSTGRES_NAME` | The name of the Postgres instance.  This should be set to `postgres`. |
@@ -36,7 +38,7 @@ The Dockerised Setup for QCrBox Frontend is designed to be a quick and portable 
 | `DJANGO_SUPERUSER_USERNAME` | The username for the default admin account to be created for the web app. |
 | `DJANGO_SUPERUSER_PASSWORD` | The password for the default admin account to be created for the web app. |
 
-For most cases, you should only need to edit `DJANGO_SUPERUSER_`, `DJANGO_SUPERUSER_` and `DJANGO_SUPERUSER_`, and the other values can be left as the defaults copied from the template.  **Note:** If you do not set these values, no user will be created at setup and you will have to create one manually by directly interfacing with the django inside the container.
+For most cases, you should only need to edit `DJANGO_SUPERUSER_EMAIL`, `DJANGO_SUPERUSER_USERNAME` and `DJANGO_SUPERUSER_PASSWORD`, and the other values can be left as the defaults copied from the template.  **Note:** If you do not set these values, no user will be created at setup and you will have to create one manually by directly interfacing with the django inside the container.
 5. Build the Docker container with `docker compose build`.
 6. Run the Docker container with `docker compose up`.
 7. Open your choice of browser and navigate to your deployment URL; for local deployment, this URL will be [`http://localhost:8888/`](http://localhost:8888/).
@@ -49,12 +51,13 @@ You may also install QCrBox Frontend in a non-Dockerised way through the use of 
 
 1. Navigate to [`QCrBox_Frontend/`](..), e.g. the folder containing this repository.
 2. Create and activate a local Python virtual environment.  This environment must be based on python version `python>=3.11`.
-3. Install the requirements into the virtual environment with `pip install -R requirements.txt`.
+3. Install the requirements into the virtual environment with `pip install -r requirements.txt`.
 4. Navigate to [`qcrbox_frontend/`](../qcrbox_frontend) (e.g. `cd qcrbox_frontend`).
 5. Set up the database with `python manage.py migrate`.  By default, this database will be an instance of SQLite.  This and other settings can be manually changed in this software's settings file found at [`qcrbox_frontend/core/settings.py`](../qcrbox_frontend/core/settings.py).
 6. Create a site admin with `python manage.py createsuperuser`.
-7. Open your choice of browser and navigate to your deployment URL; by default, this URL will be [`http://localhost:8000/`](http://localhost:8000/).
-8. Log in to the app using the credentuals you set in step 6.
-9. Enjoy using QCrBox Frontend!
+7. Start the server with `python manage.py runserver`.
+8. Open your choice of browser and navigate to your deployment URL; by default, this URL will be [`http://localhost:8000/`](http://localhost:8000/).
+9. Log in to the app using the credentuals you set in step 6.
+10. Enjoy using QCrBox Frontend!
 
 For more information, please check the documentation readme at [`QCRBox_Frontend/documentation/README.md`](./README.md)
