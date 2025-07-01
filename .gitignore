@@ -175,3 +175,4 @@ cython_debug/
 qcrbox_frontend.sublime-project
 qcrbox_frontend.sublime-workspace
 environment.env
+lint_report.txt

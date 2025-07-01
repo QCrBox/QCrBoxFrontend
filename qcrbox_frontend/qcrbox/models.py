@@ -130,6 +130,38 @@ class ProcessStep(models.Model):
         related_name='processed_by'
     )
 
+
+class SessionReference(models.Model):
+    '''A model which stores temporary records on any currently active
+    sessions.  Allows for these sessions to be accessed and closed in the
+    event that a users lose the cookies referring to their active
+    sessions.  Records should be deleted when the respective session is
+    closed.
+
+    Contains the following attributes:
+    - user(User): the User that initiated the session (for, e.g., determining
+            their permission to close it, not currently implemented).
+    - application(Application): the Application instance which corresponds to
+            the application used in this session.
+    - session_id(str): the ID used to access the session in the backend.
+    - start_time(datetime): the time when the session began
+
+    '''
+
+    user = models.ForeignKey(
+        User,
+        null=True,
+        on_delete=models.SET_NULL
+    )
+    application = models.ForeignKey(
+        Application,
+        null=True,
+        on_delete=models.CASCADE
+    )
+    session_id = models.CharField(max_length=255)
+    start_time = models.DateTimeField(auto_now_add=True)
+
+
 # Create an empty model to assign global permissions to to be independent of models
 class DataPermissionSupport(models.Model):
     '''A 'model' which exists for the sole purpose of allowing the creation

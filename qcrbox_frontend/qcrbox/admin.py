@@ -24,7 +24,14 @@ class ProcessStepAdmin(admin.ModelAdmin):
 
 @admin.register(models.Application)
 class ApplicationAdmin(admin.ModelAdmin):
-    '''Admin Registration for the Application class'''
+    '''Admin Registration for the Application model'''
 
     list_display = ('name', 'version')
     ordering = ('name', 'version')
+
+@admin.register(models.SessionReference)
+class SessionReferenceAdmin(admin.ModelAdmin):
+    '''Admin Registration for the SessionReference model'''
+
+    list_display = ('application', 'session_id', 'user')
+    ordering = ('start_time',)

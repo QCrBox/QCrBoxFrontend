@@ -90,38 +90,55 @@ def save_dataset_metadata(request, api_response, group, infile=None, application
     return newfile
 
 
-def get_file_history(infile):
-    '''Given a FileMetaData object, recursively fetch the process that created
-    it and the file given as input to that process (if applicable), to build
-    up a full linear ancestry of the related dataset.
+def create_session_references(request, api_response, application):
+    '''When starting a new session, this function can be invoked to create two
+    references to that session; firstly, as a browser-side cookie containing
+    the backend session_id and, secondly, a temporary SessionReference record
+    in the Frontend db pointing to that session in the event that the
+    cookie is lost for any reason.
 
     Parameters:
-    - infile(FileMetaData): the FileMetaData object corresponding the dataset
-            which is having its ancestry constructed.
-
-    Returns:
-    - ancestry(list): an ordered list of ProcessStep objects representing the
-            creation history of the infile.  Ordered chronologically from
-            early to late.
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to the view containing this workflow.
+    - api_response(api.Response): an api.Response object containing the
+            response from the API on starting an Interactive Session, and
+            a boolean flag indicating whether the response indicated success.
+            Only used to fetch the session_id.
+    - application(Application): the Application data corresponding
+            to the application used to start the Interactive Session.
 
     '''
 
-    prior_steps = []
-    current_file = infile
+    session_id = api_response.body.payload.interactive_session_id
 
-    # While working on a step with a creation history...
-    while current_file.processed_by.all():
-        prior_step = current_file.processed_by.first()
-        prior_steps = [prior_step] + prior_steps
+    # set browser cookie
+    request.session['app_session_id'] = session_id
 
-        # Move one step back if possible
-        current_file = prior_step.infile
+    session_reference = models.SessionReference(
+        user=request.user,
+        application=application,
+        session_id=session_id,
+    )
+    session_reference.save()
 
-        # Failsafe for if the prior step is malformed
-        if not hasattr(current_file, 'processed_by'):
-            break
 
-    return prior_steps
+def clear_session_references(request, session_id):
+    '''When closing a session, this function can be invoked to clear the
+    browser cookie referring to it and delete the SessionReference record
+    in the Frontend db.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to the view containing this workflow.
+    - session_id(str): the ID used to refer to this session in the backend.
+
+    '''
+
+    # clear cookie
+    request.session['app_session_id'] = None
+
+    session_reference = models.SessionReference.objects.get(session_id=session_id)
+    session_reference.delete()
 
 
 def start_session(request, infile, application):
@@ -155,12 +172,11 @@ def start_session(request, infile, application):
 
     # Prepare regex to parse error string if needed
     re_pattern = re.compile(
-        'Failed to create interactive session: Chosen client.*is not available'
+        'Failed to create interactive session: .*client.*is not available'
     )
 
     if api_response.is_valid:
-        session_id = api_response.body.payload.interactive_session_id
-        request.session['app_session_id'] = session_id
+        create_session_references(request, api_response, application)
         return True
 
     # else, if the client is busy and there's a session cookie, try to close it
@@ -175,22 +191,26 @@ def start_session(request, infile, application):
 
         # Try again to open the session
         else:
+            # clear any dangling references to the old session
+            clear_session_references(request, session_id=app_session_id)
+
             api_response = api.start_session(
                 app_id=application.pk,
                 dataset_id=infile.backend_uuid
             )
 
             if api_response.is_valid:
-                session_id = api_response.body.payload.interactive_session_id
-                request.session['app_session_id'] = session_id
+                create_session_references(request, api_response, application)
                 return True
+    else:
+        print(api_response.body.error.message)
 
     # If no session was opened even after all that, handle the error
     LOGGER.error('Session failed to start!')
     messages.warning(
         request,
         f'Could not start session!  Check if there is a session of'
-        '{application.name} already running and, if so, close it.'
+        f'{application.name} already running and, if so, close it.'
     )
     return False
 
@@ -246,6 +266,7 @@ def close_session(request, infile, application):
         return None
 
     session_closure = api_response.body.payload.interactive_sessions[0]
+    clear_session_references(request, session_id=app_session_id)
 
     # If session failed for any reason, log it but continue
     if session_closure.status != 'successful':
@@ -306,3 +327,37 @@ def update_apps(request):
             'Reactivated apps: [%s]',
             reactivated_apps,
         )
+
+
+def get_file_history(infile):
+    '''Given a FileMetaData object, recursively fetch the process that created
+    it and the file given as input to that process (if applicable), to build
+    up a full linear ancestry of the related dataset.
+
+    Parameters:
+    - infile(FileMetaData): the FileMetaData object corresponding the dataset
+            which is having its ancestry constructed.
+
+    Returns:
+    - ancestry(list): an ordered list of ProcessStep objects representing the
+            creation history of the infile.  Ordered chronologically from
+            early to late.
+
+    '''
+
+    prior_steps = []
+    current_file = infile
+
+    # While working on a step with a creation history...
+    while current_file.processed_by.all():
+        prior_step = current_file.processed_by.first()
+        prior_steps = [prior_step] + prior_steps
+
+        # Move one step back if possible
+        current_file = prior_step.infile
+
+        # Failsafe for if the prior step is malformed
+        if not hasattr(current_file, 'processed_by'):
+            break
+
+    return prior_steps
