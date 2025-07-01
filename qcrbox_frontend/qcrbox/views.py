@@ -18,204 +18,11 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.views.static import serve
 
-from . import api, forms, models
+from . import api, forms, generic, models
 from . import workflow as wf
+from .utility import DisplayField
 
 LOGGER = logging.getLogger(__name__)
-
-# ==============================================
-# ========== Utiliy functions/classes ==========
-# ==============================================
-
-class DisplayField():
-    '''A class to contain information on fields to be displayed in 'view list'
-    e.g. denoting a field which should form a column of a rendered html table
-    and some metadata on how it should be rendered.
-
-    '''
-
-    def __init__(self, name, attr, is_header=False, is_special=False):
-        '''Initialise an instance of DisplayField
-
-        Parameters:
-        - name(str): The human readable name of the field
-        - attr(str): The name of the related Model attribute.  This can also
-                be a recursive attribute, separated by '__': e.g., setting
-                attr to 'dataset__filename' will return the 'filename'
-                attribute of the DataSet object referred to in this Models's
-                'dataset' attribute.
-        - is_header(bool): Whether the column containing this field should be
-                styled as a header column
-        - is_special(bool): Whether there are any special instructions for
-                generating entries in this field.  These are parsed by the
-                get_special method in templatetags/getspecial.py
-
-        Returns:
-        None
-
-        '''
-
-        self.name = name
-        self.attr = attr
-        self.is_header = is_header
-        self.is_special = is_special
-
-
-def update_generic(
-        request,
-        model,
-        model_form,
-        obj_type,
-        link_suffix,
-        obj_id,
-        user_is_affiliated=False,
-        **kwargs
-    ):
-    '''A genericised framework to generate a django response which generates
-    and serves a page containing an update form for a given database model,
-    and processes the submitting of that form.  This view should never be
-    called directly by a user, and as such does not have an associated url;
-    this method is instead called by other view methods.
-
-    Parameters:
-    - request(WSGIRequest): the request from a user which triggers a url
-            associated to this view.
-    - model(ModelBase): the base class for the Model which is editable on the
-            page returned by this view.
-    - model_form(Form): the django form for creating/editing instances of the
-            chosen Model.
-    - obj_type(str): the human-readable name given to instances of the Model, e.g.
-            'Application', for display on the page returned by this view.
-    - link_suffix(str): the suffix of the URL associated with the 'view list'
-            view of the chosen model.  The django IDs of 'View list' view urls
-            are standardised in the form 'view_[slug]', where the slug should
-            be provided as this parameter.  This is used to generate the
-            redirect response upon a succesful form submittal.
-    - obj_id(int): the primary key of the instance of the chosen Model which is
-            the target of this edit attempt.
-    - user_is_affiliated(bool): an optional boolean to denote whether the
-            user associated with the request is in some way affiliated with
-            the instance being edited (i.e., the user belongs to the Group
-            associated with a given Dataset).  If set to False, the user will
-            only be given permission to edit the instance if they also have
-            the 'qcrbox.global_access' permission.
-
-    Returns:
-    - response(HttpResponse): the http response served to the user on
-            accessing this view's associated url.
-
-    '''
-
-    # If user is flagged as able to access unaffiliated data, always continue
-    if request.user.has_perm('qcrbox.global_access'):
-        pass
-
-    # Allow for an access-point check if a user is affiliated with the company to which the data
-    # pertains, to prevent users editing things they shouldnt
-    elif not user_is_affiliated:
-        LOGGER.info(
-            'User %s denied permission to modify %s (pk=%d) (unaffiliated)',
-            request.user.username,
-            obj_type,
-            obj_id,
-        )
-        raise PermissionDenied()
-
-    instance = model.objects.get(pk=obj_id)
-    form = model_form(request.POST or None, instance=instance, **kwargs)
-
-    if form.is_valid():
-        form.save()
-
-        LOGGER.info(
-            'User %s updated %s "%s"',
-            request.user.username,
-            obj_type,
-            instance,
-        )
-        messages.success(request, f'Changes to "{instance}" saved!')
-        return redirect('view_'+link_suffix)
-
-    return render(request, 'update_generic.html', {
-        'type':obj_type,
-        'object':instance,
-        'form':form,
-        'view_link':'view_'+link_suffix,
-        })
-
-
-def delete_generic(request, model, obj_type, link_suffix, obj_id, user_is_affiliated=False):
-    '''A genericised framework to generate a django response which processes
-    the deletion of a given Model instance.  This view should never be called
-    directly by a user, and as such does not have an associated url; this
-    method is instead called by other view methods.
-
-    Parameters:
-    - request(WSGIRequest): the request from a user which triggers a url
-            associated to this view.
-    - model(ModelBase): the base class for the Model which is to be deleted.
-    - obj_type(str): the human-readable name given to instances of the Model, e.g.
-            'Application', for display on the message generated by this view.
-    - link_suffix(str): the suffix of the URL associated with the 'view list'
-            view of the chosen model.  The django IDs of 'View list' view urls
-            are standardised in the form 'view_[slug]', where the slug should
-            be provided as this parameter.  This is used to generate the
-            redirect response upon a succesful delete request.
-    - obj_id(int): the primary key of the instance of the chosen Model which is
-            the target of this delete attempt.
-    - user_is_affiliated(bool): an optional boolean to denote whether the
-            user associated with the request is in some way affiliated with
-            the instance being deleted (i.e., the user belongs to the Group
-            associated with a given Dataset).  If set to False, the user will
-            only be given permission to delete the instance if they also have
-            the 'qcrbox.global_access' permission.
-
-    Returns:
-    - response(HttpResponse): the http response served to the user on
-            accessing this view's associated url.
-
-    '''
-
-    # If user is flagged as able to access unaffiliated data, always continue
-    if request.user.has_perm('qcrbox.global_access'):
-        pass
-
-    # Allow for an access-point check if a user is affiliated with the company to which the data
-    # pertains, to prevent users editing things they shouldnt
-    elif not user_is_affiliated:
-        LOGGER.info(
-            'User %s denied permission to delete %s (pk=%d) (unaffiliated)',
-            request.user.username,
-            obj_type,
-            obj_id,
-        )
-        raise PermissionDenied()
-
-    try:
-        instance = model.objects.get(pk=obj_id)
-
-    except model.DoesNotExist:
-        LOGGER.info(
-            'User %s attempted to delete non-existent %s (pk=%d)',
-            request.user.username,
-            obj_type,
-            obj_id,
-        )
-        messages.success(request, f'{obj_type} was deleted succesfully.')
-        return redirect('view_'+link_suffix)
-
-    instance_string = str(instance)
-    instance.delete()
-
-    LOGGER.info(
-        'User %s deleted %s "%s"',
-        request.user.username,
-        obj_type,
-        instance_string,
-    )
-    messages.success(request, f'{obj_type} "{instance_string}" was deleted succesfully!')
-    return redirect('view_'+link_suffix)
-
 
 # ============================================
 # ========== Workflow-related views ==========
@@ -414,23 +221,7 @@ def workflow(request, file_id):
                     return redirect('workflow', file_id=outfile.pk)
 
     # Populate the workflow diagram with all steps leading up to the current file
-    prior_steps = []
-    current_file = load_file
-
-    # While working on a step with a creation history...
-    while current_file.processed_by.all():
-        prior_step = current_file.processed_by.first()
-        prior_steps = [prior_step] + prior_steps
-
-        # Move one step back if possible
-        current_file = prior_step.infile
-
-        # Failsafe for if the prior step is malformed
-        if not hasattr(current_file, 'processed_by'):
-            break
-
-    # Add results of the prior step finder to the context
-    context['prior_steps'] = prior_steps
+    context['prior_steps'] = wf.get_file_history(load_file)
 
     return render(request, 'workflow.html', context)
 
@@ -617,7 +408,7 @@ def view_users(request):
 def update_user(request, user_id):
     '''A view to handle rendering the 'edit user' page and handle the
     updating of a user on the submittal of the embedded form.  Based on
-    update_generic().
+    generic.update().
 
     Parameters:
     - request(WSGIRequest): the request from a user which triggers a url
@@ -636,19 +427,21 @@ def update_user(request, user_id):
 
     shared_groups = edit_user_groups & current_user_groups
 
-    return update_generic(
+    return generic.update(
         request=request,
         model=User,
-        model_form=forms.UpdateUserForm,
-        obj_type='User',
-        link_suffix='users',
         obj_id=user_id,
+        meta={
+            'obj_type':'User',
+            'model_form':forms.UpdateUserForm,
+            'link_suffix':'users',
+        },
         user_is_affiliated=shared_groups.exists(),
     )
 
 @permission_required('qcrbox.edit_users', raise_exception=True)
 def delete_user(request, user_id):
-    '''A view to handle the deletion of users.  Based on delete_generic().
+    '''A view to handle the deletion of users.  Based on generic.delete().
 
     Parameters:
     - request(WSGIRequest): the request from a user which triggers a url
@@ -672,12 +465,14 @@ def delete_user(request, user_id):
 
     shared_groups = deletion_user_groups & current_user_groups
 
-    return delete_generic(
+    return generic.delete(
         request=request,
         model=User,
-        obj_type='User',
-        link_suffix='users',
         obj_id=user_id,
+        meta={
+            'obj_type':'User',
+            'link_suffix':'users',
+        },
         user_is_affiliated=shared_groups.exists(),
     )
 
@@ -777,7 +572,7 @@ def view_groups(request):
 def update_group(request, group_id):
     '''A view to handle rendering the 'edit group' page and handle the
     updating of a group on the submittal of the embedded form.  Based on
-    update_generic().
+    generic.update().
 
     Parameters:
     - request(WSGIRequest): the request from a user which triggers a url
@@ -795,19 +590,21 @@ def update_group(request, group_id):
     if not request.user.has_perm('qcrbox.edit_users'):
         raise PermissionDenied
 
-    return update_generic(
+    return generic.update(
         request=request,
         model=Group,
-        model_form=forms.GroupForm,
-        obj_type='Group',
-        link_suffix='groups',
         obj_id=group_id,
+        meta={
+            'obj_type':'Group',
+            'model_form':forms.GroupForm,
+            'link_suffix':'groups',
+        },
         user_is_affiliated=True
     )
 
 @permission_required('qcrbox.global_access', raise_exception=True)
 def delete_group(request, group_id):
-    '''A view to handle the deletion of groups.  Based on delete_generic().
+    '''A view to handle the deletion of groups.  Based on generic.delete().
 
     Parameters:
     - request(WSGIRequest): the request from a user which triggers a url
@@ -825,12 +622,14 @@ def delete_group(request, group_id):
     if not request.user.has_perm('qcrbox.edit_users'):
         raise PermissionDenied
 
-    return delete_generic(
+    return generic.delete(
         request=request,
         model=Group,
-        obj_type='Group',
-        link_suffix='groups',
         obj_id=group_id,
+        meta={
+            'obj_type':'Group',
+            'link_suffix':'groups',
+        },
         user_is_affiliated=True,
     )
 

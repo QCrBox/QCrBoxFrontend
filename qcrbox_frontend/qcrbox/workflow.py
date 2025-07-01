@@ -90,6 +90,40 @@ def save_dataset_metadata(request, api_response, group, infile=None, application
     return newfile
 
 
+def get_file_history(infile):
+    '''Given a FileMetaData object, recursively fetch the process that created
+    it and the file given as input to that process (if applicable), to build
+    up a full linear ancestry of the related dataset.
+
+    Parameters:
+    - infile(FileMetaData): the FileMetaData object corresponding the dataset
+            which is having its ancestry constructed.
+
+    Returns:
+    - ancestry(list): an ordered list of ProcessStep objects representing the
+            creation history of the infile.  Ordered chronologically from
+            early to late.
+
+    '''
+
+    prior_steps = []
+    current_file = infile
+
+    # While working on a step with a creation history...
+    while current_file.processed_by.all():
+        prior_step = current_file.processed_by.first()
+        prior_steps = [prior_step] + prior_steps
+
+        # Move one step back if possible
+        current_file = prior_step.infile
+
+        # Failsafe for if the prior step is malformed
+        if not hasattr(current_file, 'processed_by'):
+            break
+
+    return prior_steps
+
+
 def start_session(request, infile, application):
     '''Given an application and an input FileMetaData object, attempt to start
     a new Interactive Session, handling errors, messaging and logging as
