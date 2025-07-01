@@ -24,21 +24,21 @@ The Dockerised Setup for QCrBox Frontend is designed to be a quick and portable 
 3. Copy the environment template with `cp environment.env.template environment.env`
 4. Edit the settings `environment.env` to be used in your Dockerised deployment.  The settings are as follows:
 
-| Setting | Description |
-| --- | --- |
-| `DJANGO_DB` | Determines the architecture of the database used to store metadata for the frontend.  Can be set to either `'postgresql'` or `'sqlite'` |
-| `POSTGRES_HOST` | The host location for the database if `DJANGO_DB` is set to `'postgres'`.  This should be set to `'db'` for Docker deployments. |
-| `POSTGRES_NAME` | The name of the Postgres instance.  This should be set to `postgres`. |
-| `POSTGRES_USER` | The username for Postgres access.  This should be set to `'postgres'`. |
-| `POSTGRES_PASSWORD` | The password for Postgres access.  This should be set to `'postgres'`. |
-| `POSTGRES_PORT` | The port through which the Postgres is exposed.  This should be set to `5432`. |
-| `API_BASE_URL` | The URL and port by which the QCrBox tool manager can be accessed.  If QCrBox is installed on the same machine as this setup, this should be set to `'http://host.docker.internal:11000'`. |
-| `MAX_LENGTH_API_LOG` | The maximum length of API output to be saved in the logs.  As some API outputs can be quite long, this gives the option to truncate them in the logs, making the logs more unwieldy at the cost of losing some debug information. |
-| `DJANGO_SUPERUSER_EMAIL` | The email address for the default admin account to be created for the web app. |
-| `DJANGO_SUPERUSER_USERNAME` | The username for the default admin account to be created for the web app. |
-| `DJANGO_SUPERUSER_PASSWORD` | The password for the default admin account to be created for the web app. |
+    | Setting | Description |
+    | --- | --- |
+    | `DJANGO_DB` | Determines the architecture of the database used to store metadata for the frontend.  Can be set to either `'postgresql'` or `'sqlite'` |
+    | `POSTGRES_HOST` | The host location for the database if `DJANGO_DB` is set to `'postgres'`.  This should be set to `'db'` for Docker deployments. |
+    | `POSTGRES_NAME` | The name of the Postgres instance.  This should be set to `postgres`. |
+    | `POSTGRES_USER` | The username for Postgres access.  This should be set to `'postgres'`. |
+    | `POSTGRES_PASSWORD` | The password for Postgres access.  This should be set to `'postgres'`. |
+    | `POSTGRES_PORT` | The port through which the Postgres is exposed.  This should be set to `5432`. |
+    | `API_BASE_URL` | The URL and port by which the QCrBox tool manager can be accessed.  If QCrBox is installed on the same machine as this setup, this should be set to `'http://host.docker.internal:11000'`. |
+    | `MAX_LENGTH_API_LOG` | The maximum length of API output to be saved in the logs.  As some API outputs can be quite long, this gives the option to truncate them in the logs, making the logs more unwieldy at the cost of losing some debug information. |
+    | `DJANGO_SUPERUSER_EMAIL` | The email address for the default admin account to be created for the web app. |
+    | `DJANGO_SUPERUSER_USERNAME` | The username for the default admin account to be created for the web app. |
+    | `DJANGO_SUPERUSER_PASSWORD` | The password for the default admin account to be created for the web app. |
 
-For most cases, you should only need to edit `DJANGO_SUPERUSER_EMAIL`, `DJANGO_SUPERUSER_USERNAME` and `DJANGO_SUPERUSER_PASSWORD`, and the other values can be left as the defaults copied from the template.  **Note:** If you do not set these values, no user will be created at setup and you will have to create one manually by directly interfacing with the django inside the container.
+    For most cases, you should only need to edit `DJANGO_SUPERUSER_EMAIL`, `DJANGO_SUPERUSER_USERNAME` and `DJANGO_SUPERUSER_PASSWORD`, and the other values can be left as the defaults copied from the template.  **Note:** If you do not set these values, no user will be created at setup and you will have to create one manually by directly interfacing with the django inside the container.
 5. Build the Docker container with `docker compose build`.
 6. Run the Docker container with `docker compose up`.
 7. Open your choice of browser and navigate to your deployment URL; for local deployment, this URL will be [`http://localhost:8888/`](http://localhost:8888/).
