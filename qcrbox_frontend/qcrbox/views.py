@@ -652,7 +652,6 @@ def history_dashboard(request, dataset_id):
         'dash_context' : {'init_pk':{'title':dataset_id}}
     })
 
-
 # No view for dataset creation (handled through the workflow initialisation page)
 
 @login_required(login_url='login')
