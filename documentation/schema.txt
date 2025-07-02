@@ -1,0 +1,59 @@
+erDiagram
+
+    Application {
+        string name
+        string url
+        string version
+        string description
+        string slug
+        int port
+        bool active
+    }
+
+    FileMetaData {
+        string filename
+        string display_filename
+        string backend_uuid
+        foreignKey user
+        foreignKey group
+        string filetype
+        datetime creation_time
+        bool active
+    }
+
+    ProcessStep {
+        foreignKey application
+        foreignKey infile
+        foreignKey outfile
+    }
+
+    SessionReference {
+        foreignKey user
+        foreignKey application
+        string session_id
+        datetime start_time
+    }
+
+    User {
+        djangoUserFields various
+    }
+
+    DataPermissionSupport {
+
+    }
+
+    Group {
+        djangoGroupFields various
+    }
+
+
+
+    Group }o -- o{ User : ""
+    Group || -- o{ FileMetaData : ""
+    User || -- o{ FileMetaData : ""
+    Application || -- o{ ProcessStep : ""
+    FileMetaData || -- o{ ProcessStep : "as infile"
+    FileMetaData || -- o| ProcessStep : "as outfile"
+    User || -- o{ SessionReference : ""
+    Application || -- o{ SessionReference : ""
+
