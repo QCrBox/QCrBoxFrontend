@@ -20,6 +20,7 @@ from django.views.static import serve
 
 from . import api, forms, generic, models
 from . import workflow as wf
+from .plotly_dash import plotly_app
 from .utility import DisplayField
 
 LOGGER = logging.getLogger(__name__)
@@ -637,6 +638,12 @@ def delete_group(request, group_id):
 # ====================================================
 # ========== Data Management related views ===========
 # ====================================================
+
+@login_required(login_url='login')
+def tree_dashboard(request):
+
+    return render(request, 'tree_dashboard.html', {'wide_layout':True})
+
 
 # No view for dataset creation (handled through the workflow initialisation page)
 
