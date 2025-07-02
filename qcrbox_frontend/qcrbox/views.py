@@ -641,6 +641,10 @@ def delete_group(request, group_id):
 
 @login_required(login_url='login')
 def tree_dashboard(request):
+    '''A view to handle rendering the page containing the Tree Dashboard
+    showing dataset ancestry.
+
+    '''
 
     return render(request, 'tree_dashboard.html', {'wide_layout':True})
 
@@ -724,7 +728,7 @@ def delete_dataset(request, dataset_id):
     deletion_data_group = deletion_data_meta.group
     current_user_groups = request.user.groups.all()
 
-    shared_groups = (deletion_data_group in current_user_groups)
+    shared_groups = deletion_data_group in current_user_groups
 
     # Check credentials before invoking the generic delete, as API will also need calling
     if shared_groups or request.user.has_perm('qcrbox.global_access'):
@@ -753,7 +757,7 @@ def delete_dataset(request, dataset_id):
             request.user.username,
             dataset_id,
         )
-        messages.success(request, f'Dataset was deleted succesfully.')
+        messages.success(request, 'Dataset was deleted succesfully.')
         return redirect('view_datasets')
 
     # Don't actually delete the local metadata, just flag it as inactive so history can be preserved
