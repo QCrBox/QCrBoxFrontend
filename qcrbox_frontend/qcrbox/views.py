@@ -9,6 +9,7 @@ import logging
 import os
 
 from django.shortcuts import render, redirect
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User, Group, Permission
@@ -835,6 +836,31 @@ def download(request, file_id):
     httpresponse['Content-Disposition'] = 'attachment; filename=' + d_filename
     return httpresponse
 
+
+@login_required(login_url='login')
+def visualise(request, dataset_id):
+
+    # Fetch permitted groups based on the user's membership
+    if request.user.has_perm('qcrbox.global_access'):
+        # If user has the global access permission, ALL groups are visible
+        allowed_groups = Group.objects.all()
+    else:
+        # Else, restrict downloads to files linked the groups the user is a member of
+        allowed_groups = request.user.groups.all()
+
+    # Fetch the metadata
+    visualise_file_meta = models.FileMetaData.objects.get(pk=dataset_id)
+
+    # Stop user accessing data from a group they have no access to
+    if visualise_file_meta.group not in allowed_groups:
+        LOGGER.info(
+            'User %s denied permission to visualise dataset "%s" (unaffiliated)',
+            request.user.username,
+            download_file_meta.display_filename,
+        )
+        raise PermissionDenied
+
+    return redirect(f'{settings.API_VISUALISER_URL}/retrieve/{visualise_file_meta.backend_uuid}')
 
 # ====================================================
 # =================== Debug Tools ====================
