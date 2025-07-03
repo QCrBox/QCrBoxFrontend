@@ -640,13 +640,16 @@ def delete_group(request, group_id):
 # ====================================================
 
 @login_required(login_url='login')
-def tree_dashboard(request):
+def history_dashboard(request, dataset_id):
     '''A view to handle rendering the page containing the Tree Dashboard
     showing dataset ancestry.
 
     '''
 
-    return render(request, 'tree_dashboard.html', {'wide_layout':True})
+    return render(request, 'history_dashboard.html', {
+        'wide_layout' : True,
+        'dash_context' : {'init_pk':{'title':dataset_id}}
+    })
 
 
 # No view for dataset creation (handled through the workflow initialisation page)
@@ -701,6 +704,7 @@ def view_datasets(request):
         'fields':fields,
         'edit_perms':request.user.has_perm('qcrbox.edit_data'),
         'delete_link':'delete_dataset',
+        'history_link':'dataset_history',
     })
 
 @permission_required('qcrbox.edit_data', raise_exception=True)
