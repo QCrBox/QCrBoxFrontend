@@ -19,27 +19,30 @@
       </tr>
       <tr style="vertical-align:top">
         <td>
-          <table width=35%>
+          <table width=70%>
             {% for prior_step in prior_steps %}
               <tr>
-                <td align='right' width=11%>
+                <td align='right' width=24%>
                   {% if prior_step.infile.active %}
                     <a href="{% url 'workflow' prior_step.infile.pk %}"><i class="fa-regular fa-square"></i></a>
                   {% else %}
                     <i class="fa-regular fa-square"></i>
                   {% endif %}
                 </td>
-                <td align='left' width=13% padding=15px>
+                <td align='left' width=26% padding=15px>
                   {% if prior_step.infile.active %}
                     {{prior_step.infile.display_filename}}
                   {% else %}
                     <i>Deleted</i>
                   {% endif %}
                 </td>
-                <td align='left' width=6%>
+                <td align='left' width=20%>
                   {% if prior_step.infile.active %}
                     <a href="{% url 'download' prior_step.infile.pk %}">
                       <i class="fas fa-download"></i>
+                    </a>
+                    <a href="{% url 'visualise' prior_step.infile.pk %}" target="_blank">
+                      <i class="fas fa-eye"></i>
                     </a>
                   {% endif %}
                 </td>
@@ -63,6 +66,9 @@
               <td align='left' width=10%>
                 <a href="{% url 'download' file.pk %}">
                   <i class="fas fa-download"></i>
+                </a>
+                <a href="{% url 'visualise' file.pk %}" target="_blank">
+                  <i class="fas fa-eye"></i>
                 </a>
               </td>
             </tr>

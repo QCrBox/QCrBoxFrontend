@@ -41,6 +41,7 @@ urlpatterns = [
 
     path('view_datasets', views.view_datasets, name='view_datasets'),
     path('delete_dataset/<dataset_id>', views.delete_dataset, name='delete_dataset'),
+    path('visualise/<dataset_id>', views.visualise, name='visualise'),
 
     path('frontend_logs', views.frontend_logs, name='frontend_logs'),
 
