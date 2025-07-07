@@ -39,13 +39,16 @@ def update(
             should contain the following elements:
         -- meta['obj_type'](str): the human-readable name given to instances of
                 the Model, e.g. 'Application', for deletion.
-        -- model_form(Form): the django form for creating/editing instances of
-                the chosen Model.
+        -- meta['model_form'](Form): the django form for creating/editing
+                instances of the chosen Model.
         -- meta['link_suffix'](str): the suffix of the URL associated with the
-            'view list' view of the chosen model.  The django IDs of 'View
-            list' view urls are standardised in the form 'view_[slug]', where
-            the slug should be passed as this parameter.  This is used to
-            generate the redirect response upon a succesful deletion.
+                'view list' view of the chosen model.  The django IDs of 'View
+                list' view urls are standardised in the form 'view_[slug]', where
+                the slug should be passed as this parameter.  This is used to
+                generate the redirect response upon a succesful update.
+        -- meta['redirect_override'](str, optional): if provided, a succesful
+                update will redirect to the django url pattern matching this
+                string instead of the link constructed with link_suffix.
     - user_is_affiliated(bool): an optional boolean to denote whether the
             user associated with the request is in some way affiliated with
             the instance being edited (i.e., the user belongs to the Group
@@ -89,6 +92,9 @@ def update(
             instance,
         )
         messages.success(request, f'Changes to "{instance}" saved!')
+        if 'redirect_override' in meta:
+            return redirect(meta['redirect_override'])
+
         return redirect('view_'+meta['link_suffix'])
 
     return render(request, 'update_generic.html', {
@@ -121,6 +127,9 @@ def delete(request, model, obj_id, meta, user_is_affiliated=False):
                 where the slug should be passed as this parameter.  This is
                 used to generate the redirect response upon a succesful
                 deletion.
+        -- meta['redirect_override'](str, optional): if provided, a succesful
+                deletion will redirect to the django url pattern matching this
+                string instead of the link constructed with link_suffix.
     - user_is_affiliated(bool): an optional boolean to denote whether the
             user associated with the request is in some way affiliated with
             the instance being deleted (i.e., the user belongs to the Group
@@ -162,6 +171,8 @@ def delete(request, model, obj_id, meta, user_is_affiliated=False):
             obj_id,
         )
         messages.success(request, f'{obj_type} was deleted succesfully.')
+        if 'redirect_override' in meta:
+            return redirect(meta['redirect_override'])
         return redirect('view_'+meta['link_suffix'])
 
     instance_string = str(instance)
@@ -174,4 +185,6 @@ def delete(request, model, obj_id, meta, user_is_affiliated=False):
         instance_string,
     )
     messages.success(request, f'{obj_type} "{instance_string}" was deleted succesfully!')
+    if 'redirect_override' in meta:
+        return redirect(meta['redirect_override'])
     return redirect('view_'+meta['link_suffix'])

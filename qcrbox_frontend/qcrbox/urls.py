@@ -32,6 +32,8 @@ urlpatterns = [
     path('view_users', views.view_users, name='view_users'),
     path('create_user', views.create_user, name='create_user'),
     path('edit_user/<user_id>', views.update_user, name='edit_user'),
+    path('edit_account/', views.edit_user, name='edit_account'),
+    path('edit_password/', views.update_password, name='edit_password'),
     path('delete_user/<user_id>', views.delete_user, name='delete_user'),
 
     path('create_group', views.create_group, name='create_group'),

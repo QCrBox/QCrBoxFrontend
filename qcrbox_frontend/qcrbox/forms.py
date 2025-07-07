@@ -201,13 +201,22 @@ class RegisterUserForm(UserCreationForm):
             self.fields['user_groups'].queryset = user.groups.all()
 
 class UpdateUserForm(forms.ModelForm):
-    '''A Django ModelForm for editing User instances.'''
+    '''A Django ModelForm for admin-level editing of User instances.'''
 
     class Meta:
         '''Additional ModelForm config'''
 
         model = User
         fields = ['first_name', 'last_name', 'email', 'groups']
+
+class EditUserForm(forms.ModelForm):
+    '''A Django ModelForm for user-level editing User instances.'''
+
+    class Meta:
+        '''Additional ModelForm config'''
+
+        model = User
+        fields = ['first_name', 'last_name', 'email']
 
 
 # Group management forms
