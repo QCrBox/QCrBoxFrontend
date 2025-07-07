@@ -33,6 +33,7 @@ The Dockerised Setup for QCrBox Frontend is designed to be a quick and portable 
     | `POSTGRES_PASSWORD` | The password for Postgres access.  This should be set to `'postgres'`. |
     | `POSTGRES_PORT` | The port through which the Postgres is exposed.  This should be set to `5432`. |
     | `API_BASE_URL` | The URL and port by which the QCrBox tool manager can be accessed.  If QCrBox is installed on the same machine as this setup, this should be set to `'http://host.docker.internal:11000'`. |
+    | `API_VISUALISER_PORT` | The port through which the QCrBox_quality visualiser can be accessed.  This should be set to `12008` in most cases. |
     | `MAX_LENGTH_API_LOG` | The maximum length of API output to be saved in the logs.  As some API outputs can be quite long, this gives the option to truncate them in the logs, making the logs more unwieldy at the cost of losing some debug information. |
     | `DJANGO_SUPERUSER_EMAIL` | The email address for the default admin account to be created for the web app. |
     | `DJANGO_SUPERUSER_USERNAME` | The username for the default admin account to be created for the web app. |
