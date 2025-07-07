@@ -849,10 +849,10 @@ def visualise(request, dataset_id):
     # treating this as a relative URL
 
     hostname = 'http://' + request.get_host().split(':')[0]
+    v_url = f'{hostname}:{settings.API_VISUALISER_PORT}/retrieve/{visualise_file_meta.backend_uuid}'
+    LOGGER.info(f'Opening Visualiser at "{v_url}"')
     
-    return redirect(
-        f'{hostname}:{settings.API_VISUALISER_PORT}/retrieve/{visualise_file_meta.backend_uuid}'
-    )
+    return redirect(v_url)
 
 # ====================================================
 # =================== Debug Tools ====================
