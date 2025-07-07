@@ -860,7 +860,14 @@ def visualise(request, dataset_id):
         )
         raise PermissionDenied
 
-    return redirect(f'{settings.API_VISUALISER_URL}/retrieve/{visualise_file_meta.backend_uuid}')
+    # Get host name without port, manually prepend http:// to stop django
+    # treating this as a relative URL
+
+    hostname = 'http://' + request.get_host().split(':')[0]
+    
+    return redirect(
+        f'{hostname}:{settings.API_VISUALISER_PORT}/retrieve/{visualise_file_meta.backend_uuid}'
+    )
 
 # ====================================================
 # =================== Debug Tools ====================
