@@ -28,6 +28,9 @@
         {% for field in fields %}
           <th scope="col">{{field.name}}</th>
         {% endfor %}
+        {% if history_link %}
+          <th scope="col" class="text-center" style="border: none;"></th>
+        {% endif %}
         {% if edit_perms %}
           {% if edit_link %}
             <th scope="col" class="text-center" style="border: none;"></th>
@@ -52,6 +55,12 @@
               {% if field.is_header %}</b>{% endif %}
             </td>
           {% endfor %}
+          <!-- History links for dataset -->
+          {% if history_link %}
+              <td class="text-center">
+                <a class="btn btn-outline-primary btn-sm" href="{% url history_link object.pk %}" role="button"><i class="fas fa-clock"></i> History</a>
+              </td>
+          {% endif %}
 
           <!-- Edit and Delete Buttons -->
           {% if edit_perms %}

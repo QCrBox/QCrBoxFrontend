@@ -40,7 +40,7 @@ class UploadFileForm(forms.Form):
 
         '''
 
-        super(UploadFileForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Determine which groups the user is able to tag the file to
         # If they have global access, may pick any group
@@ -78,7 +78,7 @@ class LoadFileForm(forms.Form):
 
         '''
 
-        super(LoadFileForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Determine which groups the user is able to load files from
         # If they have global access, may pick file from any group
@@ -116,7 +116,7 @@ class SelectApplicationForm(forms.Form):
 
         '''
 
-        super(SelectApplicationForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         qset = models.Application.objects.all()
         choices = [(a.pk, a.name) for a in qset.filter(active=True)]
@@ -181,7 +181,7 @@ class RegisterUserForm(UserCreationForm):
 
         '''
 
-        super(RegisterUserForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.fields['username'].widget.attrs['class'] = 'form-control'
         self.fields['password1'].widget.attrs['class'] = 'form-control'

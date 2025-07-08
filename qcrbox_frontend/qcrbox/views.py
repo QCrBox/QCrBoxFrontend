@@ -22,6 +22,7 @@ from django.views.static import serve
 
 from . import api, forms, generic, models
 from . import workflow as wf
+from .plotly_dash import plotly_app
 from .utility import DisplayField
 
 LOGGER = logging.getLogger(__name__)
@@ -719,6 +720,19 @@ def delete_group(request, group_id):
 # ========== Data Management related views ===========
 # ====================================================
 
+@login_required(login_url='login')
+def history_dashboard(request, dataset_id):
+    '''A view to handle rendering the page containing the Tree Dashboard
+    showing dataset ancestry.
+
+    '''
+
+    return render(request, 'history_dashboard.html', {
+        'wide_layout' : True,
+        'dash_context' : {'init_pk':{'title':dataset_id}}
+    })
+
+
 # No view for dataset creation (handled through the workflow initialisation page)
 
 @login_required(login_url='login')
@@ -771,6 +785,7 @@ def view_datasets(request):
         'fields':fields,
         'edit_perms':request.user.has_perm('qcrbox.edit_data'),
         'delete_link':'delete_dataset',
+        'history_link':'dataset_history',
     })
 
 
@@ -799,7 +814,7 @@ def delete_dataset(request, dataset_id):
     deletion_data_group = deletion_data_meta.group
     current_user_groups = request.user.groups.all()
 
-    shared_groups = (deletion_data_group in current_user_groups)
+    shared_groups = deletion_data_group in current_user_groups
 
     # Check credentials before invoking the generic delete, as API will also need calling
     if shared_groups or request.user.has_perm('qcrbox.global_access'):
@@ -828,7 +843,7 @@ def delete_dataset(request, dataset_id):
             request.user.username,
             dataset_id,
         )
-        messages.success(request, f'Dataset was deleted succesfully.')
+        messages.success(request, 'Dataset was deleted succesfully.')
         return redirect('view_datasets')
 
     # Don't actually delete the local metadata, just flag it as inactive so history can be preserved

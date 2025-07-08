@@ -56,9 +56,10 @@ You may also install QCrBox Frontend in a non-Dockerised way through the use of 
 4. Navigate to [`qcrbox_frontend/`](../qcrbox_frontend) (e.g. `cd qcrbox_frontend`).
 5. Set up the database with `python manage.py migrate`.  By default, this database will be an instance of SQLite.  This and other settings can be manually changed in this software's settings file found at [`qcrbox_frontend/core/settings.py`](../qcrbox_frontend/core/settings.py).
 6. Create a site admin with `python manage.py createsuperuser`.
-7. Start the server with `python manage.py runserver`.
-8. Open your choice of browser and navigate to your deployment URL; by default, this URL will be [`http://localhost:8000/`](http://localhost:8000/).
-9. Log in to the app using the credentuals you set in step 6.
-10. Enjoy using QCrBox Frontend!
+7. Collect staticfiles (e.g. css required to render plotly plots) with `python manage.py collectstatic`.
+8. Start the server with `python manage.py runserver`.
+9. Open your choice of browser and navigate to your deployment URL; by default, this URL will be [`http://localhost:8000/`](http://localhost:8000/).
+10. Log in to the app using the credentuals you set in step 6.
+11. Enjoy using QCrBox Frontend!
 
 For more information, please check the documentation readme at [`QCRBox_Frontend/documentation/README.md`](./README.md)

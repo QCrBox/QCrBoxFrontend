@@ -41,6 +41,7 @@ urlpatterns = [
     path('edit_group/<group_id>', views.update_group, name='edit_group'),
     path('delete_group/<group_id>', views.delete_group, name='delete_group'),
 
+    path('data_history/<dataset_id>', views.history_dashboard, name='dataset_history'),
     path('view_datasets', views.view_datasets, name='view_datasets'),
     path('delete_dataset/<dataset_id>', views.delete_dataset, name='delete_dataset'),
     path('visualise/<dataset_id>', views.visualise, name='visualise'),

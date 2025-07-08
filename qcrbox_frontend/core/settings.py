@@ -59,6 +59,25 @@ MIDDLEWARE = [
     'django_plotly_dash.middleware.BaseMiddleware',
 ]
 
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+    'django_plotly_dash.finders.DashAssetFinder',
+    'django_plotly_dash.finders.DashComponentFinder',
+    'django_plotly_dash.finders.DashAppDirectoryFinder',
+]
+
+PLOTLY_COMPONENTS = [
+
+    # Common components (ie within dash itself) are automatically added
+    # django-plotly-dash components
+    'dpd_components',
+    # static support if serving local assets
+    'dpd_static_support',
+    # Other components, as needed
+    'dash_bootstrap_components',
+]
+
 ROOT_URLCONF = 'core.urls'
 
 TEMPLATES = [
