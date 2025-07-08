@@ -16,6 +16,14 @@ from .. import models
 
 app = DjangoDash('DataHistoryPanel')
 
+# Tree card
+
+tree_Card = dbc.Card([
+
+    dbc.CardBody([html.Div(id='tree-container', children=[])])
+
+])
+
 app.layout = dbc.Container(
     fluid='xxl',
 
@@ -25,7 +33,7 @@ app.layout = dbc.Container(
         html.Div(id='pk', title=''),
 
         # Rendered components
-        html.Div(id='tree-container', children=[]),
+        tree_Card,
 ])
 
 @app.callback(
