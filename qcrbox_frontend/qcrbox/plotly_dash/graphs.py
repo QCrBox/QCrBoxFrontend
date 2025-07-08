@@ -8,16 +8,28 @@ Plotly Dash app in the QCrBox Frontend
 import plotly.express as px
 import plotly.graph_objects as go
 
-from dash import dcc
+from dash import dcc, html
 
 from .. import models
 
 linestyle = {'color' : 'rgba(0, 0, 0, 0.2)'}
 
 def tree_plot(seed_dataset):
-    '''The main Tree Plot for the Tree Dashboard'''
+    '''Generate the main Tree Plot for the History Dashboard
 
-    # Plot the seed
+    Parameters:
+    - seed_dataset(FileMetaData): the FileMetaData model instance
+            corresponding to the data being used as the 'seed' for the tree
+            plot, i.e. the central node which is labelled as currently
+            selected.
+
+    Returns:
+    - graph_objects(dcc.Graph): the dash dcc component containing the tree
+            plot.
+
+    '''
+
+    # Plot the point for the seed dataset.
     fig = px.scatter()
 
     fig.add_trace(go.Scatter(
@@ -142,3 +154,72 @@ def tree_plot(seed_dataset):
     )
 
     return graph_object
+
+def infobox(seed_dataset):
+
+    '''Generate the main Infobox for the History Dashboard
+
+    Parameters:
+    - seed_dataset(FileMetaData): the FileMetaData model instance
+            corresponding to the metadata set to be displayed in the infobox
+
+    Returns:
+    - graph_objects(dcc.Graph): the dash dcc component containing the tree
+            plot.
+
+    '''
+
+    def table_row(name, data):
+        row = html.Tr([
+            html.Td(f'{name}\xa0', style={'text-align':'right'}),
+            html.Td(data),
+        ])
+
+        return row
+
+    # Populate basic info which is always available
+
+    table_contents = [
+        html.Tr([
+            html.Td([html.H5('Dataset Information')], colSpan=2),
+        ]),
+        table_row('Filename: ', seed_dataset.display_filename),
+        table_row('File type: ', seed_dataset.filetype),
+        table_row('Group: ', seed_dataset.group.name),
+        table_row('Status: ', 'Available' if seed_dataset.active else 'Deleted'),
+        html.Tr([
+            html.Td([html.Br(),html.H5('Creation History')], colSpan=2),
+        ]),
+
+    ]
+
+    # Fetch creation history based on whether this was uploaded or made
+    # from an Interactive Session
+
+    creation_process = models.ProcessStep.objects.filter(outfile=seed_dataset)
+
+    if creation_process.exists():
+
+        process = creation_process.first()
+        app = process.application.name
+        version = process.application.version
+        parent = process.infile.display_filename
+
+    else:
+
+        app = html.I('Upload')
+        version = '-'
+        parent = '-'
+
+    creation_table = [
+        table_row('Application: ', app),
+        table_row('Version: ', version),
+        table_row('Parent Dataset: ', parent),
+        table_row('User: ', seed_dataset.user.username),
+        table_row('Time: ', seed_dataset.creation_time),
+    ]
+
+
+    table_contents += creation_table
+
+    return html.Table(table_contents)
