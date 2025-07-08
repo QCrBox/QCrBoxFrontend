@@ -205,8 +205,8 @@ LOGGING = {
 logging.config.dictConfig(LOGGING)
 
 # API settings
-API_BASE_URL = os.environ.get('API_BASE_URL', 'http://127.0.0.1:11000')
-API_VISUALISER_PORT = os.environ.get('API_VISUALISER_PORT', '12008')
+API_BASE_URL = os.environ.get('API_BASE_URL', 'http://127.0.0.1:19000')
+API_VISUALISER_PORT = os.environ.get('API_VISUALISER_PORT', '22008')
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/

@@ -11,8 +11,9 @@ import os
 from django.shortcuts import render, redirect
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.models import User, Group, Permission
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import permission_required, login_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.exceptions import PermissionDenied
@@ -408,9 +409,9 @@ def view_users(request):
 
 @permission_required('qcrbox.edit_users', raise_exception=True)
 def update_user(request, user_id):
-    '''A view to handle rendering the 'edit user' page and handle the
-    updating of a user on the submittal of the embedded form.  Based on
-    generic.update().
+    '''A view to handle rendering the admin-level 'edit user' page and
+    handle the updating of a user on the submittal of the embedded form.
+    Based on generic.update().
 
     Parameters:
     - request(WSGIRequest): the request from a user which triggers a url
@@ -440,6 +441,82 @@ def update_user(request, user_id):
         },
         user_is_affiliated=shared_groups.exists(),
     )
+
+@login_required(login_url='login')
+def edit_user(request):
+    '''A view to handle the user-level 'edit user' page; i.e., the form any
+    user can use to modify their own account settings.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to this view.
+
+    Returns:
+    - response(HttpResponse): the http response served to the user on
+            accessing this view's associated url.
+
+    '''
+
+    form = forms.EditUserForm(request.POST or None, instance=request.user)
+
+    if request.method == 'POST':
+        if form.is_valid():
+            form.save()
+
+            LOGGER.info(
+                'User %s updated their account',
+                request.user.username,
+            )
+            messages.success(request, 'Account updated succesfully!')
+
+            return redirect('landing')
+
+    return render(request, 'update_generic.html', {
+        'type':'User',
+        'object':request.user,
+        'form':form,
+        'view_link':'landing',
+    })
+
+
+@login_required(login_url='login')
+def update_password(request):
+    '''A view to handle the user-level 'change password' page; i.e., the form
+    any user can use to modify their own account password.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to this view.
+
+    Returns:
+    - response(HttpResponse): the http response served to the user on
+            accessing this view's associated url.
+
+    '''
+
+    if request.method == 'POST':
+        form = PasswordChangeForm(user=request.user, data=request.POST)
+        if form.is_valid():
+            form.save()
+            update_session_auth_hash(request, request.user)
+
+            LOGGER.info(
+                'User %s changeed their password',
+                request.user.username,
+            )
+            messages.success(request, 'Password updated succesfully!')
+
+            return redirect('landing')
+    else:
+        form = PasswordChangeForm(user=request.user)
+
+    return render(request, 'update_generic.html', {
+        'type':'password for',
+        'object':request.user,
+        'form':form,
+        'view_link':'landing',
+    })
+
 
 @permission_required('qcrbox.edit_users', raise_exception=True)
 def delete_user(request, user_id):
@@ -521,6 +598,7 @@ def create_group(request):
         'instance_name':'Group',
     })
 
+
 @login_required(login_url='login')
 def view_groups(request):
     '''A view to handle generating and rendering the 'view group list' page.
@@ -570,6 +648,7 @@ def view_groups(request):
         'create_link':'create_group',
     })
 
+
 @permission_required('qcrbox.global_access', raise_exception=True)
 def update_group(request, group_id):
     '''A view to handle rendering the 'edit group' page and handle the
@@ -603,6 +682,7 @@ def update_group(request, group_id):
         },
         user_is_affiliated=True
     )
+
 
 @permission_required('qcrbox.global_access', raise_exception=True)
 def delete_group(request, group_id):
@@ -707,6 +787,7 @@ def view_datasets(request):
         'delete_link':'delete_dataset',
         'history_link':'dataset_history',
     })
+
 
 @permission_required('qcrbox.edit_data', raise_exception=True)
 def delete_dataset(request, dataset_id):
