@@ -98,6 +98,11 @@ def update_applications():
 
                 response['reactivated_apps'].append(current_app.pk)
 
+            # Handle change of ports, unlikely to ever happen in deployment
+            elif current_app.port != app.gui_port:
+                current_app.port = app.gui_port
+                current_app.save()
+
             continue
 
         new_app = models.Application(
