@@ -920,6 +920,21 @@ def download(request, file_id):
 
 @login_required(login_url='login')
 def visualise(request, dataset_id):
+    '''A view to handle calling the qcrbox_quality visualiser app and opening
+    a given file to view with it.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to this view.
+    - dataset_id(int): the Frontend db primary key of the dataset being
+            visualised.
+
+    Returns:
+    - response(HttpResponse): the http response served to the user on
+            accessing this view's associated url, containing the redirect to
+            the visualiser.
+
+    '''
 
     # Fetch permitted groups based on the user's membership
     if request.user.has_perm('qcrbox.global_access'):
@@ -937,7 +952,7 @@ def visualise(request, dataset_id):
         LOGGER.info(
             'User %s denied permission to visualise dataset "%s" (unaffiliated)',
             request.user.username,
-            download_file_meta.display_filename,
+            visualise_file_meta.display_filename,
         )
         raise PermissionDenied
 
@@ -946,8 +961,11 @@ def visualise(request, dataset_id):
 
     hostname = 'http://' + request.get_host().split(':')[0]
     v_url = f'{hostname}:{settings.API_VISUALISER_PORT}/retrieve/{visualise_file_meta.backend_uuid}'
-    LOGGER.info(f'Opening Visualiser at "{v_url}"')
-    
+    LOGGER.info(
+        'Opening Visualiser at "%s"',
+        v_url,
+    )
+
     return redirect(v_url)
 
 # ====================================================

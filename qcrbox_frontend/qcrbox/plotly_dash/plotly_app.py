@@ -93,15 +93,15 @@ app.layout = dbc.Container(
 @app.callback(
     Output('pk', 'title'),
     Input('tree-plot', 'clickData'))
-def get_seed_from_click_data(clickData):
+def get_seed_from_click_data(click_data):
     '''Callback to detect the user clicking a datapoint in the tree plot and
     cache the pk of the relevant dataset in local de facto storage
 
     '''
 
-    if not clickData:
+    if not click_data:
         return None
-    seed_pk = clickData['points'][0]['customdata']
+    seed_pk = click_data['points'][0]['customdata']
     return seed_pk
 
 @app.callback(
@@ -125,7 +125,7 @@ def display_data_for_seed(seed_data, init_seed):
     Output('infobox-container', 'children'),
     Input('pk', 'title'),
     Input('init_pk', 'title'))
-def display_data_for_seed(seed_data, init_seed):
+def display_infobox_for_seed(seed_data, init_seed):
     '''Callback to detect changes in local storage and update the infobox
     based on the new seed data pk.  Includes a failsafe; if the storage does
     not contain a valid pk (i.e. on first loading this dashboard), instead

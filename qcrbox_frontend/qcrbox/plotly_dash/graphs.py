@@ -11,7 +11,6 @@ import plotly.graph_objects as go
 from django.urls import reverse
 
 from dash import dcc, html
-import dash_bootstrap_components as dbc
 
 from .. import models
 
