@@ -14,35 +14,38 @@
   <div class="row justify-content-center">
     <table width=100%>
       <tr>
-        <th width=35%><h3>Workflow</h3></th>
-        <th width=65%><h3>Processing</h3></th>  
+        <th width=40%><h3>Workflow</h3></th>
+        <th width=60%><h3>Processing</h3></th>  
       </tr>
       <tr style="vertical-align:top">
         <td>
           <table width=70%>
             {% for prior_step in prior_steps %}
               <tr>
-                <td align='right' width=24%>
+                <td align='right'>
                   {% if prior_step.infile.active %}
                     <a href="{% url 'workflow' prior_step.infile.pk %}"><i class="fa-regular fa-square"></i></a>
                   {% else %}
                     <i class="fa-regular fa-square"></i>
                   {% endif %}
                 </td>
-                <td align='left' width=26% padding=15px>
+                <td align='left' padding=15px>
                   {% if prior_step.infile.active %}
                     {{prior_step.infile.display_filename}}
                   {% else %}
                     <i>Deleted</i>
                   {% endif %}
                 </td>
-                <td align='left' width=20%>
+                <td align='left' >
                   {% if prior_step.infile.active %}
                     <a href="{% url 'download' prior_step.infile.pk %}">
                       <i class="fas fa-download"></i>
-                    </a>
+                    </a>&nbsp 
                     <a href="{% url 'visualise' prior_step.infile.pk %}" target="_blank">
                       <i class="fas fa-eye"></i>
+                    </a>&nbsp
+                    <a href="{% url 'dataset_history' prior_step.infile.pk %}">
+                      <i class="fas fa-clock"></i>
                     </a>
                   {% endif %}
                 </td>
@@ -63,12 +66,15 @@
               <td align='left'>
                 <b>{{file.display_filename}}</b>
               </td>
-              <td align='left' width=10%>
+              <td align='left'>
                 <a href="{% url 'download' file.pk %}">
                   <i class="fas fa-download"></i>
-                </a>
+                </a>&nbsp
                 <a href="{% url 'visualise' file.pk %}" target="_blank">
                   <i class="fas fa-eye"></i>
+                </a>&nbsp
+                <a href="{% url 'dataset_history' file.pk %}">
+                  <i class="fas fa-clock"></i>
                 </a>
               </td>
             </tr>

@@ -8,16 +8,31 @@ Plotly Dash app in the QCrBox Frontend
 import plotly.express as px
 import plotly.graph_objects as go
 
-from dash import dcc
+from django.urls import reverse
+
+from dash import dcc, html
+import dash_bootstrap_components as dbc
 
 from .. import models
 
 linestyle = {'color' : 'rgba(0, 0, 0, 0.2)'}
 
 def tree_plot(seed_dataset):
-    '''The main Tree Plot for the Tree Dashboard'''
+    '''Generate the main Tree Plot for the History Dashboard
 
-    # Plot the seed
+    Parameters:
+    - seed_dataset(FileMetaData): the FileMetaData model instance
+            corresponding to the data being used as the 'seed' for the tree
+            plot, i.e. the central node which is labelled as currently
+            selected.
+
+    Returns:
+    - graph_objects(dcc.Graph): the dash dcc component containing the tree
+            plot.
+
+    '''
+
+    # Plot the point for the seed dataset.
     fig = px.scatter()
 
     fig.add_trace(go.Scatter(
@@ -31,6 +46,24 @@ def tree_plot(seed_dataset):
 
     # Plot ancestors
     def plot_ancestors(fig, dataset, current_layer=0):
+        '''Recursively find all ancestors of a given dataset and add points
+        for them to a tree plot
+
+        Parameters:
+        - fig(Figure): Plotly figure object containing the tree plot
+        - dataset: The current dataset to find ancestors of
+        - current_layer(int, optional): The 'generation' of the current
+                dataset being worked on.  The seed data for the tree plot is
+                at layer 0, its parent is at layer 1, grandparent is at layer
+                2, etc.  Leave this value as the default 0 when calling this
+                function, it is used internally to pass information to
+                recursive calls.
+
+        Returns:
+        - fig(Figure): The annotated Plotly figure object with added
+                datapoints for the chosen dataset's ancestors.
+
+        '''
 
         try:
             prev_process = models.ProcessStep.objects.get(outfile=dataset)
@@ -43,7 +76,7 @@ def tree_plot(seed_dataset):
             # Plot point for ancestor
             fig.add_trace(go.Scatter(
                 x=[0],
-                y=[current_layer+1],
+                y=[current_layer + 1],
                 marker={'color':'blue','size': 15},
                 name='',
                 hovertemplate=ancestor.display_filename,
@@ -53,20 +86,45 @@ def tree_plot(seed_dataset):
             # Plot connecting line
             fig.add_trace(go.Scatter(
                 x=[0, 0],
-                y=[current_layer, current_layer+1],
+                y=[current_layer, current_layer + 1],
                 mode='lines',
                 line=linestyle,
                 hovertemplate='',
                 zorder=-1,
             ))
 
-            plot_ancestors(fig, ancestor, current_layer=current_layer+1)
+            plot_ancestors(fig, ancestor, current_layer=current_layer + 1)
 
         return fig
 
     fig = plot_ancestors(fig, seed_dataset)
 
     def plot_descendants(fig, dataset, current_layer=0, x_offset=0, x_width=100):
+        '''Recursively find all descendants of a given dataset and add points
+        for them to a tree plot
+
+        Parameters:
+        - fig(Figure): Plotly figure object containing the tree plot
+        - dataset: The current dataset to find descendants of
+        - current_layer(int, optional): The 'generation' of the current
+                dataset being worked on.  The seed data for the tree plot is
+                at layer 0, its children are at layer -1, grandchildren are at
+                layer -2, etc.  Leave this value as the default 0 when calling
+                this function, it is used internally to pass information to
+                recursive calls.
+        - x_offset(int, optional): A parameter to keep track of the horizontal
+                position of the parent of the current subtree being worked on.
+                Leave this value as the default 0 when calling this function,
+                it is used internally to pass information to recursive calls.
+        - x_width(int or float, optional): A parameter to keep track of the
+                horizontal width available to each subtree.  Used in recursive
+                calls to govern horizontal spacing of subtrees.
+
+        Returns:
+        - fig(Figure): The annotated Plotly figure object with added
+                datapoints for the chosen dataset's descendants.
+
+        '''
 
         post_processes = models.ProcessStep.objects.filter(infile=dataset)
         descendant_pks = list(post_processes.values_list('outfile', flat=True))
@@ -132,6 +190,10 @@ def tree_plot(seed_dataset):
         paper_bgcolor='rgba(0, 0, 0, 0)',
     )
 
+    # Prevent zooming, other plotlyish interactivity
+    fig.layout.xaxis.fixedrange = True
+    fig.layout.yaxis.fixedrange = True
+
     graph_object = dcc.Graph(
         figure=fig,
         style={
@@ -139,6 +201,88 @@ def tree_plot(seed_dataset):
             'height': '100%;',
         },
         id='tree-plot',
+        config={'displayModeBar':False},
     )
 
     return graph_object
+
+def infobox(seed_dataset):
+
+    '''Generate the main Infobox for the History Dashboard
+
+    Parameters:
+    - seed_dataset(FileMetaData): the FileMetaData model instance
+            corresponding to the metadata set to be displayed in the infobox
+
+    Returns:
+    - graph_objects(dcc.Graph): the dash dcc component containing the tree
+            plot.
+
+    '''
+
+    def table_row(name, data):
+        '''Simple function to generate 2-width html table row'''
+
+        row = html.Tr([
+            html.Td(f'{name}\xa0', style={'text-align':'right'}),
+            html.Td(data),
+        ])
+
+        return row
+
+    # Populate basic info which is always available
+
+    table_contents = [
+        html.Tr([
+            html.Td([html.H5('Dataset Information')], colSpan=2),
+        ]),
+        table_row('Filename: ', seed_dataset.display_filename),
+        table_row('File type: ', seed_dataset.filetype),
+        table_row('Group: ', seed_dataset.group.name),
+        table_row('Status: ', 'Available' if seed_dataset.active else 'Deleted'),
+        html.Tr([
+            html.Td([html.Br(),html.H5('Creation History')], colSpan=2),
+        ]),
+
+    ]
+
+    # Fetch creation history based on whether this was uploaded or made
+    # from an Interactive Session
+
+    creation_process = models.ProcessStep.objects.filter(outfile=seed_dataset)
+
+    if creation_process.exists():
+
+        process = creation_process.first()
+        app = process.application.name
+        version = process.application.version
+        parent = process.infile.display_filename
+
+    else:
+
+        app = html.I('Upload')
+        version = '-'
+        parent = '-'
+
+    creation_table = [
+        table_row('Application: ', app),
+        table_row('Version: ', version),
+        table_row('Parent Dataset: ', parent),
+        table_row('User: ', seed_dataset.user.username),
+        table_row('Date: ', seed_dataset.creation_time.strftime('%Y-%m-%d')),
+        table_row('Time: ', seed_dataset.creation_time.strftime('%H:%M:%S')),
+    ]
+
+
+    table_contents += creation_table
+
+    # Create button to launch workflow
+
+    workflow_button = html.A(
+        html.Button('Start Workflow'),
+        href=reverse('workflow', kwargs={'file_id': seed_dataset.pk}),
+        target='_blank',
+    )
+
+    return [
+        html.Table(table_contents), html.Br(), workflow_button]
