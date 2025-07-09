@@ -88,7 +88,7 @@ class Application(models.Model):
     slug = models.CharField(max_length=255)
 
     # Specify which port is assigned to VNC sessions of the given app
-    port = models.IntegerField(default=0)
+    port = models.IntegerField(default=0, null=True)
 
     active = models.BooleanField(default=True)
 
