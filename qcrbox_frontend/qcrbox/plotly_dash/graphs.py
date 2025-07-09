@@ -279,9 +279,10 @@ def infobox(seed_dataset):
     # Create button to launch workflow
 
     workflow_button = html.A(
-        'Start Workflow',
+        html.Button('Start Workflow'),
         href=reverse('workflow', kwargs={'file_id': seed_dataset.pk}),
-        target='_top',
+        target='_blank',
     )
 
-    return [html.Table(table_contents), workflow_button]
+    return [
+        html.Table(table_contents), html.Br(), workflow_button]
