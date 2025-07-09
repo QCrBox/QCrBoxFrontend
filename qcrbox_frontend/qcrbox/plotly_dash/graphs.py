@@ -8,7 +8,10 @@ Plotly Dash app in the QCrBox Frontend
 import plotly.express as px
 import plotly.graph_objects as go
 
+from django.urls import reverse
+
 from dash import dcc, html
+import dash_bootstrap_components as dbc
 
 from .. import models
 
@@ -43,6 +46,24 @@ def tree_plot(seed_dataset):
 
     # Plot ancestors
     def plot_ancestors(fig, dataset, current_layer=0):
+        '''Recursively find all ancestors of a given dataset and add points
+        for them to a tree plot
+
+        Parameters:
+        - fig(Figure): Plotly figure object containing the tree plot
+        - dataset: The current dataset to find ancestors of
+        - current_layer(int, optional): The 'generation' of the current
+                dataset being worked on.  The seed data for the tree plot is
+                at layer 0, its parent is at layer 1, grandparent is at layer
+                2, etc.  Leave this value as the default 0 when calling this
+                function, it is used internally to pass information to
+                recursive calls.
+
+        Returns:
+        - fig(Figure): The annotated Plotly figure object with added
+                datapoints for the chosen dataset's ancestors.
+
+        '''
 
         try:
             prev_process = models.ProcessStep.objects.get(outfile=dataset)
@@ -55,7 +76,7 @@ def tree_plot(seed_dataset):
             # Plot point for ancestor
             fig.add_trace(go.Scatter(
                 x=[0],
-                y=[current_layer+1],
+                y=[current_layer + 1],
                 marker={'color':'blue','size': 15},
                 name='',
                 hovertemplate=ancestor.display_filename,
@@ -65,20 +86,45 @@ def tree_plot(seed_dataset):
             # Plot connecting line
             fig.add_trace(go.Scatter(
                 x=[0, 0],
-                y=[current_layer, current_layer+1],
+                y=[current_layer, current_layer + 1],
                 mode='lines',
                 line=linestyle,
                 hovertemplate='',
                 zorder=-1,
             ))
 
-            plot_ancestors(fig, ancestor, current_layer=current_layer+1)
+            plot_ancestors(fig, ancestor, current_layer=current_layer + 1)
 
         return fig
 
     fig = plot_ancestors(fig, seed_dataset)
 
     def plot_descendants(fig, dataset, current_layer=0, x_offset=0, x_width=100):
+        '''Recursively find all descendants of a given dataset and add points
+        for them to a tree plot
+
+        Parameters:
+        - fig(Figure): Plotly figure object containing the tree plot
+        - dataset: The current dataset to find descendants of
+        - current_layer(int, optional): The 'generation' of the current
+                dataset being worked on.  The seed data for the tree plot is
+                at layer 0, its children are at layer -1, grandchildren are at
+                layer -2, etc.  Leave this value as the default 0 when calling
+                this function, it is used internally to pass information to
+                recursive calls.
+        - x_offset(int, optional): A parameter to keep track of the horizontal
+                position of the parent of the current subtree being worked on.
+                Leave this value as the default 0 when calling this function,
+                it is used internally to pass information to recursive calls.
+        - x_width(int or float, optional): A parameter to keep track of the
+                horizontal width available to each subtree.  Used in recursive
+                calls to govern horizontal spacing of subtrees.
+
+        Returns:
+        - fig(Figure): The annotated Plotly figure object with added
+                datapoints for the chosen dataset's descendants.
+
+        '''
 
         post_processes = models.ProcessStep.objects.filter(infile=dataset)
         descendant_pks = list(post_processes.values_list('outfile', flat=True))
@@ -144,6 +190,10 @@ def tree_plot(seed_dataset):
         paper_bgcolor='rgba(0, 0, 0, 0)',
     )
 
+    # Prevent zooming, other plotlyish interactivity
+    fig.layout.xaxis.fixedrange = True
+    fig.layout.yaxis.fixedrange = True
+
     graph_object = dcc.Graph(
         figure=fig,
         style={
@@ -151,6 +201,7 @@ def tree_plot(seed_dataset):
             'height': '100%;',
         },
         id='tree-plot',
+        config={'displayModeBar':False},
     )
 
     return graph_object
@@ -170,6 +221,8 @@ def infobox(seed_dataset):
     '''
 
     def table_row(name, data):
+        '''Simple function to generate 2-width html table row'''
+
         row = html.Tr([
             html.Td(f'{name}\xa0', style={'text-align':'right'}),
             html.Td(data),
@@ -216,10 +269,19 @@ def infobox(seed_dataset):
         table_row('Version: ', version),
         table_row('Parent Dataset: ', parent),
         table_row('User: ', seed_dataset.user.username),
-        table_row('Time: ', seed_dataset.creation_time),
+        table_row('Date: ', seed_dataset.creation_time.strftime('%Y-%m-%d')),
+        table_row('Time: ', seed_dataset.creation_time.strftime('%H:%M:%S')),
     ]
 
 
     table_contents += creation_table
 
-    return html.Table(table_contents)
+    # Create button to launch workflow
+
+    workflow_button = html.A(
+        'Start Workflow',
+        href=reverse('workflow', kwargs={'file_id': seed_dataset.pk}),
+        target='_top',
+    )
+
+    return [html.Table(table_contents), workflow_button]
