@@ -5,6 +5,8 @@ the QCrBox Django Frontend.
 
 '''
 
+import textwrap
+
 from . import api
 from . import models
 
@@ -63,8 +65,10 @@ def update_applications():
 
     '''
 
+    local_apps = models.Application.objects.all()  # pylint: disable=no-member
+
     # Fetch slugs to represent apps known to the frontend
-    local_appdict = {(app.name, app.version) : app for app in models.Application.objects.filter()}
+    local_appdict = {(app.name, app.version) : app for app in local_apps}
     local_appset = set(local_appdict.keys())
 
     api_response = api.get_applications()
@@ -131,3 +135,29 @@ def update_applications():
         response['deactivated_apps'].append(app.pk)
 
     return response
+
+
+def twrap(text, width, min_width=5, max_lines=4):
+    '''Simple function to split text over a given length and reconcatenate
+    the pieces with plotly-recognised <br> tokens to generate newlines.
+    Returns none if the returned text would be too narrow or be over too
+    many lines
+
+    Parameters:
+    - text(str): the text to be wrapped.
+    - width(int): the number of characters per line of the wrapped text
+    - min_width(int, optional): if the value provided for width is lower than
+            this, return an empty string instead, to prevent overly narrow
+            wrapped text.
+    - max_lines(int, optional): if the resultant wrapped text has more than
+            this many lines, return an empty string instead to prevent overly
+            long wrapped text.
+
+    '''
+
+    if width < min_width:
+        return ''
+    text_split = textwrap.wrap(text, width)
+    if len(text_split) > max_lines:
+        return ''
+    return '<br>'.join(text_split)

@@ -12,9 +12,7 @@ from django.urls import reverse
 
 from dash import dcc, html
 
-from .. import models
-
-linestyle = {'color' : 'rgba(0, 0, 0, 0.2)'}
+from .. import models, utility
 
 def tree_plot(seed_dataset):
     '''Generate the main Tree Plot for the History Dashboard
@@ -31,6 +29,22 @@ def tree_plot(seed_dataset):
 
     '''
 
+    # Plotting kwargs common to all 'point' plots
+    point_kwargs = {
+        'mode':'markers+text',
+        'textposition':'bottom center',
+        'name':'',
+    }
+
+    # Plotting kwargs common to all 'connector' plots
+    connector_kwargs = {
+        'mode':'lines',
+        'line':{'color' : 'rgba(0, 0, 0, 0.2)'},
+        'hovertemplate':'',
+        'zorder':-1,
+        'hoverinfo':'none',
+    }
+
     # Plot the point for the seed dataset.
     fig = px.scatter()
 
@@ -38,9 +52,10 @@ def tree_plot(seed_dataset):
         x=[0],
         y=[0],
         marker={'color':'red','size': 19},
-        hovertemplate=seed_dataset.display_filename,
-        name='(Current Selection)',
-        customdata=(seed_dataset.pk,)
+        text=seed_dataset.display_filename,
+        hovertemplate='Current Selection',
+        customdata=(seed_dataset.pk,),
+        **point_kwargs,
     ))
 
     # Plot ancestors
@@ -61,8 +76,13 @@ def tree_plot(seed_dataset):
         Returns:
         - fig(Figure): The annotated Plotly figure object with added
                 datapoints for the chosen dataset's ancestors.
+        - max_generation(int): The maximum generation found, e.g. +1 for
+                parent, +2 for grandparent, etc.
 
         '''
+
+        # Assume the max generation is the current one unless told otherwise
+        max_generation = current_layer
 
         try:
             prev_process = models.ProcessStep.objects.get(outfile=dataset)
@@ -77,26 +97,24 @@ def tree_plot(seed_dataset):
                 x=[0],
                 y=[current_layer + 1],
                 marker={'color':'blue','size': 15},
-                name='',
-                hovertemplate=ancestor.display_filename,
-                customdata=(ancestor.pk,)
+                text=ancestor.display_filename,
+                customdata=(ancestor.pk,),
+                hovertemplate=f'Go to {ancestor.display_filename}',
+                **point_kwargs,
             ))
 
             # Plot connecting line
             fig.add_trace(go.Scatter(
                 x=[0, 0],
                 y=[current_layer, current_layer + 1],
-                mode='lines',
-                line=linestyle,
-                hovertemplate='',
-                zorder=-1,
+                **connector_kwargs,
             ))
 
-            plot_ancestors(fig, ancestor, current_layer=current_layer + 1)
+            fig, max_generation = plot_ancestors(fig, ancestor, current_layer=current_layer + 1)
 
-        return fig
+        return fig, max_generation
 
-    fig = plot_ancestors(fig, seed_dataset)
+    fig, max_generation = plot_ancestors(fig, seed_dataset)
 
     def plot_descendants(fig, dataset, current_layer=0, x_offset=0, x_width=100):
         '''Recursively find all descendants of a given dataset and add points
@@ -125,6 +143,9 @@ def tree_plot(seed_dataset):
 
         '''
 
+        # Assume the max generation is the current one unless told otherwise
+        min_generation = current_layer
+
         post_processes = models.ProcessStep.objects.filter(infile=dataset)
         descendant_pks = list(post_processes.values_list('outfile', flat=True))
 
@@ -132,6 +153,8 @@ def tree_plot(seed_dataset):
 
         # Indexer to calculate horizontal positioning of each child
         i = 1
+
+        # Track the number of generations of dependents
 
         for descendant_pk in descendant_pks:
 
@@ -146,34 +169,32 @@ def tree_plot(seed_dataset):
                 x=[h_pos],
                 y=[current_layer-1],
                 marker={'color':'blue','size': 15},
-                name='',
-                hovertemplate=descendant.display_filename,
-                customdata=(descendant.pk,)
+                text=utility.twrap(descendant.display_filename, int(x_width//n_children)),
+                customdata=(descendant.pk,),
+                hovertemplate=f'Go to {descendant.display_filename}',
+                **point_kwargs,
             ))
 
             # Plot connecting line
             fig.add_trace(go.Scatter(
                 x=[x_offset, h_pos, h_pos],
                 y=[current_layer, current_layer, current_layer-1],
-                mode='lines',
-                line=linestyle,
-                hovertemplate='',
-                zorder=-1,
+                **connector_kwargs,
             ))
 
-            plot_descendants(
+            fig, min_generation = plot_descendants(
                 fig,
                 descendant,
                 current_layer=current_layer-1,
                 x_offset=h_pos,
-                x_width=x_width/n_children
+                x_width=x_width/n_children,
             )
 
             i+=1
 
-        return fig
+        return fig, min_generation
 
-    fig = plot_descendants(fig, seed_dataset)
+    fig, min_generation = plot_descendants(fig, seed_dataset)
 
     fig.update_layout(
         xaxis_title=None,
@@ -187,9 +208,16 @@ def tree_plot(seed_dataset):
         showlegend=False,
         plot_bgcolor='rgba(0, 0, 0, 0)',
         paper_bgcolor='rgba(0, 0, 0, 0)',
+        margin={'l':0, 'r':0, 't':10, 'b':10},
+        autosize=True,
     )
 
+    # Fetch yrange to generate custom y-axis padding
+    yrange = max_generation - min_generation
+
     # Prevent zooming, other plotlyish interactivity
+    fig.update_xaxes(range=[-33.4, 33.4])
+    fig.update_yaxes(range=[min_generation-yrange/4, max_generation+yrange/16])
     fig.layout.xaxis.fixedrange = True
     fig.layout.yaxis.fixedrange = True
 

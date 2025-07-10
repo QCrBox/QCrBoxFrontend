@@ -56,7 +56,7 @@ class FileMetaData(models.Model):
     def __str__(self):
         '''Return the filename when an instance of this is parsed as string'''
 
-        return self.filename
+        return str(self.display_filename)
 
 
 class Application(models.Model):
@@ -95,7 +95,7 @@ class Application(models.Model):
     def __str__(self):
         '''Return the name when an instance of this is parsed as string'''
 
-        return self.name
+        return str(self.name)
 
 
 class ProcessStep(models.Model):
