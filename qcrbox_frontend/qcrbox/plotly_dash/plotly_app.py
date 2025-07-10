@@ -119,7 +119,8 @@ def display_data_for_seed(seed_data, init_seed):
 
     if not seed_data:
         seed_data=init_seed
-    return graphs.tree_plot(models.FileMetaData.objects.get(pk=int(seed_data)))
+    metadata_objs = models.FileMetaData.objects                         # pylint: disable=no-member
+    return graphs.tree_plot(metadata_objs.get(pk=int(seed_data)))
 
 @app.callback(
     Output('infobox-container', 'children'),
@@ -136,4 +137,5 @@ def display_infobox_for_seed(seed_data, init_seed):
 
     if not seed_data:
         seed_data=init_seed
-    return graphs.infobox(models.FileMetaData.objects.get(pk=int(seed_data)))
+    metadata_objs = models.FileMetaData.objects                         # pylint: disable=no-member
+    return graphs.infobox(metadata_objs.get(pk=int(seed_data)))

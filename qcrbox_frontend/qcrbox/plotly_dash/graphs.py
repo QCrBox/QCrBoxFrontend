@@ -85,8 +85,9 @@ def tree_plot(seed_dataset):
         max_generation = current_layer
 
         try:
-            prev_process = models.ProcessStep.objects.get(outfile=dataset)
-        except models.ProcessStep.DoesNotExist:
+            process_objs = models.ProcessStep.objects                   # pylint: disable=no-member
+            prev_process = process_objs.get(outfile=dataset)
+        except models.ProcessStep.DoesNotExist:                         # pylint: disable=no-member
             prev_process = None
 
         if prev_process:
@@ -146,7 +147,8 @@ def tree_plot(seed_dataset):
         # Assume the max generation is the current one unless told otherwise
         min_generation = current_layer
 
-        post_processes = models.ProcessStep.objects.filter(infile=dataset)
+        process_objs = models.ProcessStep.objects                       # pylint: disable=no-member
+        post_processes = process_objs.filter(infile=dataset)
         descendant_pks = list(post_processes.values_list('outfile', flat=True))
 
         n_children = len(descendant_pks)
@@ -158,7 +160,8 @@ def tree_plot(seed_dataset):
 
         for descendant_pk in descendant_pks:
 
-            descendant = models.FileMetaData.objects.get(pk=descendant_pk)
+            file_objs = models.FileMetaData.objects                     # pylint: disable=no-member
+            descendant = file_objs.get(pk=descendant_pk)
 
             # Ensure that the points for each child are reasonably spaced,
             # while still vaguely below their parent
@@ -182,13 +185,15 @@ def tree_plot(seed_dataset):
                 **connector_kwargs,
             ))
 
-            fig, min_generation = plot_descendants(
+            fig, end_generation = plot_descendants(
                 fig,
                 descendant,
                 current_layer=current_layer-1,
                 x_offset=h_pos,
                 x_width=x_width/n_children,
             )
+
+            min_generation = min(min_generation, end_generation)
 
             i+=1
 
@@ -217,7 +222,7 @@ def tree_plot(seed_dataset):
 
     # Prevent zooming, other plotlyish interactivity
     fig.update_xaxes(range=[-33.4, 33.4])
-    fig.update_yaxes(range=[min_generation-yrange/4, max_generation+yrange/16])
+    fig.update_yaxes(range=[min_generation-(yrange/4), max_generation+(yrange/16)])
     fig.layout.xaxis.fixedrange = True
     fig.layout.yaxis.fixedrange = True
 
@@ -276,7 +281,8 @@ def infobox(seed_dataset):
     # Fetch creation history based on whether this was uploaded or made
     # from an Interactive Session
 
-    creation_process = models.ProcessStep.objects.filter(outfile=seed_dataset)
+    process_objs = models.ProcessStep.objects                           # pylint: disable=no-member
+    creation_process = process_objs.filter(outfile=seed_dataset)
 
     if creation_process.exists():
 

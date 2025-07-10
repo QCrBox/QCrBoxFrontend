@@ -22,7 +22,7 @@ from django.views.static import serve
 
 from . import api, forms, generic, models
 from . import workflow as wf
-from .plotly_dash import plotly_app
+from .plotly_dash import plotly_app                                 # pylint: disable=unused-import
 from .utility import DisplayField
 
 LOGGER = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ LOGGER = logging.getLogger(__name__)
 # ============================================
 
 @login_required(login_url='login')
-def landing(request):
+def landing(_):
     '''A basic view to redirect the user to a chosen landing page
     ('initialise_workflow') on accessing the base URL of this web app.
 
@@ -179,7 +179,7 @@ def workflow(request, file_id):
     context = {}
 
     # Fetch the current file from the file_id passed in url
-    load_file = models.FileMetaData.objects.get(pk=file_id)
+    load_file = models.FileMetaData.objects.get(pk=file_id)   # pylint: disable=no-member
     context['file'] = load_file
 
     # Get the most recent app list from the API at the start of each workflow, sync the local list
@@ -194,8 +194,9 @@ def workflow(request, file_id):
 
         # Check user actually picked an application
         if 'application' in request.POST:
-            current_application = models.Application.objects.get(pk=request.POST['application'])
-            context['current_application'] = current_application
+            app_id = request.POST['application']
+            current_app = models.Application.objects.get(pk=app_id)     # pylint: disable=no-member
+            context['current_application'] = current_app
 
             # Check if user submitted using the 'start session' form
             if 'startup' in request.POST:
@@ -203,7 +204,7 @@ def workflow(request, file_id):
                 open_session = wf.start_session(
                     request,
                     load_file,
-                    current_application,
+                    current_app,
                 )
 
                 if open_session:
@@ -215,7 +216,7 @@ def workflow(request, file_id):
                 outfile = wf.close_session(
                     request,
                     load_file,
-                    current_application,
+                    current_app,
                 )
 
                 if not outfile:
@@ -760,7 +761,7 @@ def view_datasets(request):
         DisplayField('With App', 'created_app', is_special=True),
         ]
 
-    object_list = models.FileMetaData.objects.filter(active=True)
+    object_list = models.FileMetaData.objects.filter(active=True)       # pylint: disable=no-member
 
     # If a user can view unaffiliated data, they can view it all
     if request.user.has_perm('qcrbox.global_access'):
@@ -810,7 +811,7 @@ def delete_dataset(request, dataset_id):
 
     '''
 
-    deletion_data_meta = models.FileMetaData.objects.get(pk=dataset_id)
+    deletion_data_meta = models.FileMetaData.objects.get(pk=dataset_id) # pylint: disable=no-member
     deletion_data_group = deletion_data_meta.group
     current_user_groups = request.user.groups.all()
 
@@ -835,9 +836,9 @@ def delete_dataset(request, dataset_id):
         return redirect('view_datasets')
 
     try:
-        instance = models.FileMetaData.objects.get(pk=dataset_id)
+        instance = models.FileMetaData.objects.get(pk=dataset_id)       # pylint: disable=no-member
 
-    except models.FileMetaData.DoesNotExist:
+    except models.FileMetaData.DoesNotExist:                            # pylint: disable=no-member
         LOGGER.info(
             'User %s attempted to deactivate non-existent File Metadata (pk=%d)',
             request.user.username,
@@ -886,7 +887,7 @@ def download(request, file_id):
         allowed_groups = request.user.groups.all()
 
     # Fetch the metadata
-    download_file_meta = models.FileMetaData.objects.get(pk=file_id)
+    download_file_meta = models.FileMetaData.objects.get(pk=file_id)    # pylint: disable=no-member
 
     # Stop user accessing data from a group they have no access to
     if download_file_meta.group not in allowed_groups:
@@ -945,7 +946,7 @@ def visualise(request, dataset_id):
         allowed_groups = request.user.groups.all()
 
     # Fetch the metadata
-    visualise_file_meta = models.FileMetaData.objects.get(pk=dataset_id)
+    visualise_file_meta = models.FileMetaData.objects.get(pk=dataset_id)# pylint: disable=no-member
 
     # Stop user accessing data from a group they have no access to
     if visualise_file_meta.group not in allowed_groups:

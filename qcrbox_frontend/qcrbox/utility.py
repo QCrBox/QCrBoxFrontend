@@ -124,7 +124,7 @@ def update_applications():
 
     # Flag local DB entries inactive if no longer present in the backend
 
-    for app in models.Application.objects.filter(active=True):
+    for app in models.Application.objects.filter(active=True):      # pylint: disable=no-member
 
         if (app.name, app.version) in backend_appset:
             continue

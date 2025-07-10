@@ -46,7 +46,7 @@ def save_dataset_metadata(request, api_response, group, infile=None, application
     outfile_meta = next(iter(outset_meta.data_files.additional_properties.values()))
 
     # Append disambiguation number to the end of a display filename if needed
-    curr_files = models.FileMetaData.objects.filter(active=True)
+    curr_files = models.FileMetaData.objects.filter(active=True)        # pylint: disable=no-member
     curr_filenames = curr_files.values_list('display_filename', flat=True)
 
     if outfile_meta.filename in curr_filenames:
@@ -137,8 +137,8 @@ def clear_session_references(request, session_id):
     # clear cookie
     request.session['app_session_id'] = None
 
-    session_reference = models.SessionReference.objects.get(session_id=session_id)
-    session_reference.delete()
+    session = models.SessionReference.objects.get(session_id=session_id)# pylint: disable=no-member
+    session.delete()
 
 
 def start_session(request, infile, application):
