@@ -90,7 +90,8 @@ class LoadFileForm(forms.Form):
         else:
             permitted_groups = user.groups.all()
 
-        qset = models.FileMetaData.objects.filter(active=True).filter(group__in=permitted_groups)
+        objs = models.FileMetaData.objects                              # pylint: disable=no-member
+        qset = objs.filter(active=True).filter(group__in=permitted_groups)
         choices = [(f.pk, f.display_filename) for f in qset.all()]
 
         self.fields['file'].choices = choices
@@ -118,7 +119,7 @@ class SelectApplicationForm(forms.Form):
 
         super().__init__(*args, **kwargs)
 
-        qset = models.Application.objects.all()
+        qset = models.Application.objects.all()                         # pylint: disable=no-member
         choices = [(a.pk, a.name) for a in qset.filter(active=True)]
 
         self.fields['application'].choices = choices

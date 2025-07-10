@@ -209,8 +209,9 @@ def start_session(app_id, dataset_id):
     client = get_client()
 
     # Get relevant metadata instances from local db
-    app = models.Application.objects.get(pk=app_id)
-    dataset_metadata = models.FileMetaData.objects.get(backend_uuid=dataset_id)
+    app = models.Application.objects.get(pk=app_id)                     # pylint: disable=no-member
+    dataset_objs = models.FileMetaData.objects                          # pylint: disable=no-member
+    dataset_metadata = dataset_objs.get(backend_uuid=dataset_id)
 
     # Sessions are started with a data_file_id (not a dataset_id), so need to fetch that ID from
     # a dataset
