@@ -78,6 +78,11 @@ PLOTLY_COMPONENTS = [
     'dash_bootstrap_components',
 ]
 
+PLOTLY_DASH = {
+    # Flag to control location of initial argument storage
+    'cache_arguments': False,
+}
+
 ROOT_URLCONF = 'core.urls'
 
 TEMPLATES = [
