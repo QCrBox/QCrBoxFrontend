@@ -153,8 +153,8 @@ def tree_plot(seed_dataset):
 
             # Plot connecting line
             fig.add_trace(go.Scatter(
-                x=[x_offset, h_pos],
-                y=[current_layer, current_layer-1],
+                x=[x_offset, h_pos, h_pos],
+                y=[current_layer, current_layer, current_layer-1],
                 mode='lines',
                 line=linestyle,
                 hovertemplate='',
