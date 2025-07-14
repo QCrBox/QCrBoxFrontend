@@ -72,3 +72,22 @@
 # Using Applications
 
 - Remain logged in as `user3`.
+- Navigate to the `Home` page, and load the existing file `file1`.
+- Click the drop-down `Applications` box in the infobox on the right.  For each entry `app i` in the dropdown:
+   - Select `app i` from the dropdown.
+   - Click `Select Application`
+   - Click `Launch Application`
+   - Check that a new tab containing the application has opened, and the application has loaded `file1`.
+   - Navigate to the new tab, and close the application with the 'x' in the corner of the window.
+   - Return to the original tab and click `End Session`.
+   - Check that one of the following two options has occurred:
+      - If `app1` does not produce an output file, you are returned to the workflow page for `file1` with a banner at the top of the page explaining that no output was produced.
+      - If `app1` does produce an output file, you are returned to the workflow page for whatever file was produced in the app.  In this case, check that the 'workflow' panel on the left now shows the new file as a descendant of `file1`.  Click the square next to `file1` to return to the original workflow.
+   - Launch another session of `app i`.
+   - WITHOUT closing the app in the new tab, click `End Session` in the original tab.  Verify that one of the two 'on ending session' conditions holds true, and verify that the app is no longer open in the second tab.
+   - Launch another session of `app i`.  There may be an error message in the new tab due to the previous test force-quitting the session, but check that the new session loads properly regardless.
+   - DO NOT click the `End Session` button or close the app window in the new tab!
+   - Clear the browser cache, or open the QCrBox Frontend page in a new browser.
+   - Log in as `user3` if not already logged in.
+   - Navigate to the workflow for `file1`
+   - Launch another session of `app i`.
