@@ -767,7 +767,7 @@ def view_datasets(request):
     if request.user.has_perm('qcrbox.global_access'):
         pass
     else:
-        object_list = object_list.filter(group__in=request.user.groups.objects.all())
+        object_list = object_list.filter(group__in=request.user.groups.all())
 
     object_list = object_list.order_by('group__name', 'filename')
     paginator = Paginator(object_list, 13)
