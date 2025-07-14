@@ -90,4 +90,4 @@
    - Clear the browser cache, or open the QCrBox Frontend page in a new browser.
    - Log in as `user3` if not already logged in.
    - Navigate to the workflow for `file1`
-   - Launch another session of `app i`.
+   - Launch another session of `app i`, ensure that it launches correctly.
