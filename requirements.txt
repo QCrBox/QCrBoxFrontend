@@ -35,7 +35,7 @@ plotly==6.1.1
 psycopg==3.2.9
 python-dateutil==2.9.0.post0
 pytz==2025.2
-QCrBoxAPIClient @ git+https://github.com/QCrBox/QCrBoxAPIClient.git@4dada8b39bae3e512e718bba520ce2ab76859c1e
+QCrBoxAPIClient @ git+https://github.com/QCrBox/QCrBoxAPIClient.git@icdm-2025
 requests==2.32.4
 retrying==1.3.4
 six==1.17.0
