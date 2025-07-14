@@ -170,40 +170,50 @@ def start_session(request, infile, application):
         dataset_id=infile.backend_uuid,
     )
 
-    # Prepare regex to parse error string if needed
-    re_pattern = re.compile(
-        'Failed to create interactive session: .*client.*is not available'
-    )
-
     if api_response.is_valid:
         create_session_references(request, api_response, application)
         return True
 
     # else, if the client is busy and there's a session cookie, try to close it
-    if re_pattern.match(api_response.body.error.message) and 'app_session_id' in request.session:
-        LOGGER.warning('Client is busy; attempting to close previous session')
+    LOGGER.warning('Client is busy; attempting to close previous session')
 
+    current_sessions = models.SessionReference.objects                  # pylint: disable=no-member
+    relevant_sessions = current_sessions.filter(application=application)
+
+    if 'app_session_id' in request.session and request.session['app_session_id']:
         app_session_id = request.session['app_session_id']
-        closure_api_response = api.close_session(app_session_id)
 
-        if not closure_api_response.is_valid:
-            LOGGER.error('Could not close blocking session!')
+    elif relevant_sessions.exists():
+        app_session_id = relevant_sessions.first().session_id
+        LOGGER.warning('No cookie found; fetching session ID from reference db')
 
-        # Try again to open the session
-        else:
-            # clear any dangling references to the old session
-            clear_session_references(request, session_id=app_session_id)
-
-            api_response = api.start_session(
-                app_id=application.pk,
-                dataset_id=infile.backend_uuid
-            )
-
-            if api_response.is_valid:
-                create_session_references(request, api_response, application)
-                return True
     else:
-        print(api_response.body.error.message)
+        LOGGER.error('Could not find cookie or reference to blocking session!')
+        messages.warning(
+            request,
+            f'Could not start session of {application.name}!  Client seems'
+            f'to be busy.'
+        )
+        return False
+
+    closure_api_response = api.close_session(app_session_id)
+
+    if not closure_api_response.is_valid:
+        LOGGER.error('Could not close blocking session!')
+
+    # Try again to open the session
+    else:
+        # clear any dangling references to the old session
+        clear_session_references(request, session_id=app_session_id)
+
+        api_response = api.start_session(
+            app_id=application.pk,
+            dataset_id=infile.backend_uuid
+        )
+
+        if api_response.is_valid:
+            create_session_references(request, api_response, application)
+            return True
 
     # If no session was opened even after all that, handle the error
     LOGGER.error('Session failed to start!')
