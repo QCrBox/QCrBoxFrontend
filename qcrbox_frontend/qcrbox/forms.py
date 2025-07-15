@@ -119,7 +119,7 @@ class SelectApplicationForm(forms.Form):
 
         super().__init__(*args, **kwargs)
 
-        qset = models.Application.objects.all()                         # pylint: disable=no-member
+        qset = models.Application.objects.exclude(port=None)            # pylint: disable=no-member
         choices = [(a.pk, a.name) for a in qset.filter(active=True)]
 
         self.fields['application'].choices = choices
