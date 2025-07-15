@@ -177,13 +177,13 @@ def start_session(request, infile, application):
     LOGGER.warning('Client is busy; attempting to close previous session')
 
     current_sessions = models.SessionReference.objects                  # pylint: disable=no-member
-    relevant_sessions = current_sessions.filter(application=application)
+    relevant_sessions = current_sessions.filter(application=application).order_by('start_time')
 
     if 'app_session_id' in request.session and request.session['app_session_id']:
         app_session_id = request.session['app_session_id']
 
     elif relevant_sessions.exists():
-        app_session_id = relevant_sessions.first().session_id
+        app_session_id = relevant_sessions.last().session_id
         LOGGER.warning('No cookie found; fetching session ID from reference db')
 
     else:
