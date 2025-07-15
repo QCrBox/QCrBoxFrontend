@@ -825,15 +825,24 @@ def delete_dataset(request, dataset_id):
             request.user.username,
             deletion_data_meta.display_filename,
         )
+        api.get_dataset(deletion_data_meta.backend_uuid)
         api_response = api.delete_dataset(deletion_data_meta.backend_uuid)
 
     else:
         raise PermissionDenied
 
     if not api_response.is_valid:
-        LOGGER.error('Could not delete dataset!')
-        messages.warning(request, 'API delete request unsuccessful: file not deleted!')
-        return redirect('view_datasets')
+        LOGGER.warning('Delete request unsuccessful!')
+
+        # Check if file is also missing from the backend
+        get_response = api.get_dataset(deletion_data_meta.backend_uuid)
+        if not (get_response.is_valid) and get_response.body.error.code == 404:
+            LOGGER.info('Dataset already absent from backend; marking as deleted')
+
+        else:
+            # Otherwise, error out; delete unsuccesful
+            messages.warning(request, 'API delete request unsuccessful: file not deleted!')
+            return redirect('view_datasets')
 
     try:
         instance = models.FileMetaData.objects.get(pk=dataset_id)       # pylint: disable=no-member
@@ -977,14 +986,6 @@ def visualise(request, dataset_id):
 def frontend_logs(request):
     '''A view to fetch the frontend logs and return them as a download.
     Strictly for debugging purposes only, and only permitted to superusers.
-
-    Parameters:
-    - request(WSGIRequest): the request from a user which triggers a url
-            associated to this view.
-
-    Returns:
-    - response(HttpResponse): the http response served to the user on
-            accessing this view's associated url.
 
     '''
 

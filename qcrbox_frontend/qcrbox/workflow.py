@@ -5,7 +5,6 @@ Frontend's functionality.  Refactored here for readability.
 '''
 
 import logging
-import re
 
 from django.contrib import messages
 
@@ -219,7 +218,7 @@ def start_session(request, infile, application):
     LOGGER.error('Session failed to start!')
     messages.warning(
         request,
-        f'Could not start session!  Check if there is a session of'
+        f'Could not start session!  Check if there is a session of '
         f'{application.name} already running and, if so, close it.'
     )
     return False
