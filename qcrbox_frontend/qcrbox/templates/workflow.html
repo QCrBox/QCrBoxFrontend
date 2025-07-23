@@ -24,7 +24,7 @@
               <tr>
                 <td align='right'>
                   {% if prior_step.infile.active %}
-                    <a href="{% url 'workflow' prior_step.infile.pk %}"><i class="fa-regular fa-square"></i></a>
+                    <a href="{% url 'workflow' prior_step.infile.pk %}" id="workflow-link-{{prior_step.infile.pk}}"><i class="fa-regular fa-square"></i></a>
                   {% else %}
                     <i class="fa-regular fa-square"></i>
                   {% endif %}
@@ -38,13 +38,13 @@
                 </td>
                 <td align='left' >
                   {% if prior_step.infile.active %}
-                    <a href="{% url 'download' prior_step.infile.pk %}">
+                    <a href="{% url 'download' prior_step.infile.pk %}" id="download-link-{{prior_step.infile.pk}}">
                       <i class="fas fa-download"></i>
                     </a>&nbsp 
-                    <a href="{% url 'visualise' prior_step.infile.pk %}" target="_blank">
+                    <a href="{% url 'visualise' prior_step.infile.pk %}" target="_blank" id="visualise-link-{{prior_step.infile.pk}}">
                       <i class="fas fa-eye"></i>
                     </a>&nbsp
-                    <a href="{% url 'dataset_history' prior_step.infile.pk %}">
+                    <a href="{% url 'dataset_history' prior_step.infile.pk %}" id="history-link-{{prior_step.infile.pk}}">
                       <i class="fas fa-clock"></i>
                     </a>
                   {% endif %}
@@ -67,13 +67,13 @@
                 <b>{{file.display_filename}}</b>
               </td>
               <td align='left'>
-                <a href="{% url 'download' file.pk %}">
+                <a href="{% url 'download' file.pk %}" id="download-link-current">
                   <i class="fas fa-download"></i>
                 </a>&nbsp
-                <a href="{% url 'visualise' file.pk %}" target="_blank">
+                <a href="{% url 'visualise' file.pk %}" target="_blank" id="visualise-link-current">
                   <i class="fas fa-eye"></i>
                 </a>&nbsp
-                <a href="{% url 'dataset_history' file.pk %}">
+                <a href="{% url 'dataset_history' file.pk %}" id="history-link-current">
                   <i class="fas fa-clock"></i>
                 </a>
               </td>
@@ -93,14 +93,14 @@
               <h4>{{current_application.name}}</h4>
               <ul>
                 <li>Version: {{current_application.version}}</li>
-                <li>Website: <a href="{{current_application.url}}">{{ current_application.name }}</a>
+                <li>Website: <a href="{{current_application.url}}" id="external-app-link">{{ current_application.name }}</a>
               </ul>
               {% if session_in_progress %}
                 <form action="" method="POST" enctype="multipart/form-data">
                   {% csrf_token %}
                   <input type="hidden" id="end_session" name="end_session" value=True>
                   <input type="hidden" id="application" name="application" value={{ current_application.pk }}>
-                  <button type="submit" class="btn btn-primary">
+                  <button type="submit" class="btn btn-primary" id="end-session-button">
                     End Session
                   </button>
                 </form>
@@ -109,7 +109,7 @@
                   {% csrf_token %}
                   <input type="hidden" id="startup" name="startup" value=True>
                   <input type="hidden" id="application" name="application" value={{ current_application.pk }}>
-                  <button type="submit" class="btn btn-primary" id="startBtn">
+                  <button type="submit" class="btn btn-primary" id="start-app-button">
                     Launch Application
                   </button>
                 </form>
@@ -122,7 +122,7 @@
                 <form action="" method="POST" enctype="multipart/form-data">
                   {% csrf_token %}
                   {{ select_application_form.as_p }}
-                  <button type="submit" class="btn btn-primary">
+                  <button type="submit" class="btn btn-primary" id="select-app-button">
                     Select Application
                   </button>
                 </form>
@@ -139,7 +139,7 @@
   <script>
     let hostname = window.location.hostname;
 
-    document.getElementById("startBtn").addEventListener("click", function(){ window.open(`http://${hostname}:{{ current_application.port }}/vnc.html?path=vnc&autoconnect=true&resize=remote&reconnect=true&show_dot=true`, '_blank'); }); 
+    document.getElementById("start-app-button").addEventListener("click", function(){ window.open(`http://${hostname}:{{ current_application.port }}/vnc.html?path=vnc&autoconnect=true&resize=remote&reconnect=true&show_dot=true`, '_blank'); }); 
   </script>
 {% endif %}
 
