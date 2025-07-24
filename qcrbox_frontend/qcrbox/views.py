@@ -468,7 +468,7 @@ def edit_user(request):
                 'User %s updated their account',
                 request.user.username,
             )
-            messages.success(request, 'Account updated succesfully!')
+            messages.success(request, 'Account updated successfully!')
 
             return redirect('landing')
 
@@ -505,7 +505,7 @@ def update_password(request):
                 'User %s changeed their password',
                 request.user.username,
             )
-            messages.success(request, 'Password updated succesfully!')
+            messages.success(request, 'Password updated successfully!')
 
             return redirect('landing')
     else:
@@ -853,7 +853,7 @@ def delete_dataset(request, dataset_id):
             request.user.username,
             dataset_id,
         )
-        messages.success(request, 'Dataset was deleted succesfully.')
+        messages.success(request, 'Dataset was deleted successfully.')
         return redirect('view_datasets')
 
     # Don't actually delete the local metadata, just flag it as inactive so history can be preserved
@@ -865,7 +865,7 @@ def delete_dataset(request, dataset_id):
         request.user.username,
         instance.display_filename,
     )
-    messages.success(request, f'Dataset "{instance}" was deleted succesfully!')
+    messages.success(request, f'Dataset "{instance}" was deleted successfully!')
     return redirect('view_datasets')
 
 

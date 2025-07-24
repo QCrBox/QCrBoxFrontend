@@ -180,5 +180,5 @@ qcrbox_frontend/staticfiles/
 testing/log.html
 testing/report.html
 testing/output.xml
-testing/selenium-screenshot-1.png
-testing/selenium-screenshot-2.png
+testing/selenium-screenshot-*.png
+

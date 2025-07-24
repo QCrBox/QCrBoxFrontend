@@ -5,10 +5,11 @@ ${PORT}                 8000
 ${SERVER}               http://${HOSTNAME}:${PORT}/
 ${BROWSER}              chrome
 ${MANAGE}               ../qcrbox_frontend/manage.py
-${ADMIN_USERNAME}       robot_admin
-${ADMIN_PASSWORD}       robot_admin
-${USER_USERNAME}        robot_user
-${USER_PASSWORD}        robot_user
+${ROBOT_PREFIX}         _ROBOT_
+${ADMIN_USERNAME}       ${ROBOT_PREFIX}admin
+${ADMIN_PASSWORD}       test_pass_0123
+${USER_USERNAME}        ${ROBOT_PREFIX}user
+${USER_PASSWORD}        test_pass_0123
 
 *** Settings ***
 
@@ -34,31 +35,42 @@ Start Django
   Set suite variable  ${django process}
 
 Stop Django
-  Terminate Process  ${django process}
   Cleanup Initial Data
+  Terminate Process  ${django process}
   
 Create Initial Data
   Create Test Admin
   Create Test User
   
 Cleanup Initial Data
-  Cleanup Test Users
+  Cleanup Test Data
   
 Create Test Admin
   Start process  python  ${MANAGE}  create_robot_user  ${ADMIN_USERNAME}  dummy@email.com  ${ADMIN_PASSWORD}  admin
 
 Create Test User
   Start process  python  ${MANAGE}  create_robot_user  ${USER_USERNAME}  dummy@email.com  ${USER_PASSWORD}  user
-  
-Cleanup Test Users
-  Start process  python  ${MANAGE}  cleanup_robot_users  ${ADMIN_USERNAME}  ${USER_USERNAME}  
 
+Cleanup Test Data
+  Start process  python  ${MANAGE}  cleanup_robot_data
+
+Add Group
+  [Arguments]  ${group_name}
+  Go To  ${SERVER}/view_groups
+  Wait Until Page Contains Element  display-table
+  Click Button  create-new-button
+  Wait Until Page Contains Element  create-form
+  Input Text  name  ${group_name}
+  Click Button  submit-button
+  Wait Until Page Contains Element  message
+  
 Log In As Admin
   Go To  ${SERVER}/login
   Page Should Contain Element  login-form
   Input Text  username  ${ADMIN_USERNAME}
   Input Text  password  ${ADMIN_PASSWORD}
   Click Button  submit-button
+  Wait Until Page Contains Element  message
   
 Log In As User
   Go To  ${SERVER}/login
@@ -66,6 +78,11 @@ Log In As User
   Input Text  username  ${USER_USERNAME}
   Input Text  password  ${USER_PASSWORD}
   Click Button  submit-button
+  Wait Until Page Contains Element  message
+
+Log Out
+  Go To  ${SERVER}/logout
+  Wait Until Page Contains Element  message
 
 *** Test Cases ***
 
@@ -78,7 +95,79 @@ Scenario: As a visitor I should be redirected to a minimal login page
   Page Should Not Contain Element  users-link
   
 Scenario: As a visitor I should be able to use the login form to log in
-  Log In As Admin
+  Log In As User
+  Page Should Not Contain   Login Failed
+  Page Should Contain  Login Successful
+  
+Scenario: As a user I should be able to log out
+  Log Out
+  Page Should Contain  Logout Successful
+  
+Scenario: As a user I should be able to edit my account details
+  Log In As User
+  Go To  ${SERVER}/edit_account
+  Wait Until Page Contains Element  edit-form
+  Input Text  first_name  test first name
+  Input Text  last_name  test last name
+  Input Text  email  test@email.com
+  Click Button  submit-button
+  Wait Until Page Contains Element  message
+  Page Should Contain  Account updated successfully
+  Go To  ${SERVER}/edit_account
+  Element Attribute Value Should Be  first_name  value  test first name
+  Element Attribute Value Should Be  last_name  value  test last name
+  Element Attribute Value Should Be  email  value  test@email.com
+  
+Scenario: As a user I should be able to change my password
+  Go To  ${SERVER}/edit_password
+  Wait Until Page Contains Element  edit-form
+  Input Text  old_password  ${USER_PASSWORD}
+  Input Text  new_password1  ${USER_PASSWORD}_edited123
+  Input Text  new_password2  ${USER_PASSWORD}_edited123
+  Click Button  submit-button
+  Wait Until Page Contains Element  message
+  Page Should Contain  Password updated successfully
+  Log Out
+  Go To  ${SERVER}/login
+  Page Should Contain Element  login-form
+  Input Text  username  ${USER_USERNAME}
+  Input Text  password  ${USER_PASSWORD}_edited123
+  Click Button  submit-button
   Wait Until Page Contains Element  message
   Page Should Not Contain   Login Failed
   Page Should Contain  Login Successful
+  
+Scenario: As an admin I should be able to create new groups
+  Log Out
+  Log In As Admin
+  Go To  ${SERVER}/view_groups
+  Wait Until Page Contains Element  display-table
+  Element Should Not Contain  display-table  ${ROBOT_PREFIX}grouptest  
+  Add Group  ${ROBOT_PREFIX}grouptest
+  Page Should Contain  New Group "${ROBOT_PREFIX}grouptest" added
+  Go To  ${SERVER}/view_groups
+  Wait Until Page Contains Element  display-table
+  Element Should Contain  display-table  ${ROBOT_PREFIX}grouptest
+  
+Scenario: As an admin I should be able to edit groups
+  Go To  ${SERVER}/view_groups
+  Wait Until Page Contains Element  display-table
+  Click Link  edit-link-${ROBOT_PREFIX}grouptest
+  Wait Until Page Contains Element  edit-form
+  Input Text  name  ${ROBOT_PREFIX}edited
+  Click Button  submit-button
+  Wait Until Page Contains Element  message
+  Page Should Contain  Changes to "${ROBOT_PREFIX}edited" saved!
+  Go To  ${SERVER}/view_groups
+  Wait Until Page Contains Element  display-table
+  Element Should Contain  display-table  ${ROBOT_PREFIX}edited
+  Element Should Not Contain  display-table  ${ROBOT_PREFIX}grouptest
+  
+Scenario: As an admin I should be able to delete groups
+  Go To  ${SERVER}/view_groups
+  Wait Until Page Contains Element  display-table
+  Click Link  delete-link-${ROBOT_PREFIX}edited
+  Handle Alert  ACCEPT
+  Wait Until Page Contains Element  display-table
+  Element Should Not Contain  display-table  ${ROBOT_PREFIX}edited
+
