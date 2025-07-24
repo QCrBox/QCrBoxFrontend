@@ -5,10 +5,10 @@ ${PORT}                 8000
 ${SERVER}               http://${HOSTNAME}:${PORT}/
 ${BROWSER}              chrome
 ${MANAGE}               ../qcrbox_frontend/manage.py
-${ADMIN_USERNAME}       admin
-${ADMIN_PASSWORD}       admin
-${USER_USERNAME}        user
-${USER_PASSWORD}        user
+${ADMIN_USERNAME}       robot_admin
+${ADMIN_PASSWORD}       robot_admin
+${USER_USERNAME}        robot_user
+${USER_PASSWORD}        robot_user
 
 *** Settings ***
 
@@ -20,13 +20,6 @@ Suite Teardown  Stop Django and close Browser
 
 
 *** Keywords ***
-Start Django
-  ${django process}=  Start process  python  ${MANAGE}  runserver
-  Set suite variable  ${django process}
-
-Stop Django
-  Terminate Process  ${django process}
-
 Start Django and open Browser
   Start Django
   Open Browser  ${SERVER}  ${BROWSER}
@@ -35,6 +28,31 @@ Stop Django and close browser
   Close All Browsers
   Stop Django
   
+Start Django
+  Create Initial Data
+  ${django process}=  Start process  python  ${MANAGE}  runserver
+  Set suite variable  ${django process}
+
+Stop Django
+  Terminate Process  ${django process}
+  Cleanup Initial Data
+  
+Create Initial Data
+  Create Test Admin
+  Create Test User
+  
+Cleanup Initial Data
+  Cleanup Test Users
+  
+Create Test Admin
+  Start process  python  ${MANAGE}  create_robot_user  ${ADMIN_USERNAME}  dummy@email.com  ${ADMIN_PASSWORD}  admin
+
+Create Test User
+  Start process  python  ${MANAGE}  create_robot_user  ${USER_USERNAME}  dummy@email.com  ${USER_PASSWORD}  user
+  
+Cleanup Test Users
+  Start process  python  ${MANAGE}  cleanup_robot_users  ${ADMIN_USERNAME}  ${USER_USERNAME}  
+
 Log In As Admin
   Go To  ${SERVER}/login
   Page Should Contain Element  login-form
