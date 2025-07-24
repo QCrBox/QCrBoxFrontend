@@ -64,6 +64,22 @@ Add Group
   Click Button  submit-button
   Wait Until Page Contains Element  message
   
+Add User
+  [Arguments]  ${username}  ${group_name}
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Click Button  create-new-button
+  Wait Until Page Contains Element  create-form
+  Input Text  username  ${username}
+  Input Text  password1  ${USER_PASSWORD}
+  Input Text  password2  ${USER_PASSWORD}
+  Input Text  email  dummy@email.com
+  Input Text  first_name  first_name
+  Input Text  last_name  last_name
+  Select From List By Label  user_groups  ${group_name}
+  Click Button  submit-button
+  Wait Until Page Contains Element  message
+  
 Log In As Admin
   Go To  ${SERVER}/login
   Page Should Contain Element  login-form
@@ -86,7 +102,7 @@ Log Out
 
 *** Test Cases ***
 
-Scenario: As a visitor I should be redirected to a minimal login page
+As a Visitor: I should be redirected to a minimal login page
   Go To  ${SERVER}
   Page Should Contain Element  login-form
   Page Should Not Contain Element  home-link
@@ -94,16 +110,16 @@ Scenario: As a visitor I should be redirected to a minimal login page
   Page Should Not Contain Element  groups-link
   Page Should Not Contain Element  users-link
   
-Scenario: As a visitor I should be able to use the login form to log in
+I should be able to use the login form to log in
   Log In As User
   Page Should Not Contain   Login Failed
   Page Should Contain  Login Successful
   
-Scenario: As a user I should be able to log out
+As a User: I should be able to log out
   Log Out
   Page Should Contain  Logout Successful
   
-Scenario: As a user I should be able to edit my account details
+I should be able to edit my account details
   Log In As User
   Go To  ${SERVER}/edit_account
   Wait Until Page Contains Element  edit-form
@@ -118,7 +134,7 @@ Scenario: As a user I should be able to edit my account details
   Element Attribute Value Should Be  last_name  value  test last name
   Element Attribute Value Should Be  email  value  test@email.com
   
-Scenario: As a user I should be able to change my password
+I should be able to change my password
   Go To  ${SERVER}/edit_password
   Wait Until Page Contains Element  edit-form
   Input Text  old_password  ${USER_PASSWORD}
@@ -137,7 +153,7 @@ Scenario: As a user I should be able to change my password
   Page Should Not Contain   Login Failed
   Page Should Contain  Login Successful
   
-Scenario: As an admin I should be able to create new groups
+As an Admin: I should be able to create new groups
   Log Out
   Log In As Admin
   Go To  ${SERVER}/view_groups
@@ -149,7 +165,7 @@ Scenario: As an admin I should be able to create new groups
   Wait Until Page Contains Element  display-table
   Element Should Contain  display-table  ${ROBOT_PREFIX}grouptest
   
-Scenario: As an admin I should be able to edit groups
+I should be able to edit groups
   Go To  ${SERVER}/view_groups
   Wait Until Page Contains Element  display-table
   Click Link  edit-link-${ROBOT_PREFIX}grouptest
@@ -163,7 +179,7 @@ Scenario: As an admin I should be able to edit groups
   Element Should Contain  display-table  ${ROBOT_PREFIX}edited
   Element Should Not Contain  display-table  ${ROBOT_PREFIX}grouptest
   
-Scenario: As an admin I should be able to delete groups
+I should be able to delete groups
   Go To  ${SERVER}/view_groups
   Wait Until Page Contains Element  display-table
   Click Link  delete-link-${ROBOT_PREFIX}edited
@@ -171,3 +187,21 @@ Scenario: As an admin I should be able to delete groups
   Wait Until Page Contains Element  display-table
   Element Should Not Contain  display-table  ${ROBOT_PREFIX}edited
 
+I should be able to create a new user
+  Add Group  ${ROBOT_PREFIX}1
+  Add Group  ${ROBOT_PREFIX}2
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Element Should Not Contain  display-table  ${ROBOT_PREFIX}usertest  
+  Add User  ${ROBOT_PREFIX}usertest  ${ROBOT_PREFIX}1
+  Page Should Contain  Registration Successful
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Element Should Contain  display-table  ${ROBOT_PREFIX}usertest
+  Element Should Contain  cell-Group(s)-${ROBOT_PREFIX}usertest  ${ROBOT_PREFIX}1
+  Element Should Not Contain  cell-Group(s)-${ROBOT_PREFIX}usertest  ${ROBOT_PREFIX}2
+  
+I should be able to edit a user
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Click Link  edit-link-${ROBOT_PREFIX}usertest
