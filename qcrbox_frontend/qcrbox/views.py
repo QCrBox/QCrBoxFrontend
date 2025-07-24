@@ -264,7 +264,7 @@ def login_view(request):
             'User %s failed to log in',
             username,
         )
-        messages.warning(request, 'Login failed, try again!')
+        messages.warning(request, 'Login Failed, try again!')
 
     return render(request, 'login.html', {})
 
