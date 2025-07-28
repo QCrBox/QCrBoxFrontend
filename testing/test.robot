@@ -2,19 +2,22 @@
 
 ${HOSTNAME}             127.0.0.1
 ${PORT}                 8000
-${SERVER}               http://${HOSTNAME}:${PORT}/
-${BROWSER}              chrome
+${SERVER}               http://${HOSTNAME}:${PORT}
 ${MANAGE}               ../qcrbox_frontend/manage.py
 ${ROBOT_PREFIX}         _ROBOT_
 
 ${USERNAME}        ${ROBOT_PREFIX}user
 ${PASSWORD}        test_pass_0123
 ${GROUP}           ${ROBOT_PREFIX}group
+${TEST_FILENAME}   test.cif
+${TEST_FILEPATH}   ${CURDIR}/${TEST_FILENAME}
+${DOWNLOAD_DIR}    ${CURDIR}/download
 
 *** Settings ***
 
 Documentation   Django Robot Tests
-Library         SeleniumLibrary  timeout=1  implicit_wait=0
+Library         SeleniumLibrary  timeout=100  implicit_wait=0
+Library         OperatingSystem
 Library         Process
 Suite Setup     Start Django and open Browser
 Suite Teardown  Stop Django and close Browser
@@ -23,12 +26,15 @@ Suite Teardown  Stop Django and close Browser
 *** Keywords ***
 Start Django and open Browser
   Start Django
-  Open Browser  ${SERVER}  ${BROWSER}
+  VAR  &{browser_prefs}  download.default_directory=${DOWNLOAD_DIR}
+  ${chrome_options}  Evaluate  sys.modules['selenium.webdriver'].ChromeOptions()  sys, selenium.webdriver
+  Call Method  ${chrome_options}  add_experimental_option  prefs  ${browser_prefs}
+  Open Browser  ${SERVER}  chrome  options=${chrome_options}
 
 Stop Django and close browser
   Close All Browsers
   Stop Django
-  
+
 Start Django
   Create Initial Data
   ${django process}=  Start process  python  ${MANAGE}  runserver
@@ -343,3 +349,36 @@ As a Basic User: I should be able to select only my own group when uploading dat
   Go to  ${SERVER}/workflow
   Element Should Contain  group  ${GROUP}1
   Element Should Not Contain  group  ${GROUP}2
+  
+As Any User: I should be able to upload a .cif file to a group I am a member of
+  Log Out
+  Log In As User  1
+  Go To  ${SERVER}/workflow
+  Select From List By Label  group  ${GROUP}1
+  Choose File  upload-dataset-file  ${TEST_FILEPATH}
+  Click Button  upload-button
+  Wait Until Page Contains Element  workflow-display
+  Element Should Contain  workflow-display  ${TEST_FILENAME}
+  Get Location
+  ${workflow url}=  Get Location
+  Set suite variable  ${workflow url}
+  
+As Any User: I should be able to download the current .cif file from the workflow
+  Go To  ${workflow url}
+  Wait Until Page Contains Element  workflow-display
+  Click Link  download-link-current
+  Wait Until Created  ${DOWNLOAD_DIR}/${TEST_FILENAME}
+  ${original file}=  Get File  ${TEST_FILEPATH}
+  ${downloaded file}=  Get File  ${DOWNLOAD_DIR}/${TEST_FILENAME}
+  Should Be Equal As Strings  ${original file}  ${downloaded file}
+  Remove File  ${DOWNLOAD_DIR}/${TEST_FILENAME}
+  
+As Any User: I should be able to open the Visualiser for the current .cif from the workflow
+  Go To  ${workflow url}
+  Wait Until Page Contains Element  workflow-display
+  Click Link  visualise-link-current
+  Switch Window  NEW
+  Wait Until Page Contains  Crystal Structure
+  Close Window
+  Switch Window  MAIN
+

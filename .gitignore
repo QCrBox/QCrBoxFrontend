@@ -181,4 +181,5 @@ testing/log.html
 testing/report.html
 testing/output.xml
 testing/selenium-screenshot-*.png
+test (*).cif
 

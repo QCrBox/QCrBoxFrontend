@@ -3,7 +3,7 @@ from django.contrib.auth.models import User, Group
 import logging
 
 from core import settings
-from ... import models
+from ... import api, models
 
 LOGGER = logging.getLogger(__name__)
 
@@ -23,16 +23,15 @@ class Command(BaseCommand):
         robot_processes.delete()
 
         # Then remove the datasets
+        for dataset in robot_data:
+            api.delete_dataset(dataset.backend_uuid)
         robot_data.delete()
 
         # Remove any lingering session references tagged to robots
         robot_refs = models.SessionReference.objects.filter(user__in=robot_users)
         robot_refs.delete()
 
-        # Cleanup the robot users        
-        if not robot_users.exists():
-            raise ValueError('No robot users to delete!')
-
+        # Cleanup the robot users
         robot_users.delete()
 
         # Cleanup any robot groups, marked with name prefixes of _ROBOT_

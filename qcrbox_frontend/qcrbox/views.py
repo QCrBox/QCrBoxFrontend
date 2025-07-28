@@ -65,6 +65,12 @@ def initialise_workflow(request):
 
     '''
 
+    # Set up context with form instances
+    context = {
+        'loadfile_form':forms.LoadFileForm(user=request.user, auto_id='load-dataset-%s'),
+        'newfile_form':forms.UploadFileForm(user=request.user, auto_id='upload-dataset-%s'),
+    }
+
     # Check if user submitted a form
     if request.method == 'POST':
 
@@ -89,10 +95,7 @@ def initialise_workflow(request):
                 return render(
                     request,
                     'initial.html',
-                    {
-                        'loadfile_form':forms.LoadFileForm(user=request.user),
-                        'newfile_form':forms.UploadFileForm(user=request.user),
-                    }
+                    context,
                 )
 
             file = request.FILES['file']
@@ -104,10 +107,7 @@ def initialise_workflow(request):
                 return render(
                     request,
                     'initial.html',
-                    {
-                        'loadfile_form':forms.LoadFileForm(user=request.user),
-                        'newfile_form':forms.UploadFileForm(user=request.user),
-                    }
+                    context,
                 )
 
             LOGGER.info(
@@ -148,10 +148,7 @@ def initialise_workflow(request):
     return render(
         request,
         'initial.html',
-        {
-            'loadfile_form':forms.LoadFileForm(user=request.user),
-            'newfile_form':forms.UploadFileForm(user=request.user),
-        }
+        context,
     )
 
 
