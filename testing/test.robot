@@ -6,15 +6,15 @@ ${SERVER}               http://${HOSTNAME}:${PORT}/
 ${BROWSER}              chrome
 ${MANAGE}               ../qcrbox_frontend/manage.py
 ${ROBOT_PREFIX}         _ROBOT_
-${ADMIN_USERNAME}       ${ROBOT_PREFIX}admin
-${ADMIN_PASSWORD}       test_pass_0123
-${USER_USERNAME}        ${ROBOT_PREFIX}user
-${USER_PASSWORD}        test_pass_0123
+
+${USERNAME}        ${ROBOT_PREFIX}user
+${PASSWORD}        test_pass_0123
+${GROUP}           ${ROBOT_PREFIX}group
 
 *** Settings ***
 
 Documentation   Django Robot Tests
-Library         SeleniumLibrary  timeout=10  implicit_wait=0
+Library         SeleniumLibrary  timeout=1  implicit_wait=0
 Library         Process
 Suite Setup     Start Django and open Browser
 Suite Teardown  Stop Django and close Browser
@@ -35,21 +35,16 @@ Start Django
   Set suite variable  ${django process}
 
 Stop Django
-  Cleanup Initial Data
+  Cleanup Test Data
   Terminate Process  ${django process}
   
 Create Initial Data
-  Create Test Admin
-  Create Test User
-  
-Cleanup Initial Data
-  Cleanup Test Data
-  
-Create Test Admin
-  Start process  python  ${MANAGE}  create_robot_user  ${ADMIN_USERNAME}  dummy@email.com  ${ADMIN_PASSWORD}  admin
+  Create Test Users
 
-Create Test User
-  Start process  python  ${MANAGE}  create_robot_user  ${USER_USERNAME}  dummy@email.com  ${USER_PASSWORD}  user
+Create Test Users
+  Start process  python  ${MANAGE}  create_robot_user  ${USERNAME}1  dummy@email.com  ${PASSWORD}  global manager
+  Start process  python  ${MANAGE}  create_robot_user  ${USERNAME}2  dummy@email.com  ${PASSWORD}  group manager
+  Start process  python  ${MANAGE}  create_robot_user  ${USERNAME}3  dummy@email.com  ${PASSWORD}  user
 
 Cleanup Test Data
   Start process  python  ${MANAGE}  cleanup_robot_data
@@ -71,8 +66,8 @@ Add User
   Click Button  create-new-button
   Wait Until Page Contains Element  create-form
   Input Text  username  ${username}
-  Input Text  password1  ${USER_PASSWORD}
-  Input Text  password2  ${USER_PASSWORD}
+  Input Text  password1  ${PASSWORD}
+  Input Text  password2  ${PASSWORD}
   Input Text  email  dummy@email.com
   Input Text  first_name  first_name
   Input Text  last_name  last_name
@@ -80,21 +75,28 @@ Add User
   Click Button  submit-button
   Wait Until Page Contains Element  message
   
-Log In As Admin
+Add Group to User
+  [Arguments]  ${username}  ${group_name}
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Click Link  edit-link-${username}
+  Wait Until Page Contains Element  edit-form
+  Select From List By Label  groups  ${group_name}
+  Click Button  submit-button
+  Wait Until Page Contains Element  message
+
+Log In As
+  [Arguments]  ${username}  ${password}
   Go To  ${SERVER}/login
   Page Should Contain Element  login-form
-  Input Text  username  ${ADMIN_USERNAME}
-  Input Text  password  ${ADMIN_PASSWORD}
+  Input Text  username  ${username}
+  Input Text  password  ${password}
   Click Button  submit-button
   Wait Until Page Contains Element  message
   
 Log In As User
-  Go To  ${SERVER}/login
-  Page Should Contain Element  login-form
-  Input Text  username  ${USER_USERNAME}
-  Input Text  password  ${USER_PASSWORD}
-  Click Button  submit-button
-  Wait Until Page Contains Element  message
+  [Arguments]  ${user_id}
+  Log In As  ${USERNAME}${user_id}  ${PASSWORD}
 
 Log Out
   Go To  ${SERVER}/logout
@@ -110,17 +112,17 @@ As a Visitor: I should be redirected to a minimal login page
   Page Should Not Contain Element  groups-link
   Page Should Not Contain Element  users-link
   
-I should be able to use the login form to log in
-  Log In As User
-  Page Should Not Contain   Login Failed
+As a Visitor: I should be able to use the login form to log in
+  Log In As User  3
+  Page Should Not Contain  Login Failed
   Page Should Contain  Login Successful
-  
-As a User: I should be able to log out
+
+As Any User: I should be able to log out
   Log Out
   Page Should Contain  Logout Successful
   
-I should be able to edit my account details
-  Log In As User
+As Any User: I should be able to edit my account details
+  Log In As User  3
   Go To  ${SERVER}/edit_account
   Wait Until Page Contains Element  edit-form
   Input Text  first_name  test first name
@@ -134,74 +136,210 @@ I should be able to edit my account details
   Element Attribute Value Should Be  last_name  value  test last name
   Element Attribute Value Should Be  email  value  test@email.com
   
-I should be able to change my password
+As Any User: I should be able to change my password
   Go To  ${SERVER}/edit_password
   Wait Until Page Contains Element  edit-form
-  Input Text  old_password  ${USER_PASSWORD}
-  Input Text  new_password1  ${USER_PASSWORD}_edited123
-  Input Text  new_password2  ${USER_PASSWORD}_edited123
+  Input Text  old_password  ${PASSWORD}
+  Input Text  new_password1  ${PASSWORD}_edited
+  Input Text  new_password2  ${PASSWORD}_edited
   Click Button  submit-button
   Wait Until Page Contains Element  message
   Page Should Contain  Password updated successfully
   Log Out
   Go To  ${SERVER}/login
   Page Should Contain Element  login-form
-  Input Text  username  ${USER_USERNAME}
-  Input Text  password  ${USER_PASSWORD}_edited123
+  Input Text  username  ${USERNAME}3
+  Input Text  password  ${PASSWORD}_edited
   Click Button  submit-button
   Wait Until Page Contains Element  message
-  Page Should Not Contain   Login Failed
+  Page Should Not Contain  Login Failed
   Page Should Contain  Login Successful
-  
-As an Admin: I should be able to create new groups
-  Log Out
-  Log In As Admin
-  Go To  ${SERVER}/view_groups
-  Wait Until Page Contains Element  display-table
-  Element Should Not Contain  display-table  ${ROBOT_PREFIX}grouptest  
-  Add Group  ${ROBOT_PREFIX}grouptest
-  Page Should Contain  New Group "${ROBOT_PREFIX}grouptest" added
-  Go To  ${SERVER}/view_groups
-  Wait Until Page Contains Element  display-table
-  Element Should Contain  display-table  ${ROBOT_PREFIX}grouptest
-  
-I should be able to edit groups
-  Go To  ${SERVER}/view_groups
-  Wait Until Page Contains Element  display-table
-  Click Link  edit-link-${ROBOT_PREFIX}grouptest
+  Go To  ${SERVER}/edit_password
   Wait Until Page Contains Element  edit-form
-  Input Text  name  ${ROBOT_PREFIX}edited
+  Input Text  old_password  ${PASSWORD}_edited
+  Input Text  new_password1  ${PASSWORD}
+  Input Text  new_password2  ${PASSWORD}
+  Click Button  submit-button
+  
+As a Global Manager: I should be able to create new groups
+  Log Out
+  Log In As User  1
+  Go To  ${SERVER}/view_groups
+  Wait Until Page Contains Element  display-table
+  Element Should Not Contain  display-table  ${GROUP}test  
+  Add Group  ${GROUP}test
+  Page Should Contain  New Group "${GROUP}test" added
+  Go To  ${SERVER}/view_groups
+  Wait Until Page Contains Element  display-table
+  Element Should Contain  display-table  ${GROUP}test
+  
+As a Global Manager: I should be able to edit groups
+  Go To  ${SERVER}/view_groups
+  Wait Until Page Contains Element  display-table
+  Click Link  edit-link-${GROUP}test
+  Wait Until Page Contains Element  edit-form
+  Input Text  name  ${GROUP}edited
   Click Button  submit-button
   Wait Until Page Contains Element  message
-  Page Should Contain  Changes to "${ROBOT_PREFIX}edited" saved!
+  Page Should Contain  Changes to "${GROUP}edited" saved!
   Go To  ${SERVER}/view_groups
   Wait Until Page Contains Element  display-table
-  Element Should Contain  display-table  ${ROBOT_PREFIX}edited
-  Element Should Not Contain  display-table  ${ROBOT_PREFIX}grouptest
+  Element Should Contain  display-table  ${GROUP}edited
+  Element Should Not Contain  display-table  ${GROUP}test
   
-I should be able to delete groups
+As a Global Manager: I should be able to delete groups
   Go To  ${SERVER}/view_groups
   Wait Until Page Contains Element  display-table
-  Click Link  delete-link-${ROBOT_PREFIX}edited
+  Click Link  delete-link-${GROUP}edited
   Handle Alert  ACCEPT
   Wait Until Page Contains Element  display-table
-  Element Should Not Contain  display-table  ${ROBOT_PREFIX}edited
+  Element Should Not Contain  display-table  ${GROUP}edited
 
-I should be able to create a new user
-  Add Group  ${ROBOT_PREFIX}1
-  Add Group  ${ROBOT_PREFIX}2
+As a Global Manager: I should be able to create a new user
+  Add Group  ${GROUP}1
+  Add Group  ${GROUP}2
   Go To  ${SERVER}/view_users
   Wait Until Page Contains Element  display-table
-  Element Should Not Contain  display-table  ${ROBOT_PREFIX}usertest  
-  Add User  ${ROBOT_PREFIX}usertest  ${ROBOT_PREFIX}1
+  Element Should Not Contain  display-table  ${USERNAME}test  
+  Add User  ${USERNAME}test  ${GROUP}1
   Page Should Contain  Registration Successful
   Go To  ${SERVER}/view_users
   Wait Until Page Contains Element  display-table
-  Element Should Contain  display-table  ${ROBOT_PREFIX}usertest
-  Element Should Contain  cell-Group(s)-${ROBOT_PREFIX}usertest  ${ROBOT_PREFIX}1
-  Element Should Not Contain  cell-Group(s)-${ROBOT_PREFIX}usertest  ${ROBOT_PREFIX}2
-  
-I should be able to edit a user
+  Element Should Contain  display-table  ${USERNAME}test
+  Element Should Contain  cell-Group(s)-${USERNAME}test  ${GROUP}1
+  Element Should Not Contain  cell-Group(s)-${USERNAME}test  ${GROUP}2
+  Log Out
+  Log In As  ${USERNAME}test  ${PASSWORD}
+  Page Should Not Contain  Login Failed
+  Page Should Contain  Login Successful
+  Log In As User  1
+
+As a Global Manager: I should be able to edit a user
   Go To  ${SERVER}/view_users
   Wait Until Page Contains Element  display-table
-  Click Link  edit-link-${ROBOT_PREFIX}usertest
+  Click Link  edit-link-${USERNAME}test
+  Wait Until Page Contains Element  edit-form
+  Input Text  first_name  edited first name
+  Click Button  submit-button
+  Wait Until Page Contains Element  message
+  Page Should Contain  Changes to "${USERNAME}test" saved!
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Element Should Contain  display-table  edited first name
+
+As a Global Manager: I should be able to assign groups to an existing user
+  Add Group to User  ${USERNAME}1  ${GROUP}1
+  Page Should Contain  Changes to "${USERNAME}1" saved!
+  Add Group to User  ${USERNAME}2  ${GROUP}2
+  Add Group to User  ${USERNAME}3  ${GROUP}1
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Element Should Contain  cell-Group(s)-${USERNAME}1  ${GROUP}1
+  Element Should Contain  cell-Group(s)-${USERNAME}2  ${GROUP}2
+  Element Should Contain  cell-Group(s)-${USERNAME}3  ${GROUP}1
+  Element Should Not Contain  cell-Group(s)-${USERNAME}1  ${GROUP}2
+  Element Should Not Contain  cell-Group(s)-${USERNAME}2  ${GROUP}1
+  Element Should Not Contain  cell-Group(s)-${USERNAME}3  ${GROUP}2
+
+As a Global Manager: I should be able to delete a user
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Click Link  delete-link-${USERNAME}test
+  Handle Alert  ACCEPT
+  Wait Until Page Contains Element  display-table
+  Element Should Not Contain  display-table  ${USERNAME}test
+  
+As a Global Manager: I should be able to select any group when uploading data
+  Go to  ${SERVER}/workflow
+  Element Should Contain  group  ${GROUP}1
+  Element Should Contain  group  ${GROUP}2
+  
+As a Group Manager: I should be able to view other users only in my group(s)
+  Log Out
+  Log In As User  2
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Element Should Not Contain  display-table  ${USERNAME}1
+  Element Should Contain  display-table  ${USERNAME}2
+  Element Should Not Contain  display-table  ${USERNAME}3
+  
+As a Group Manager: I should be able to add users to my group(s)
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Page Should Contain Element  create-new-button
+  Element Should Not Contain  display-table  ${USERNAME}manager_test
+  Click Button  create-new-button
+  Wait Until Page Contains Element  create-form
+  Input Text  username  ${USERNAME}manager_test
+  Input Text  password1  ${PASSWORD}
+  Input Text  password2  ${PASSWORD}
+  Input Text  email  dummy@email.com
+  Input Text  first_name  first_name
+  Input Text  last_name  last_name
+  Element Should Contain  user_groups  ${GROUP}2
+  Element Should Not Contain  user_groups  ${GROUP}1
+  Select From List By Label  user_groups  ${GROUP}2
+  Click Button  submit-button
+  Wait Until Page Contains Element  message
+  Page Should Contain  Registration Successful
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Element Should Contain  display-table  ${USERNAME}manager_test
+  
+As a Group Manager: I should be able to edit users in my group(s)
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Click Link  edit-link-${USERNAME}manager_test
+  Wait Until Page Contains Element  edit-form
+  Input Text  first_name  edited first name
+  Click Button  submit-button
+  Wait Until Page Contains Element  message
+  Page Should Contain  Changes to "${USERNAME}manager_test" saved!
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Element Should Contain  display-table  edited first name
+
+As a Group Manager: I should be able to delete a user in my group(s)
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Click Link  delete-link-${USERNAME}manager_test
+  Handle Alert  ACCEPT
+  Wait Until Page Contains Element  display-table
+  Element Should Not Contain  display-table  ${USERNAME}manager_test
+
+As a Group Manager: I should be able to view (but not edit) info on my own group(s) only
+  Go To  ${SERVER}/view_groups
+  Wait Until Page Contains Element  display-table
+  Element Should Not Contain  display-table  ${GROUP}1
+  Element Should Contain  display-table  ${GROUP}2
+  Page Should Not Contain Element  edit-link-${GROUP}2
+  Page Should Not Contain Element  delete-link-${GROUP}2
+
+As a Group Manager: I should be able to select only my own group when uploading data
+  Go to  ${SERVER}/workflow
+  Element Should Not Contain  group  ${GROUP}1
+  Element Should Contain  group  ${GROUP}2
+  
+As a Basic User: I should be able to view (but not edit) other users only in my group(s)
+  Log Out
+  Log In As User  3
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Element Should Contain  display-table  ${USERNAME}1
+  Element Should Not Contain  display-table  ${USERNAME}2
+  Element Should Contain  display-table  ${USERNAME}3
+  Page Should Not Contain Element  edit-link-${USERNAME}1
+  Page Should Not Contain Element  delete-link-${USERNAME}1
+  
+As a Basic User: I should be able to view (but not edit) info on my own group(s) only
+  Go To  ${SERVER}/view_groups
+  Wait Until Page Contains Element  display-table
+  Element Should Contain  display-table  ${GROUP}1
+  Element Should Not Contain  display-table  ${GROUP}2
+  Page Should Not Contain Element  edit-link-${GROUP}1
+  Page Should Not Contain Element  delete-link-${GROUP}1
+  
+As a Basic User: I should be able to select only my own group when uploading data
+  Go to  ${SERVER}/workflow
+  Element Should Contain  group  ${GROUP}1
+  Element Should Not Contain  group  ${GROUP}2
