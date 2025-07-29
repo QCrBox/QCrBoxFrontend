@@ -315,6 +315,7 @@ def infobox(seed_dataset):
         html.Button('Start Workflow'),
         href=reverse('workflow', kwargs={'file_id': seed_dataset.pk}),
         target='_blank',
+        id='workflow-link',
     )
 
     return [

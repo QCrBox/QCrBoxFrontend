@@ -180,6 +180,6 @@ qcrbox_frontend/staticfiles/
 testing/log.html
 testing/report.html
 testing/output.xml
-testing/selenium-screenshot-*.png
+testing/*.png
 test (*).cif
 
