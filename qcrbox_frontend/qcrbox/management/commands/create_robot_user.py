@@ -1,8 +1,16 @@
-from django.core.management.base import BaseCommand
-from django.contrib.auth.models import User, Permission
-import logging
+'''A command to automatically create a user account with a specified role,
+for use in automated robot framework test suites.
 
-from core import settings
+Invoke with:
+`python manage.py create_robot_user [username] [email] [password] [role]`
+
+where 'role' is one of 'admin', 'global manager', 'group manager' or 'user'.
+
+'''
+
+import logging
+from django.contrib.auth.models import User, Permission
+from django.core.management.base import BaseCommand
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,11 +35,6 @@ class Command(BaseCommand):
                 username,
             )
             raise ValueError('User already exists in database!')
-
-        # Fetch user account details from settings
-        username = username
-        email = email
-        password = password
 
         LOGGER.info(
             'Creating User %s for testing.',

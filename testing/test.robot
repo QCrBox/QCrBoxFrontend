@@ -9,7 +9,7 @@ ${ROBOT_PREFIX}         _ROBOT_
 ${USERNAME}        ${ROBOT_PREFIX}user
 ${PASSWORD}        test_pass_0123
 ${GROUP}           ${ROBOT_PREFIX}group
-${TEST_FILENAME}   test.cif
+${TEST_FILENAME}   robot_test.cif
 ${TEST_FILEPATH}   ${CURDIR}/${TEST_FILENAME}
 ${DOWNLOAD_DIR}    ${CURDIR}/download
 
@@ -166,6 +166,7 @@ As Any User: I should be able to change my password
   Input Text  new_password1  ${PASSWORD}
   Input Text  new_password2  ${PASSWORD}
   Click Button  submit-button
+  Wait Until Page Contains Element  message
   
 As a Global Manager: I should be able to create new groups
   Log Out
@@ -381,4 +382,12 @@ As Any User: I should be able to open the Visualiser for the current .cif from t
   Wait Until Page Contains  Crystal Structure
   Close Window
   Switch Window  MAIN
+
+As Any User: I should be able to open and use the History Panel for the current .cif from the workflow
+  Go To  ${workflow url}
+  Wait Until Page Contains Element  workflow-display
+  Click Link  history-link-current
+  Select Frame  plotly_iframe
+  Wait Until Page Contains  Dataset Information
+  Page Should Contain  ${TEST_FILENAME}
 
