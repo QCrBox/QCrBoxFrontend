@@ -24,3 +24,30 @@ def plotly_app_custom(context, div_id='plotly_div', iframe_id='plotly_iframe', *
     dash_args['div_id'] = div_id
     dash_args['iframe_id'] = iframe_id
     return dash_args
+
+@register.inclusion_tag("django_plotly_dash/plotly_direct.html", takes_context=True)
+def plotly_direct_custom(context, name=None, slug=None, da=None, initial_arguments=None):
+    '''A reworking of the django_plotly_dash plotly_direct template to allow
+    the dashboard to take initial arguments
+    '''
+
+    cache_id = plotly_dash_tags.store_initial_arguments(context['request'], initial_arguments)
+
+    da, app = plotly_dash_tags._locate_daapp(name, slug, da, cache_id=cache_id)
+
+    view_func = app.locate_endpoint_function()
+
+    # Load embedded holder inserted by middleware
+    eh = context.request.dpd_content_handler.embedded_holder
+
+    # Need to add in renderer launcher
+    renderer_launcher = '<script id="_dash-renderer" type="application/javascript">var renderer = new DashRenderer();</script>'
+
+    app.set_embedded(eh)
+    try:
+        resp = view_func()
+    finally:
+        eh.add_scripts(renderer_launcher)
+        app.exit_embedded()
+
+    return locals()

@@ -306,7 +306,6 @@ def infobox(seed_dataset):
         table_row('Time: ', seed_dataset.creation_time.strftime('%H:%M:%S')),
     ]
 
-
     table_contents += creation_table
 
     # Create button to launch workflow
@@ -314,7 +313,6 @@ def infobox(seed_dataset):
     workflow_button = html.A(
         html.Button('Start Workflow'),
         href=reverse('workflow', kwargs={'file_id': seed_dataset.pk}),
-        target='_blank',
         id='workflow-link',
     )
 

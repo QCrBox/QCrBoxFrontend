@@ -405,12 +405,10 @@ As Any User: I should be able to open the History Panel for the current .cif fro
   Go To  ${workflow url}
   Wait Until Page Contains Element  workflow-display
   Click Link  history-link-current
-  Select Frame  plotly_iframe
   Wait Until Page Contains  Dataset Information
   Page Should Contain  ${TEST_FILENAME}
   Sleep  3
-  Capture Element Screenshot  plotly_iframe  tree_view_1.png
-  Unselect Frame
+  Capture Page Screenshot  tree_view_1.png
 
 As Any User: The workflow should auto-populate installed Applications for selection
   Go To  ${workflow url}
@@ -489,8 +487,6 @@ As Any User: I should be able to navigate to a dataset's history panel from the 
   Wait Until Page Contains Element  display-table
   Page Should Contain Link  history-link-${TEST_FILENAME}
   Click Link  history-link-${TEST_FILENAME}
-  Select Frame  plotly_iframe
   Wait Until Page Contains  Dataset Information
   Page Should Contain  ${TEST_FILENAME}
-  Unselect Frame
 

@@ -1,8 +1,17 @@
 {% extends 'base.html' %}
-{%load plotly_dash_custom%}
+{% load plotly_dash %}
+{% load plotly_dash_custom %}
 
 {% block title %}Tree View{% endblock %}
 
+{% block head_content %}
+    {% plotly_header %}
+{% endblock %}
+
 {% block content %}
-    {% plotly_app_custom name="DataHistoryPanel" ratio=0.4 initial_arguments=dash_context %}
+    {% plotly_direct_custom name="DataHistoryPanel" initial_arguments=dash_context %}
+{% endblock %}
+
+{% block foot_content %}
+    {% plotly_footer %}
 {% endblock %}
