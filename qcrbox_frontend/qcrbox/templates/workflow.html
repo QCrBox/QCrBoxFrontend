@@ -12,6 +12,7 @@
 
 <div class="container">
   <div class="row justify-content-center">
+    <div id="cached-interactive-session-id" title={{app_session_id}}></div>
     <table width=100%>
       <tr>
         <th width=40%><h3>Workflow</h3></th>
@@ -19,12 +20,12 @@
       </tr>
       <tr style="vertical-align:top">
         <td>
-          <table width=70% id='workflow-display'>
+          <table width=70% id="workflow-display">
             {% for prior_step in prior_steps %}
-              <tr>
+              <tr id="ancestor-row">
                 <td align='right'>
                   {% if prior_step.infile.active %}
-                    <a href="{% url 'workflow' prior_step.infile.pk %}" id="workflow-link-{{prior_step.infile.pk}}"><i class="fa-regular fa-square"></i></a>
+                    <a href="{% url 'workflow' prior_step.infile.pk %}" id="workflow-link-{{prior_step.infile.display_filename}}"><i class="fa-regular fa-square"></i></a>
                   {% else %}
                     <i class="fa-regular fa-square"></i>
                   {% endif %}
@@ -50,7 +51,7 @@
                   {% endif %}
                 </td>
               </tr>
-              <tr>
+              <tr id="process-row">
                 <td align='right'>
                   <i class="fa-solid fa-arrow-down"></i>
                 </td>
@@ -59,12 +60,12 @@
                 </td>
               </tr>
             {% endfor %}
-            <tr>
+            <tr id="current-row">
               <td align='right'>
                 <i class="fa-solid fa-square"></i>
               </td>
               <td align='left'>
-                <b>{{file.display_filename}}</b>
+                <b id='current-filename'>{{file.display_filename}}</b>
               </td>
               <td align='left'>
                 <a href="{% url 'download' file.pk %}" id="download-link-current">

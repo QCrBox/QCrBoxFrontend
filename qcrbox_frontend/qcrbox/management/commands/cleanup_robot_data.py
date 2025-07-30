@@ -34,12 +34,14 @@ class Command(BaseCommand):
         r_processes.delete()
 
         # Then remove the datasets
-        for dataset in r_data:
+        for dataset in r_data.filter(active=True):
             api.delete_dataset(dataset.backend_uuid)
         r_data.delete()
 
         # Remove any lingering session references tagged to robots
         r_refs = SessionReference.objects.filter(user__in=r_users)      # pylint: disable=no-member
+        for ref in r_refs:
+            api.close_session(ref.session_id)
         r_refs.delete()
 
         # Cleanup the robot users

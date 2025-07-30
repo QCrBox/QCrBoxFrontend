@@ -224,6 +224,14 @@ def workflow(request, file_id):
     # Populate the workflow diagram with all steps leading up to the current file
     context['prior_steps'] = wf.get_file_history(load_file)
 
+    # Fetch the interactive session ID to allow it to be scrapable from the
+    # returned page
+
+    if 'app_session_id' in request.session:
+        context['app_session_id'] = request.session['app_session_id']
+    else:
+        context['app_session_id'] = None
+
     return render(request, 'workflow.html', context)
 
 

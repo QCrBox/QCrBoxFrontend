@@ -42,12 +42,12 @@ Stop Django and close browser
 
 Start Django
   Create Initial Data
-  ${django process}=  Start process  python  ${MANAGE}  runserver
-  Set suite variable  ${django process}
+  ${django_process}=  Start process  python  ${MANAGE}  runserver
+  Set suite variable  ${django_process}
 
 Stop Django
   Cleanup Test Data
-  Terminate Process  ${django process}
+  Terminate Process  ${django_process}
   
 Create Initial Data
   Create Test Users
@@ -122,6 +122,16 @@ Upload Copied File
   Click Button  upload-button
   Wait Until Page Contains Element  workflow-display
   Remove File  ${CURDIR}/${filename}
+  
+Start App Session
+  [Arguments]  ${launching_workflow_url}  ${app_name}
+  Go To  ${launching_workflow_url}
+  Wait Until Page Contains Element  workflow-display
+  Select From List By Label  id_application  ${app_name}
+  Click Button  select-app-button
+  Wait Until Page Contains Element  start-app-button
+  Click Button  start-app-button
+  Sleep  2
 
 *** Test Cases ***
 
@@ -375,14 +385,14 @@ As Any User: I should be able to upload a .cif file to a group I am a member of
   Click Button  upload-button
   Wait Until Page Contains Element  workflow-display
   Element Should Contain  workflow-display  ${TEST_FILENAME}
-  ${workflow url}=  Get Location
-  Set suite variable  ${workflow url}
+  ${workflow_url}=  Get Location
+  Set suite variable  ${workflow_url}
   Upload Copied File  test2.cif  ${GROUP}2
   Upload Copied File  test3.cif  ${GROUP}2
   Upload Copied File  test4.cif  ${GROUP}2
   
 As Any User: I should be able to download the current .cif file from the workflow
-  Go To  ${workflow url}
+  Go To  ${workflow_url}
   Wait Until Page Contains Element  workflow-display
   Click Link  download-link-current
   Wait Until Created  ${DOWNLOAD_DIR}/${TEST_FILENAME}
@@ -392,7 +402,7 @@ As Any User: I should be able to download the current .cif file from the workflo
   Remove File  ${DOWNLOAD_DIR}/${TEST_FILENAME}
   
 As Any User: I should be able to open the Visualiser for the current .cif from the workflow
-  Go To  ${workflow url}
+  Go To  ${workflow_url}
   Wait Until Page Contains Element  workflow-display
   Click Link  visualise-link-current
   Switch Window  NEW
@@ -402,7 +412,7 @@ As Any User: I should be able to open the Visualiser for the current .cif from t
   Switch Window  MAIN
 
 As Any User: I should be able to open and use the History Panel for the current .cif from the workflow
-  Go To  ${workflow url}
+  Go To  ${workflow_url}
   Wait Until Page Contains Element  workflow-display
   Click Link  history-link-current
   Wait Until Page Contains  Dataset Information
@@ -415,7 +425,7 @@ As Any User: I should be able to open and use the History Panel for the current 
   Element Should Contain  workflow-display  ${TEST_FILENAME}
 
 As Any User: The workflow should auto-populate installed Applications for selection
-  Go To  ${workflow url}
+  Go To  ${workflow_url}
   Wait Until Page Contains Element  workflow-display
   Element Should Contain  id_application  Olex2 (Linux)
 
@@ -448,6 +458,7 @@ As a Global Manager: I should be able to delete a dataset from any group
   Handle Alert  ACCEPT
   Wait Until Page Contains Element  display-table
   Element Should Not Contain  display-table  test4.cif
+  Comment  hello
   
 As a Group Manager: I should be able to select only datasets from my group(s) when starting a new workflow
   Log Out
@@ -493,4 +504,60 @@ As Any User: I should be able to navigate to a dataset's history panel from the 
   Click Link  history-link-${TEST_FILENAME}
   Wait Until Page Contains  Dataset Information
   Page Should Contain  ${TEST_FILENAME}
+
+As Any User: I should be able to launch an interactive session from a workflow
+  Start App Session  ${workflow_url}  Olex2 (Linux)
+  Page Should Not Contain  Could not start session
+  Switch Window  NEW
+  Capture Page Screenshot  interactive_session.png
+  Close Window
+  Switch Window  MAIN
+  
+As Any User: I should be able to close an interactive session using a browser-cached session ID
+  ${cached_session_id}=  Get Element Attribute  cached-interactive-session-id  title
+  Should Not Be Equal  ${cached_session_id}  None
+  Click Button  end-session-button
+  Wait Until Page Contains  Dataset Metadata
+  
+As Any User: Closing a session with output should take me to a workflow showing the output file from the session and its descendant(s)
+  Page Should Contain Element  ancestor-row
+  Element Should Contain  ancestor-row  ${TEST_FILENAME}
+  ${child_1_name}=  Get Text  current-filename
+  Set suite variable  ${child_1_name}
+  
+As Any User: I should be able to click the box next to an ancestor in a workflow to return to that ancestor's workflow
+  Click Link  workflow-link-${TEST_FILENAME}
+  Element Should Contain  current-row  ${TEST_FILENAME}
+  
+As Any User: I should be able to close a blocking session even if the cookie is lost
+  Start App Session  ${workflow_url}  Olex2 (Linux)
+  Switch Window  NEW
+  Close Window
+  Switch Window  MAIN
+  Delete All Cookies
+  Log In As User  3
+  Start App Session  ${workflow_url}  Olex2 (Linux)
+  Page Should Not Contain  Could not start session
+  Switch Window  NEW
+  Close Window
+  Switch Window  MAIN
+  Click Button  end-session-button
+  Wait Until Page Contains  Dataset Metadata
+  ${child_2_name}=  Get Text  current-filename
+  Set suite variable  ${child_2_name}
+
+As Any User: The History Panel for a given dataset should update to include its parents and children
+  Click Link  history-link-current
+  Wait Until Page Contains  Dataset Information
+  Sleep  2
+  Page Should Contain  ${TEST_FILENAME}
+  Capture Page Screenshot  tree_view_2.png
+  Go To  ${workflow_url}
+  Wait Until Page Contains Element  workflow-display
+  Click Link  history-link-current
+  Wait Until Page Contains  Dataset Information
+  Sleep  2
+  Page Should Contain  ${child_1_name}
+  Page Should Contain  ${child_2_name}
+  Capture Page Screenshot  tree_view_3.png
 
