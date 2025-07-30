@@ -16,7 +16,7 @@ ${DOWNLOAD_DIR}    ${CURDIR}/download
 *** Settings ***
 
 Documentation   Django Robot Tests
-Library         SeleniumLibrary  timeout=100  implicit_wait=0
+Library         SeleniumLibrary  timeout=10  implicit_wait=0
 Library         OperatingSystem
 Library         Process
 Suite Setup     Clean Up and Start
@@ -401,14 +401,18 @@ As Any User: I should be able to open the Visualiser for the current .cif from t
   Close Window
   Switch Window  MAIN
 
-As Any User: I should be able to open the History Panel for the current .cif from the workflow
+As Any User: I should be able to open and use the History Panel for the current .cif from the workflow
   Go To  ${workflow url}
   Wait Until Page Contains Element  workflow-display
   Click Link  history-link-current
   Wait Until Page Contains  Dataset Information
   Page Should Contain  ${TEST_FILENAME}
-  Sleep  3
+  Sleep  2
   Capture Page Screenshot  tree_view_1.png
+  ${button}=  Execute Javascript  return document.getElementById("workflow-link")
+  Click Button  ${button}
+  Wait Until Page Contains Element  workflow-display
+  Element Should Contain  workflow-display  ${TEST_FILENAME}
 
 As Any User: The workflow should auto-populate installed Applications for selection
   Go To  ${workflow url}
