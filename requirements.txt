@@ -22,6 +22,7 @@ dpd-static-support==0.0.5
 factory_boy==3.3.3
 Faker==37.4.2
 Flask==3.0.3
+geckodriver==0.0.1
 h11==0.16.0
 httpcore==1.0.9
 httpx==0.28.1
