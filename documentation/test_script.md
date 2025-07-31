@@ -29,8 +29,8 @@
    - `user2` should have `group2` in the `Group(s)` column and `Data Manager, Group Manager` in the `Role` column.
    - `user3` should have `group1` in the `Group(s)` column and `User` in the `Role` column.
 - Navigate back to `Groups` and check the Groups have been properly updated with the new users.
-   - Check that `group1` now has `user1` in the `Ownser(s)` column and `2` in the `# Members` column.
-   - Check that `group2` now has `user2` in the `Ownser(s)` column and `1` in the `# Members` column.
+   - Check that `group1` now has `user1` in the `Owner(s)` column and `2` in the `# Members` column.
+   - Check that `group2` now has `user2` in the `Owner(s)` column and `1` in the `# Members` column.
 - Navigate to `Account > Log out`.
 - Log in using the details for `user1`.
 - In the `Upload New File` form on the home page, ensure that both `group1` and `group2` are given as options in the drop-down `Group` field.
@@ -42,7 +42,7 @@
 - Navigate to `Groups`.  Verify that `user2` can see details ONLY for `group2`, and cannot edit or delete it.
 - Navigate to `Users`.  Verify that `user2` can see and succesfully edit details ONLY for themself.
 - Navigate to `Account > Log out`.
-- Log in using the details for `user2`.
+- Log in using the details for `user3`.
 - In the `Upload New File` form on the home page, ensure that ONLY `group1` is given as options in the drop-down `Group` field.
 - Navigate to `Groups`.  Verify that `user3` can see details ONLY for `group1`, and cannot edit or delete it.
 - Navigate to `Users`.  Verify that `user3` can see details ONLY for `user1` and themself, and cannot edit or delete them.
@@ -59,9 +59,9 @@
 - Click `Start Workflow` on the data history panel, and confirm you return to the workflow for `file1`.
 - Click the dropdown for the `Applications` field in the infobox, and ensure all installed QCrBox apps are shown.
 - Navigate back to `Home`.
-- Upload a valid `.cif` file using the `Upload New File` form, hereafter reffered to as `file2`.  Select `group2` for this file, then click upload.
+- Upload a valid `.cif` file using the `Upload New File` form, hereafter referred to as `file2`.  Select `group2` for this file, then click upload.
 - Navigate to `Home`.
-- Upload a valid `.cif` file using the `Upload New File` form, hereafter reffered to as `file3`.  Select either group for this file, then click upload.
+- Upload a valid `.cif` file using the `Upload New File` form, hereafter referred to as `file3`.  Select either group for this file, then click upload.
 - Log out, then log in as `user1`.
 - In the dropdown by 'Load Existing File' on the `Home` page, ensure that both `file1` and `file2` are available as options.
 - Navigate to `Data`.  Ensure that `user1` can see information for all three Datasets.

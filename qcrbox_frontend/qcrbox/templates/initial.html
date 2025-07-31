@@ -17,7 +17,7 @@
             {% csrf_token %}
             {{ loadfile_form.as_p }}
             <br/>
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary" id="load-button">
               <i class="fas fa-download"></i> Load
             </button>
           </form>
@@ -27,7 +27,7 @@
             {% csrf_token %}
             {{ newfile_form.as_p }}
             <br/>
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary" id="upload-button">
               <i class="fas fa-upload"></i> Upload
             </button>
           </form>

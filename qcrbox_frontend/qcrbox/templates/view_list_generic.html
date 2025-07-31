@@ -14,7 +14,7 @@
     {% if create_link %}
       <br/>
       <form action="{% url create_link %}">
-        <button type="submit" class="btn btn-primary mb-3">
+        <button type="submit" class="btn btn-primary mb-3" id="create-new-button">
           <i class="fa-solid fa-plus"></i> Create New {{type}}
         </button>
       </form>
@@ -22,7 +22,7 @@
   {% endif %}
 
   <!-- Styled Table -->
-  <table class="table table-bordered table-hover table-striped">
+  <table class="table table-bordered table-hover table-striped" id="display-table">
     <thead class="table-primary">
       <tr>
         {% for field in fields %}
@@ -45,7 +45,7 @@
       {% for object in objects %}
         <tr>
           {% for field in fields %}
-            <td>
+            <td id="cell-{{ field.name }}-{{ object }}">
               {% if field.is_header %}<b>{% endif %}
               {% if field.is_special %}
                 {{ object|getspecial:field.attr }}
@@ -58,7 +58,7 @@
           <!-- History links for dataset -->
           {% if history_link %}
               <td class="text-center">
-                <a class="btn btn-outline-primary btn-sm" href="{% url history_link object.pk %}" role="button"><i class="fas fa-clock"></i> History</a>
+                <a class="btn btn-outline-primary btn-sm" href="{% url history_link object.pk %}" role="button" id="history-link-{{object}}"><i class="fas fa-clock"></i> History</a>
               </td>
           {% endif %}
 
@@ -66,12 +66,12 @@
           {% if edit_perms %}
             {% if edit_link %}
               <td class="text-center">
-                <a class="btn btn-outline-primary btn-sm" href="{% url edit_link object.pk %}" role="button"><i class="fas fa-edit"></i> Edit</a>
+                <a class="btn btn-outline-primary btn-sm" href="{% url edit_link object.pk %}" role="button" id="edit-link-{{object}}"><i class="fas fa-edit"></i> Edit</a>
               </td>
             {% endif %}
             {% if delete_link %}
               <td class="text-center">
-                <a class="btn btn-outline-danger btn-sm" href="{% url delete_link object.pk %}" role="button" onclick="return confirm('Are you sure you want to delete {{type}} \'{{object}}\'?');">
+                <a class="btn btn-outline-danger btn-sm" href="{% url delete_link object.pk %}" role="button" onclick="return confirm('Are you sure you want to delete {{type}} \'{{object}}\'?');" id="delete-link-{{object}}">
                   <i class="fas fa-trash-alt"></i> Delete
                 </a>
               </td>

@@ -177,3 +177,9 @@ qcrbox_frontend.sublime-workspace
 environment.env
 lint_report.txt
 qcrbox_frontend/staticfiles/
+testing/log.html
+testing/report.html
+testing/output.xml
+testing/*.png
+test (*).cif
+

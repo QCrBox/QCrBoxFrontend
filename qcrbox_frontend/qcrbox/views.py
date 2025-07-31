@@ -65,6 +65,12 @@ def initialise_workflow(request):
 
     '''
 
+    # Set up context with form instances
+    context = {
+        'loadfile_form':forms.LoadFileForm(user=request.user, auto_id='load-dataset-%s'),
+        'newfile_form':forms.UploadFileForm(user=request.user, auto_id='upload-dataset-%s'),
+    }
+
     # Check if user submitted a form
     if request.method == 'POST':
 
@@ -89,10 +95,7 @@ def initialise_workflow(request):
                 return render(
                     request,
                     'initial.html',
-                    {
-                        'loadfile_form':forms.LoadFileForm(user=request.user),
-                        'newfile_form':forms.UploadFileForm(user=request.user),
-                    }
+                    context,
                 )
 
             file = request.FILES['file']
@@ -104,10 +107,7 @@ def initialise_workflow(request):
                 return render(
                     request,
                     'initial.html',
-                    {
-                        'loadfile_form':forms.LoadFileForm(user=request.user),
-                        'newfile_form':forms.UploadFileForm(user=request.user),
-                    }
+                    context,
                 )
 
             LOGGER.info(
@@ -148,10 +148,7 @@ def initialise_workflow(request):
     return render(
         request,
         'initial.html',
-        {
-            'loadfile_form':forms.LoadFileForm(user=request.user),
-            'newfile_form':forms.UploadFileForm(user=request.user),
-        }
+        context,
     )
 
 
@@ -227,6 +224,14 @@ def workflow(request, file_id):
     # Populate the workflow diagram with all steps leading up to the current file
     context['prior_steps'] = wf.get_file_history(load_file)
 
+    # Fetch the interactive session ID to allow it to be scrapable from the
+    # returned page
+
+    if 'app_session_id' in request.session:
+        context['app_session_id'] = request.session['app_session_id']
+    else:
+        context['app_session_id'] = None
+
     return render(request, 'workflow.html', context)
 
 
@@ -264,7 +269,7 @@ def login_view(request):
             'User %s failed to log in',
             username,
         )
-        messages.warning(request, 'Login failed, try again!')
+        messages.warning(request, 'Login Failed, try again!')
 
     return render(request, 'login.html', {})
 
@@ -468,7 +473,7 @@ def edit_user(request):
                 'User %s updated their account',
                 request.user.username,
             )
-            messages.success(request, 'Account updated succesfully!')
+            messages.success(request, 'Account updated successfully!')
 
             return redirect('landing')
 
@@ -505,7 +510,7 @@ def update_password(request):
                 'User %s changeed their password',
                 request.user.username,
             )
-            messages.success(request, 'Password updated succesfully!')
+            messages.success(request, 'Password updated successfully!')
 
             return redirect('landing')
     else:
@@ -853,7 +858,7 @@ def delete_dataset(request, dataset_id):
             request.user.username,
             dataset_id,
         )
-        messages.success(request, 'Dataset was deleted succesfully.')
+        messages.success(request, 'Dataset was deleted successfully.')
         return redirect('view_datasets')
 
     # Don't actually delete the local metadata, just flag it as inactive so history can be preserved
@@ -865,7 +870,7 @@ def delete_dataset(request, dataset_id):
         request.user.username,
         instance.display_filename,
     )
-    messages.success(request, f'Dataset "{instance}" was deleted succesfully!')
+    messages.success(request, f'Dataset "{instance}" was deleted successfully!')
     return redirect('view_datasets')
 
 

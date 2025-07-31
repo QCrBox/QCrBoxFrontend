@@ -4,6 +4,8 @@ Plotly App configuration and layouts
 for QCrBox Frontend
 
 '''
+import logging
+
 from dash import html, _dash_renderer
 from dash.dependencies import Input, Output
 from django.templatetags.static import static
@@ -19,6 +21,8 @@ from .. import models
 _dash_renderer._set_react_version("18.2.0")
 DASHSTYLE_URL = static('assets/css/dashstyle.css')
 FONTS_URL = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+
+LOGGER = logging.getLogger(__name__)
 
 app = DjangoDash(
     'DataHistoryPanel',
@@ -119,6 +123,7 @@ def display_data_for_seed(seed_data, init_seed):
 
     if not seed_data:
         seed_data=init_seed
+    LOGGER.info('Generating tree plot for dataset pk=%s',seed_data)
     metadata_objs = models.FileMetaData.objects                         # pylint: disable=no-member
     return graphs.tree_plot(metadata_objs.get(pk=int(seed_data)))
 

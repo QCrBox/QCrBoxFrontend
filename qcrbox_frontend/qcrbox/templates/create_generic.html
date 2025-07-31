@@ -18,11 +18,11 @@
 
       <h1 class="mb-4">Create New {{ instance_name }}</h1>
 
-      <form action="" method="POST">
+      <form action="" method="POST" id="create-form">
         {% csrf_token %}
         {{ form.as_p }}
         <br/>
-        <button type="submit" class="btn btn-primary">Submit</button>
+        <button type="submit" class="btn btn-primary" id="submit-button">Submit</button>
       </form>
     </div>
   </div>

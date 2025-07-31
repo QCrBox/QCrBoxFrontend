@@ -190,8 +190,8 @@ def start_session(request, infile, application):
         LOGGER.error('Could not find cookie or reference to blocking session!')
         messages.warning(
             request,
-            f'Could not start session of {application.name}!  Client seems'
-            f'to be busy.'
+            f'Could not start session of {application.name}!  Client seems '
+            f'to be busy, no reference to blocking session found.'
         )
         return False
 
