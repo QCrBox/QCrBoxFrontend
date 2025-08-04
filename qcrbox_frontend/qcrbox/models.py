@@ -72,7 +72,7 @@ class Application(models.Model):
     - slug(str): the string used to uniquely refer to the Application in the
             backend.
     - port(str): the port through which an Interactive Session of this app
-            can be accessed via the browser
+            can be accessed via the browser, if one exists
     - active(bool): a flag to indicate whether the application is 'active'.
             This is set to False when the corresponding Application has been
             deleted or upgraded, and massively limits the functionality
@@ -98,6 +98,24 @@ class Application(models.Model):
         return str(self.name)
 
 
+class AppCommand(models.Model):
+    '''The AppCommand model stores information on commands; e.g. the commands
+    associated with the tools which have been installed as part of QCrBox
+    (not QCrBox Frontend).
+
+    Contains the following attributes:
+    - app(Application): the Application to which this command belongs
+    - name(str): the name of the command
+    - interactive(bool): a boolean to denote whether this command opens an
+            interactive session of the attached app.
+
+    '''
+
+    app = models.ForeignKey(Application, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    interactive = models.BooleanField(default=False)
+
+
 class ProcessStep(models.Model):
     '''The ProcessStep model stores information pertaining to any process
     which takes an input Dataset and generates an output Dataset, e.g. an
@@ -105,15 +123,15 @@ class ProcessStep(models.Model):
     creation history and ancestry of a Dataset.
 
     Contains the following attributes:
-    - application(Application): the Application instance which corresponds to
-            the application used for this process.
+    - command(AppCommand): the AppCommand instance which corresponds to
+            the application command used for this process.
     - infile(FileMetaData): the metadata of the Dataset provided as input.
     - outfile(FileMetaData): the metadata of the Dataset yielded as output.
 
     '''
 
-    application = models.ForeignKey(
-        Application,
+    command = models.ForeignKey(
+        AppCommand,
         null=True,
         on_delete=models.SET_NULL
     )

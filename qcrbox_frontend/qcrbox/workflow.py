@@ -14,7 +14,7 @@ from . import utility
 
 LOGGER = logging.getLogger(__name__)
 
-def save_dataset_metadata(request, api_response, group, infile=None, application=None):
+def save_dataset_metadata(request, api_response, group, infile=None, command=None):
     '''Given a succesful upload of data to the backend, take the API response
     returned from that upload and create a Frontend FileMetaData object to
     refer to the uploaded dataset.  If the new file is the output of an
@@ -32,8 +32,8 @@ def save_dataset_metadata(request, api_response, group, infile=None, application
             to the file from which this file was generated, e.g. through
             Interactive Session.  Set blank to indicate that this file has
             no ancestor, i.e. it was created by direct upload.
-    - application(Application, optional): the Application data corresponding
-            to the application used in the Interactive Session which generated
+    - command(AppCommand, optional): the AppCommand data corresponding
+            to the application command used in the session which generated
             this dataset, if applicable.
 
     Returns:
@@ -76,10 +76,10 @@ def save_dataset_metadata(request, api_response, group, infile=None, application
         outset_meta.qcrbox_dataset_id,
     )
 
-    if application and infile:
+    if command and infile:
         # Create record for workflow step
         newprocessstep = models.ProcessStep(
-            application=application,
+            command=command,
             infile=infile,
             outfile=newfile,
         )
@@ -140,7 +140,7 @@ def clear_session_references(request, session_id):
     session.delete()
 
 
-def start_session(request, infile, application):
+def start_session(request, infile, command):
     '''Given an application and an input FileMetaData object, attempt to start
     a new Interactive Session, handling errors, messaging and logging as
     appropriate.
@@ -158,6 +158,8 @@ def start_session(request, infile, application):
             was successfully started.
 
     '''
+
+    application = command.app
 
     LOGGER.info(
         'User %s starting interactive "%s" session',
@@ -224,7 +226,7 @@ def start_session(request, infile, application):
     return False
 
 
-def close_session(request, infile, application):
+def close_session(request, infile, command):
     '''Attempt to close the session corresponding to the session_id stored in
     the user's browser cookies.
 
@@ -234,9 +236,9 @@ def close_session(request, infile, application):
     - infile(FileMetaData): the FileMetaData object corresponding to the file
             being used for this Interactive Session.  Only used for generating
             logs and user messages.
-    - application(Application): the Application data corresponding
-            to the application used in this Interactive Session.  Only used for
-            generating logs and user messages.
+    - command(AppCommand): the AppCommand data corresponding to the application
+            command used in this Interactive Session.  Only used for generating
+            logs and user messages.
 
     Returns:
     - out_file(FileMetaData or str or None): contains information on the status
@@ -282,8 +284,9 @@ def close_session(request, infile, application):
         LOGGER.warning('Session force-closed!')
         messages.warning(
             request,
-            f'{application.name} did not close properly!  Make sure to close the application in '
-            'the new browser tab before clicking End Session in order to avoid loss of data.'
+            f'{command.application.name} did not close properly!  Make sure to close the '
+            'application in the new browser tab before clicking End Session in order to avoid '
+            'loss of data.'
         )
 
     # If it was possible to get an outfile from the session via the API
@@ -298,7 +301,7 @@ def close_session(request, infile, application):
                 api_response,
                 infile.group,
                 infile=infile,
-                application=application,
+                command=command,
             )
 
             return newfile

@@ -109,6 +109,7 @@ def update_applications():
 
             continue
 
+
         new_app = models.Application(
             name=app.name,
             slug=app.slug,
@@ -119,6 +120,22 @@ def update_applications():
             active=True,
         )
         new_app.save()
+
+        # Add commands to the new app
+
+        for command in app.commands:
+
+            # Ignore protected commands
+            if command.name[:2] == '__':
+                continue
+
+            new_command = models.AppCommand(
+                name=command.name,
+                app=new_app,
+                interactive=command.name=='interactive_session',
+            )
+
+            new_command.save()
 
         response['new_apps'].append(new_app.pk)
 

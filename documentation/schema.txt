@@ -9,6 +9,12 @@ erDiagram
         int port
         bool active
     }
+    
+    AppCommand {
+    	foreignKey app
+    	string name
+    	bool interactive
+    }
 
     FileMetaData {
         string filename
@@ -22,7 +28,7 @@ erDiagram
     }
 
     ProcessStep {
-        foreignKey application
+        foreignKey command
         foreignKey infile
         foreignKey outfile
     }
@@ -46,14 +52,12 @@ erDiagram
         djangoGroupFields various
     }
 
-
-
     Group }o -- o{ User : ""
     Group || -- o{ FileMetaData : ""
     User || -- o{ FileMetaData : ""
-    Application || -- o{ ProcessStep : ""
+    User || -- o{ SessionReference : ""
+    Application || -- o{ AppCommand : ""
+    AppCommand || -- o{ ProcessStep : ""
     FileMetaData || -- o{ ProcessStep : "as infile"
     FileMetaData || -- o| ProcessStep : "as outfile"
-    User || -- o{ SessionReference : ""
     Application || -- o{ SessionReference : ""
-

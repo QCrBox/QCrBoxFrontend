@@ -19,8 +19,8 @@ class FileMetaDataAdmin(admin.ModelAdmin):
 class ProcessStepAdmin(admin.ModelAdmin):
     '''Admin Registration for the ProcessStep model'''
 
-    list_display = ('infile', 'application', 'outfile')
-    ordering = ('infile', 'application', 'outfile')
+    list_display = ('infile', 'command__app', 'command__name', 'outfile')
+    ordering = ('infile', 'command__app', 'command__name', 'outfile')
 
 @admin.register(models.Application)
 class ApplicationAdmin(admin.ModelAdmin):
@@ -28,6 +28,13 @@ class ApplicationAdmin(admin.ModelAdmin):
 
     list_display = ('name', 'version')
     ordering = ('name', 'version')
+
+@admin.register(models.AppCommand)
+class AppCommand(admin.ModelAdmin):
+    '''Admin Registration for the App Command model'''
+
+    list_display = ('app', 'app__version', 'name')
+    ordering = ('app', 'app__version', 'name')
 
 @admin.register(models.SessionReference)
 class SessionReferenceAdmin(admin.ModelAdmin):

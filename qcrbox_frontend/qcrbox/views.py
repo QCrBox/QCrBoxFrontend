@@ -151,7 +151,6 @@ def initialise_workflow(request):
         context,
     )
 
-
 @login_required(login_url='login')
 def workflow(request, file_id):
     '''A view to handle the serving and the internal functionality of the
@@ -195,13 +194,18 @@ def workflow(request, file_id):
             current_app = models.Application.objects.get(pk=app_id)     # pylint: disable=no-member
             context['current_application'] = current_app
 
+            # --- HARDCODED TO TEST FUNCTIONALITY ---
+            all_commands = models.AppCommand.objects                    # pylint: disable=no-member
+            current_command = all_commands.get(app=current_app, name='interactive_session')
+            # ---------------------------------------
+
             # Check if user submitted using the 'start session' form
             if 'startup' in request.POST:
 
                 open_session = wf.start_session(
                     request,
                     load_file,
-                    current_app,
+                    current_command,
                 )
 
                 if open_session:
@@ -213,7 +217,7 @@ def workflow(request, file_id):
                 outfile = wf.close_session(
                     request,
                     load_file,
-                    current_app,
+                    current_command,
                 )
 
                 if not outfile:
@@ -484,7 +488,6 @@ def edit_user(request):
         'view_link':'landing',
     })
 
-
 @login_required(login_url='login')
 def update_password(request):
     '''A view to handle the user-level 'change password' page; i.e., the form
@@ -522,7 +525,6 @@ def update_password(request):
         'form':form,
         'view_link':'landing',
     })
-
 
 @permission_required('qcrbox.edit_users', raise_exception=True)
 def delete_user(request, user_id):
@@ -604,7 +606,6 @@ def create_group(request):
         'instance_name':'Group',
     })
 
-
 @login_required(login_url='login')
 def view_groups(request):
     '''A view to handle generating and rendering the 'view group list' page.
@@ -654,7 +655,6 @@ def view_groups(request):
         'create_link':'create_group',
     })
 
-
 @permission_required('qcrbox.global_access', raise_exception=True)
 def update_group(request, group_id):
     '''A view to handle rendering the 'edit group' page and handle the
@@ -688,7 +688,6 @@ def update_group(request, group_id):
         },
         user_is_affiliated=True
     )
-
 
 @permission_required('qcrbox.global_access', raise_exception=True)
 def delete_group(request, group_id):
@@ -737,7 +736,6 @@ def history_dashboard(request, dataset_id):
         'wide_layout' : True,
         'dash_context' : {'init_pk':{'title':dataset_id}}
     })
-
 
 # No view for dataset creation (handled through the workflow initialisation page)
 
@@ -793,7 +791,6 @@ def view_datasets(request):
         'delete_link':'delete_dataset',
         'history_link':'dataset_history',
     })
-
 
 @permission_required('qcrbox.edit_data', raise_exception=True)
 def delete_dataset(request, dataset_id):
@@ -873,7 +870,6 @@ def delete_dataset(request, dataset_id):
     messages.success(request, f'Dataset "{instance}" was deleted successfully!')
     return redirect('view_datasets')
 
-
 @login_required(login_url='login')
 def download(request, file_id):
     '''A view to handle fetching the contents of datasets from the Backend
@@ -931,7 +927,6 @@ def download(request, file_id):
     d_filename = download_file_meta.display_filename
     httpresponse['Content-Disposition'] = 'attachment; filename=' + d_filename
     return httpresponse
-
 
 @login_required(login_url='login')
 def visualise(request, dataset_id):

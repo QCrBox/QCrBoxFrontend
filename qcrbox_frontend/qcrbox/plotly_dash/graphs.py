@@ -287,19 +287,22 @@ def infobox(seed_dataset):
     if creation_process.exists():
 
         process = creation_process.first()
-        app = process.application.name
-        version = process.application.version
+        app = process.command.app.name
+        version = process.command.app.version
+        command = process.command.name
         parent = process.infile.display_filename
 
     else:
 
         app = html.I('Upload')
         version = '-'
+        command = '-'
         parent = '-'
 
     creation_table = [
         table_row('Application: ', app),
         table_row('Version: ', version),
+        table_row('Command: ', command),
         table_row('Parent Dataset: ', parent),
         table_row('User: ', seed_dataset.user.username),
         table_row('Date: ', seed_dataset.creation_time.strftime('%Y-%m-%d')),
