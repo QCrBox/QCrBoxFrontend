@@ -194,31 +194,18 @@ def workflow(request, file_id):
             current_command = models.AppCommand.objects.get(pk=comm_id) # pylint: disable=no-member
             context['current_command'] = current_command
 
-            # Check if user submitted using the 'start session' form
-            if 'startup' in request.POST:
+            # Deal with starting/ending sessions and/or starting/polling calculations
+            work_status = wf.handle_command(request, current_command, load_file)
 
-                open_session = wf.start_session(
-                    request,
-                    load_file,
-                    current_command,
-                )
+            if work_status.outfile_id:
+                return redirect('workflow', file_id=work_status.outfile_id)
 
-                if open_session:
-                    context['session_in_progress'] = True
+            if work_status.session_is_open:
+                context['session_in_progress'] = True
 
-            # Check if user submitted using the 'end session' form
-            elif 'end_session' in request.POST:
+            if work_status.calc_is_pending:
+                context['calculation_in_progress'] = True
 
-                outfile = wf.close_session(
-                    request,
-                    load_file,
-                    current_command,
-                )
-
-                if not outfile:
-                    context['session_in_progress'] = True
-                elif outfile != 'NO_OUTPUT':
-                    return redirect('workflow', file_id=outfile.pk)
 
     # Populate the workflow diagram with all steps leading up to the current file
     context['prior_steps'] = wf.get_file_history(load_file)

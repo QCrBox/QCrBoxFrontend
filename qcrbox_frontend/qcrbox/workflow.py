@@ -373,3 +373,63 @@ def get_file_history(infile):
             break
 
     return prior_steps
+
+
+def handle_command(request, current_command, current_file):
+    '''A function to handle the internal logic of launching commands, ending
+    sessions, polling active calculations to see if outfiles have been
+    produced, and returning outfiles when they exist.
+
+    '''
+
+    class work_status():
+        '''A simple object to compactly return all salient information on
+        the status of the current session/command to the workflow
+
+        '''
+
+        def __init__(self, session_is_open=False, calc_is_pending=False, outfile_id=None):
+            '''Store whether the command has an associated active session,
+            whether a calculation is pending, and whether an outfile has been
+            created.
+
+            '''
+
+            self.session_is_open = session_is_open
+            self.calc_is_pending = calc_is_pending
+            self.outfile_id = outfile_id
+
+    # Check if user submitted using the 'start session' form
+    if 'startup' in request.POST:
+
+        # If the command corresponds to an interactive session, launch it
+        if current_command.interactive:
+
+            open_session = start_session(
+                request,
+                current_file,
+                current_command,
+            )
+
+        # Otherwise, launch the command with any user-given args
+        else:
+            raise NotImplementedError
+
+        if open_session:
+            return work_status(session_is_open=True)
+
+    # Check if user submitted using the 'end session' form
+    elif 'end_session' in request.POST:
+
+        outfile = close_session(
+            request,
+            current_file,
+            current_command,
+        )
+
+        if not outfile:
+            return work_status(session_is_open=True)
+        elif outfile != 'NO_OUTPUT':
+            return work_status(outfile_id=outfile.pk)
+
+    return work_status()
