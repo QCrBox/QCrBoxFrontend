@@ -109,7 +109,6 @@ def update_applications():
 
             continue
 
-
         new_app = models.Application(
             name=app.name,
             slug=app.slug,
@@ -132,10 +131,31 @@ def update_applications():
             new_command = models.AppCommand(
                 name=command.name,
                 app=new_app,
+                description=command.description,
                 interactive=command.name=='interactive_session',
             )
 
             new_command.save()
+
+            # Add information on the parameters to attach to the new command
+            for param_key in command.parameters.additional_properties:
+                parameter = command.parameters[param_key]
+
+                if parameter['default_value']:
+                    default_value = parameter['default_value']['value']['value']
+                else:
+                    default_value = None
+
+                new_parameter = models.CommandParameter(
+                    command = new_command,
+                    name = param_key,
+                    dtype = parameter['dtype'],
+                    description = parameter['description'],
+                    required = parameter['required'],
+                    default = default_value
+                )
+
+                new_parameter.save()
 
         response['new_apps'].append(new_app.pk)
 

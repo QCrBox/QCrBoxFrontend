@@ -382,7 +382,7 @@ def handle_command(request, current_command, current_file):
 
     '''
 
-    class work_status():
+    class WorkStatus():
         '''A simple object to compactly return all salient information on
         the status of the current session/command to the workflow
 
@@ -416,7 +416,7 @@ def handle_command(request, current_command, current_file):
             raise NotImplementedError
 
         if open_session:
-            return work_status(session_is_open=True)
+            return WorkStatus(session_is_open=True)
 
     # Check if user submitted using the 'end session' form
     elif 'end_session' in request.POST:
@@ -428,8 +428,8 @@ def handle_command(request, current_command, current_file):
         )
 
         if not outfile:
-            return work_status(session_is_open=True)
-        elif outfile != 'NO_OUTPUT':
-            return work_status(outfile_id=outfile.pk)
+            return WorkStatus(session_is_open=True)
+        if outfile != 'NO_OUTPUT':
+            return WorkStatus(outfile_id=outfile.pk)
 
-    return work_status()
+    return WorkStatus()

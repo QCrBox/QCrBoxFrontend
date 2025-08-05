@@ -91,8 +91,9 @@
               </ul>
               <i>Please select a command from the workflow to continue processing.</i>
             {% else %}
-              <h4>{{current_command.app.name}}</h4>
+              <h4>{{current_command.app.name}} : {{current_command}}</h4>
               <ul>
+                <li>Application: {{current_command.app.name}}</li>
                 <li>Version: {{current_command.app.version}}</li>
                 <li>Website: <a href="{{current_command.app.url}}" id="external-app-link">{{ current_command.app.name }}</a>
               </ul>

@@ -13,7 +13,17 @@ erDiagram
     AppCommand {
     	foreignKey app
     	string name
+    	string description
     	bool interactive
+    }
+    
+    CommandParameter {
+    	foreignKey command
+    	string name
+    	string dtype
+    	string description
+    	bool required
+    	string default
     }
 
     FileMetaData {
@@ -57,6 +67,7 @@ erDiagram
     User || -- o{ FileMetaData : ""
     User || -- o{ SessionReference : ""
     Application || -- o{ AppCommand : ""
+    AppCommand || -- o{ CommandParameter : ""
     AppCommand || -- o{ ProcessStep : ""
     FileMetaData || -- o{ ProcessStep : "as infile"
     FileMetaData || -- o| ProcessStep : "as outfile"

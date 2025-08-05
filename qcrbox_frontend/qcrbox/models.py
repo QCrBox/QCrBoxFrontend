@@ -106,14 +106,47 @@ class AppCommand(models.Model):
     Contains the following attributes:
     - app(Application): the Application to which this command belongs
     - name(str): the name of the command
+    - description(str): the human-readable description of a command
     - interactive(bool): a boolean to denote whether this command opens an
             interactive session of the attached app.
 
     '''
 
-    app = models.ForeignKey(Application, on_delete=models.CASCADE)
+    app = models.ForeignKey(Application, on_delete=models.CASCADE, related_name='commands')
     name = models.CharField(max_length=255)
+    description = models.CharField(max_length=255, null=True, blank=True)
     interactive = models.BooleanField(default=False)
+
+    def __str__(self):
+        '''Return the human-readably parsed name of the command name'''
+
+        return str(self.name).replace('_',' ').title()
+
+
+class CommandParameter(models.Model):
+    '''The CommandParameter model stores information on an input parameter
+    for a given AppCommand, including their name, dtype, default value, etc.
+    Used to generate forms to collact parameters from the user when generating
+    a command, and used when calling that command via the API.
+
+    Contains the following attributes:
+    - command(AppCommand): the command to which this parameter belongs
+    - name(str): the display name of the parameter
+    - dtype(str): the expected data type for the parameter, used when
+            determining which form widget to display.
+    - description(str): the text description of the parameter.
+    - required(bool): whether user input is required.
+    - default(str): the JSON-serialized default value for the parameter, if
+            applicable.
+
+    '''
+
+    command = models.ForeignKey(AppCommand, on_delete=models.CASCADE, related_name='parameters')
+    name = models.CharField(max_length=255)
+    dtype = models.CharField(max_length=127)
+    description = models.CharField(max_length=255, blank=True, null=True)
+    required = models.BooleanField()
+    default = models.CharField(max_length=255, null=True, blank=True)
 
 
 class ProcessStep(models.Model):
@@ -127,6 +160,8 @@ class ProcessStep(models.Model):
             the application command used for this process.
     - infile(FileMetaData): the metadata of the Dataset provided as input.
     - outfile(FileMetaData): the metadata of the Dataset yielded as output.
+    - parameters(str): a JSON-serialised dictionary of parameters and their
+            values used in this process.
 
     '''
 
@@ -146,6 +181,10 @@ class ProcessStep(models.Model):
         null=True,
         on_delete=models.SET_NULL,
         related_name='processed_by'
+    )
+    parameters = models.CharField(
+        max_length=255,
+        default='{}',
     )
 
 
