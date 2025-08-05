@@ -231,3 +231,60 @@ class GroupForm(forms.ModelForm):
 
         model = Group
         fields = ['name']
+
+
+# Automatic form generation to get command parameters from user
+
+class CommandForm(forms.Form):
+    '''A Django form which auto-populates itself with fields for each of a
+    given command's associated parameters.'''
+
+    def __init__(self, *args, command, **kwargs):
+
+        '''An additional form initialisation step.  Modifies which fields are
+        editable based on the permissions of the creating user, and populates
+        the user_groups field's choices with groups to which the creating user
+        has access.
+
+        Additional Parameters:
+        - user(User): a django.contrib.auth.models User instance, corresponding
+                to the currently logged in user, to determine which groups
+                should be given as selection options and which form fields if
+                any should be disabled.
+
+        '''
+
+        super().__init__(*args, **kwargs)
+
+        # A counter to track how many file fields are present; the first one
+        # should just take the current file as a default and not be rendered
+
+        nfile_fields = 0
+
+        for param in command.parameters.all():
+
+            help_text = f'<span class=\"tooltiphover\">&nbsp<i class="fa-solid fa-circle-info">'\
+                        f'</i></span><span class=\"tooltiptext\"><small>{param.description}'\
+                        f'</small></span>'
+
+            if not param.default or param.default=='None':
+                default = None
+            else:
+                default = param.default
+
+            # Construct kwargs common to all field types
+            misc_kwargs = {
+                'initial' : default,
+                'help_text' : help_text,
+                'required' : param.required,
+            }
+
+            if param.dtype == 'str':
+                self.fields[param.name] = forms.CharField(
+                    max_length=255,
+                    **misc_kwargs,
+                )
+            elif param.dtype == 'float':
+                self.fields[param.name] = forms.FloatField(
+                    **misc_kwargs,
+                )

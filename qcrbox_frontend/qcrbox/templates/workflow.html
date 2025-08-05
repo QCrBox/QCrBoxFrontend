@@ -8,6 +8,19 @@
   th, td {
     padding: 5px;
   }
+
+.tooltiphover {
+  color: blue;
+}
+
+.tooltiptext {
+  display: none;
+}
+
+.tooltiphover:hover + .tooltiptext {
+  display: block;
+}
+
 </style>
 
 <div class="container">
@@ -83,6 +96,7 @@
         </td>
         <td vertical-align="top">
           <div class="card">
+            <div class="card-body">
             {% if not current_command %}
               <h4>Dataset Metadata</h4>
               <ul>
@@ -111,6 +125,7 @@
                   {% csrf_token %}
                   <input type="hidden" id="startup" name="startup" value=True>
                   <input type="hidden" id="command" name="command" value={{ current_command.pk }}>
+                  {{ command_form.as_p }}
                   <button type="submit" class="btn btn-primary" id="start-app-button">
                     Launch Application
                   </button>
@@ -130,6 +145,7 @@
                 </form>
               </center>
             {% endif %}
+            </div>
           </div>
         </td>
       </tr>

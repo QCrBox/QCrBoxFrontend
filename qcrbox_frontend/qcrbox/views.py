@@ -193,6 +193,7 @@ def workflow(request, file_id):
             comm_id = request.POST['command']
             current_command = models.AppCommand.objects.get(pk=comm_id) # pylint: disable=no-member
             context['current_command'] = current_command
+            context['command_form'] = forms.CommandForm(command=current_command)
 
             # Deal with starting/ending sessions and/or starting/polling calculations
             work_status = wf.handle_command(request, current_command, load_file)
