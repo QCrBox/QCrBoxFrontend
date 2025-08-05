@@ -154,6 +154,15 @@ def update_applications():
     return response
 
 
+def sanitize_command_name(command):
+    '''Simple function to parse a command name for display in the dropdown
+    command menu in the workflow.
+
+    '''
+
+    command_name = command.name.replace('_',' ').title()
+    return command.app.name + ' : ' + command_name
+
 def twrap(text, width, min_width=5, max_lines=4):
     '''Simple function to split text over a given length and reconcatenate
     the pieces with plotly-recognised <br> tokens to generate newlines.

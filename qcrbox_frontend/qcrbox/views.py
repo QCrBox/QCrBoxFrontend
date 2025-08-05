@@ -183,21 +183,16 @@ def workflow(request, file_id):
         wf.update_apps(request)
 
     # Fetch the app selection form for session selection
-    context['select_application_form'] = forms.SelectApplicationForm()
+    context['select_command_form'] = forms.SelectCommandForm()
 
     # Check if user submitted a form
     if request.method == 'POST':
 
-        # Check user actually picked an application
-        if 'application' in request.POST:
-            app_id = request.POST['application']
-            current_app = models.Application.objects.get(pk=app_id)     # pylint: disable=no-member
-            context['current_application'] = current_app
-
-            # --- HARDCODED TO TEST FUNCTIONALITY ---
-            all_commands = models.AppCommand.objects                    # pylint: disable=no-member
-            current_command = all_commands.get(app=current_app, name='interactive_session')
-            # ---------------------------------------
+        # Check user actually picked a command
+        if 'command' in request.POST:
+            comm_id = request.POST['command']
+            current_command = models.AppCommand.objects.get(pk=comm_id) # pylint: disable=no-member
+            context['current_command'] = current_command
 
             # Check if user submitted using the 'start session' form
             if 'startup' in request.POST:

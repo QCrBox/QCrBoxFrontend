@@ -83,24 +83,24 @@
         </td>
         <td vertical-align="top">
           <div class="card">
-            {% if not current_application %}
+            {% if not current_command %}
               <h4>Dataset Metadata</h4>
               <ul>
                 <li>Dataset ID: {{file.backend_uuid}}</li>
                 <li>Filetype: {{file.filetype}}</li>
               </ul>
-              <i>Please select an application from the workflow to continue processing.</i>
+              <i>Please select a command from the workflow to continue processing.</i>
             {% else %}
-              <h4>{{current_application.name}}</h4>
+              <h4>{{current_command.app.name}}</h4>
               <ul>
-                <li>Version: {{current_application.version}}</li>
-                <li>Website: <a href="{{current_application.url}}" id="external-app-link">{{ current_application.name }}</a>
+                <li>Version: {{current_command.app.version}}</li>
+                <li>Website: <a href="{{current_command.app.url}}" id="external-app-link">{{ current_command.app.name }}</a>
               </ul>
               {% if session_in_progress %}
                 <form action="" method="POST" enctype="multipart/form-data">
                   {% csrf_token %}
                   <input type="hidden" id="end_session" name="end_session" value=True>
-                  <input type="hidden" id="application" name="application" value={{ current_application.pk }}>
+                  <input type="hidden" id="command" name="command" value={{ current_command.pk }}>
                   <button type="submit" class="btn btn-primary" id="end-session-button">
                     End Session
                   </button>
@@ -109,7 +109,7 @@
                 <form action="" method="POST" enctype="multipart/form-data">
                   {% csrf_token %}
                   <input type="hidden" id="startup" name="startup" value=True>
-                  <input type="hidden" id="application" name="application" value={{ current_application.pk }}>
+                  <input type="hidden" id="command" name="command" value={{ current_command.pk }}>
                   <button type="submit" class="btn btn-primary" id="start-app-button">
                     Launch Application
                   </button>
@@ -122,7 +122,7 @@
               <center>
                 <form action="" method="POST" enctype="multipart/form-data">
                   {% csrf_token %}
-                  {{ select_application_form.as_p }}
+                  {{ select_command_form.as_p }}
                   <button type="submit" class="btn btn-primary" id="select-app-button">
                     Select Application
                   </button>
@@ -136,11 +136,11 @@
   </div>
 </div>
 
-{% if current_application.port %}
+{% if current_command.app.port %}
   <script>
     let hostname = window.location.hostname;
 
-    document.getElementById("start-app-button").addEventListener("click", function(){ window.open(`http://${hostname}:{{ current_application.port }}/vnc.html?path=vnc&autoconnect=true&resize=remote&reconnect=true&show_dot=true`, '_blank'); }); 
+    document.getElementById("start-app-button").addEventListener("click", function(){ window.open(`http://${hostname}:{{ current_command.app.port }}/vnc.html?path=vnc&autoconnect=true&resize=remote&reconnect=true&show_dot=true`, '_blank'); }); 
   </script>
 {% endif %}
 

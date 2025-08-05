@@ -10,6 +10,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User, Group
 
 from . import models
+from . import utility as ut
 
 
 # Workflow Initialisation Forms
@@ -99,7 +100,7 @@ class LoadFileForm(forms.Form):
 
 # Workflow Forms
 
-class SelectApplicationForm(forms.Form):
+class SelectCommandForm(forms.Form):
     '''A Django form to allow selecting an Application as part of initialising
     an Interactive Session.
 
@@ -108,7 +109,7 @@ class SelectApplicationForm(forms.Form):
 
     '''
 
-    application = forms.ChoiceField(choices=[])
+    command = forms.ChoiceField(choices=[])
 
     def __init__(self, *args, **kwargs):
         '''An additional form initialisation step to populate the choices in
@@ -119,10 +120,10 @@ class SelectApplicationForm(forms.Form):
 
         super().__init__(*args, **kwargs)
 
-        qset = models.Application.objects.all()                         # pylint: disable=no-member
-        choices = [(a.pk, a.name) for a in qset.filter(active=True)]
+        qset = models.AppCommand.objects.order_by('app__name','name')   # pylint: disable=no-member
+        choices = [(c.pk, ut.sanitize_command_name(c)) for c in qset.filter(app__active=True)]
 
-        self.fields['application'].choices = choices
+        self.fields['command'].choices = choices
 
 
 # User management forms
