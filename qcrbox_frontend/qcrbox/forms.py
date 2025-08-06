@@ -205,7 +205,7 @@ class RegisterUserForm(UserCreationForm):
 class UpdateUserForm(forms.ModelForm):
     '''A Django ModelForm for admin-level editing of User instances.'''
 
-    class Meta:
+    class Meta:                                            # pylint: disable=too-few-public-methods
         '''Additional ModelForm config'''
 
         model = User
@@ -214,7 +214,7 @@ class UpdateUserForm(forms.ModelForm):
 class EditUserForm(forms.ModelForm):
     '''A Django ModelForm for user-level editing User instances.'''
 
-    class Meta:
+    class Meta:                                            # pylint: disable=too-few-public-methods
         '''Additional ModelForm config'''
 
         model = User
@@ -226,7 +226,7 @@ class EditUserForm(forms.ModelForm):
 class GroupForm(forms.ModelForm):
     '''A Django ModelForm for creating or editing Group instances.'''
 
-    class Meta:
+    class Meta:                                            # pylint: disable=too-few-public-methods
         '''Additional ModelForm config'''
 
         model = Group
@@ -264,19 +264,12 @@ class CommandForm(forms.Form):
 
         for param in command.parameters.all():
 
-            help_text = f'<span class=\"tooltiphover\">&nbsp<i class="fa-solid fa-circle-info">'\
-                        f'</i></span><span class=\"tooltiptext\"><small>{param.description}'\
-                        f'</small></span>'
-
-            if not param.default or param.default=='None':
-                default = None
-            else:
-                default = param.default
-
             # Construct kwargs common to all field types
             misc_kwargs = {
-                'initial' : default,
-                'help_text' : help_text,
+                'initial' : None if param.default=='None' else param.default,
+                'help_text' : f'<span class=\"tooltiphover\">&nbsp<i class="fa-solid fa-circle-in'\
+                              f'fo"></i></span><span class=\"tooltiptext\"><small>'\
+                              f'{param.description}</small></span>',
                 'required' : param.required,
             }
 
@@ -320,15 +313,18 @@ class CommandForm(forms.Form):
                         choices=[(f.backend_uuid, f.display_filename) for f in qset]
                     )
 
-            elif param.dtype == 'QCrBox.output_path':
-                directory = '/opt/qcrbox'
+            elif param.dtype in ('QCrBox.output_path', 'QCrBox.output_cif'):
+                filepath = '/opt/qcrbox'
 
-                filename_stem = dataset.filename.split('.')[0]
+                filepath += dataset.filename.split('.')[0]
 
-                # Guess the intended extension from the name of the param
+                # Guess the intended extension from the name and dtype of the param
 
                 parsed_param_name = param.name.split('_')
-                if (
+
+                if param.dtype == 'QCrBox.output_cif':
+                    ext='cif'
+                elif (
                     len(parsed_param_name)==3 and
                     parsed_param_name[0]=='output' and
                     parsed_param_name[-1]=='path'
@@ -337,9 +333,14 @@ class CommandForm(forms.Form):
                 else:
                     ext = 'cif'
 
-                filepath = f'{directory}/{filename_stem}_{command.name}.{ext}'
+                filepath = filepath + f'_{command.name}.{ext}'
 
                 self.fields[param.name] = forms.CharField(
                     widget=forms.HiddenInput(),
                     initial=filepath,
+                )
+
+            else:
+                raise NotImplementedError(
+                    f'Command parameter of dtype "{param.dtype}" is not supported!',
                 )

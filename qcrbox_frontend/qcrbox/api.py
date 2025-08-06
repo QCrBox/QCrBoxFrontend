@@ -28,8 +28,8 @@ from qcrboxapiclient.api.interactive_sessions import (
 from qcrboxapiclient.client import Client
 from qcrboxapiclient.models import (
     CreateDatasetBody,
-    CreateInteractiveSession,
-    CreateInteractiveSessionArguments,
+    CreateInteractiveSessionParameters,
+    CreateInteractiveSessionParametersArguments,
     QCrBoxErrorResponse,
 )
 from qcrboxapiclient.types import File
@@ -226,10 +226,10 @@ def start_session(app_id, dataset_id):
     datafile_id = dataset.data_files[dataset_metadata.filename].qcrbox_file_id
 
     # Set up arguments
-    arguments = CreateInteractiveSessionArguments.from_dict(
+    arguments = CreateInteractiveSessionParametersArguments.from_dict(
         {'input_file': {'data_file_id': datafile_id}}
     )
-    create_session = CreateInteractiveSession(app.slug, app.version, arguments)
+    create_session = CreateInteractiveSessionParameters(app.slug, app.version, arguments)
 
     # Initialise session
     LOGGER.info('API call: create_interactive_session_with_arguments')
