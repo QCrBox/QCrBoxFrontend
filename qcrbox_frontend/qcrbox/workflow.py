@@ -313,6 +313,11 @@ def close_session(request, infile, command):
     return 'NO_OUTPUT'
 
 
+def invoke_command(request, command_id, arguments):
+    api_response = api.send_command(command_id, arguments)
+    return api_response
+
+
 def update_apps(request):
     '''A wrapper around the utility.py update_applications() method to handle
     logging and user message functionality whether the app update succeeded or
@@ -375,7 +380,7 @@ def get_file_history(infile):
     return prior_steps
 
 
-def handle_command(request, current_command, current_file):
+def handle_command(request, command, infile):
     '''A function to handle the internal logic of launching commands, ending
     sessions, polling active calculations to see if outfiles have been
     produced, and returning outfiles when they exist.
@@ -403,28 +408,46 @@ def handle_command(request, current_command, current_file):
     if 'startup' in request.POST:
 
         # If the command corresponds to an interactive session, launch it
-        if current_command.interactive:
+        if command.interactive:
 
             open_session = start_session(
                 request,
-                current_file,
-                current_command,
+                infile,
+                command,
             )
+
+            if open_session:
+                return WorkStatus(session_is_open=True)
+            return WorkStatus(session_is_open=False)
 
         # Otherwise, launch the command with any user-given args
         else:
-            raise NotImplementedError
 
-        if open_session:
-            return WorkStatus(session_is_open=True)
+            # Fetch the params from the POST data
+            cps = command.parameters
+            expected_params = cps.values_list('name',flat=True)
+            params = {p:request.POST[p] for p in request.POST if p in expected_params}
+
+            # Format any params related to infiles to specify they should be fetched by ID
+            for i in cps.filter(dtype='QCrBox.cif_data_file').values_list('name',flat=True):
+                params[i] = {'data_file_id': params[i]}
+
+            invoked_command = invoke_command(
+                request,
+                command.pk,
+                params,
+            )
+
+            print(invoked_command.is_valid)
+
 
     # Check if user submitted using the 'end session' form
     elif 'end_session' in request.POST:
 
         outfile = close_session(
             request,
-            current_file,
-            current_command,
+            infile,
+            command,
         )
 
         if not outfile:

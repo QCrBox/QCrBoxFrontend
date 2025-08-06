@@ -14,6 +14,7 @@ import logging
 from qcrboxapiclient.api.applications import (
     list_applications,
 )
+from qcrboxapiclient.api.commands import invoke_command
 from qcrboxapiclient.api.datasets import (
     create_dataset,
     delete_dataset_by_id,
@@ -30,6 +31,8 @@ from qcrboxapiclient.models import (
     CreateDatasetBody,
     CreateInteractiveSessionParameters,
     CreateInteractiveSessionParametersArguments,
+    InvokeCommandParameters,
+    InvokeCommandParametersArguments,
     QCrBoxErrorResponse,
 )
 from qcrboxapiclient.types import File
@@ -273,6 +276,36 @@ def close_session(session_id):
         session_id,
     )
     raw_response = close_interactive_session.sync(client=client, id=session_id)
+
+    return Response(raw_response)
+
+
+# ----- Command functionality -----
+
+def send_command(command_id, parameters):
+
+    client = get_client()
+
+    command = models.AppCommand.objects.get(pk=command_id)              # pylint: disable=no-member
+
+    arguments = InvokeCommandParametersArguments.from_dict(parameters)
+
+    create_session = InvokeCommandParameters(
+        command.app.slug,
+        command.app.version,
+        command.name,
+        arguments,
+    )
+
+    LOGGER.info(
+        'API call: invoke_command, app=%s %s, command=%s, arguments=%s',
+        command.app.slug,
+        command.app.version,
+        command.name,
+        arguments,
+    )
+
+    raw_response = invoke_command.sync(client=client, body=create_session)
 
     return Response(raw_response)
 
