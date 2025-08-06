@@ -239,7 +239,7 @@ class CommandForm(forms.Form):
     '''A Django form which auto-populates itself with fields for each of a
     given command's associated parameters.'''
 
-    def __init__(self, *args, command, **kwargs):
+    def __init__(self, *args, command, dataset, user, **kwargs):
 
         '''An additional form initialisation step.  Modifies which fields are
         editable based on the permissions of the creating user, and populates
@@ -256,10 +256,11 @@ class CommandForm(forms.Form):
 
         super().__init__(*args, **kwargs)
 
-        # A counter to track how many file fields are present; the first one
-        # should just take the current file as a default and not be rendered
+        # A boolean to track whether the main infile fields has been handled;
+        # the first one infile field just take the current file as a default
+        # and not be rendered as a widget.
 
-        nfile_fields = 0
+        handled_infile_field = False
 
         for param in command.parameters.all():
 
@@ -287,4 +288,58 @@ class CommandForm(forms.Form):
             elif param.dtype == 'float':
                 self.fields[param.name] = forms.FloatField(
                     **misc_kwargs,
+                )
+            elif param.dtype == 'QCrBox.cif_data_file':
+
+                # Hide the first file input field and populate it with the file of the active
+                # workflow
+                if not handled_infile_field:
+                    handled_infile_field = True
+                    self.fields[param.name] = forms.CharField(
+                        widget=forms.HiddenInput(),
+                        initial=dataset.backend_uuid,
+                    )
+
+                # Render any subsequent file input fields as choicefields
+                else:
+
+                    # Determine which groups the user is able to pick secondary files from
+                    # If they have global access, may pick file from any group
+                    if user.has_perm('qcrbox.global_access'):
+                        permitted_groups = Group.objects.all()
+
+                    # Otherwise restrict visibility and selection to files attached to groups the
+                    # user belongs to
+                    else:
+                        permitted_groups = user.groups.all()
+
+                    objs = models.FileMetaData.objects                  # pylint: disable=no-member
+                    qset = objs.filter(active=True).filter(group__in=permitted_groups)
+
+                    self.fields[param.name] = forms.ChoiceField(
+                        choices=[(f.backend_uuid, f.display_filename) for f in qset]
+                    )
+
+            elif param.dtype == 'QCrBox.output_path':
+                directory = '/opt/qcrbox'
+
+                filename_stem = dataset.filename.split('.')[0]
+
+                # Guess the intended extension from the name of the param
+
+                parsed_param_name = param.name.split('_')
+                if (
+                    len(parsed_param_name)==3 and
+                    parsed_param_name[0]=='output' and
+                    parsed_param_name[-1]=='path'
+                ):
+                    ext = parsed_param_name[1]
+                else:
+                    ext = 'cif'
+
+                filepath = f'{directory}/{filename_stem}_{command.name}.{ext}'
+
+                self.fields[param.name] = forms.CharField(
+                    widget=forms.HiddenInput(),
+                    initial=filepath,
                 )
