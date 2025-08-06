@@ -140,6 +140,27 @@ def clear_session_references(request, session_id):
     session.delete()
 
 
+def create_calc_references(request, api_response):
+    '''When triggering a non-interactive command, this function can be invoked
+    to create a reference to the initiated calculation as a browser-side
+    cookie containing the backend calculation_id.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to the view containing this workflow.
+    - api_response(api.Response): an api.Response object containing the
+            response from the API on starting a Non-Interactive Session, and
+            a boolean flag indicating whether the response indicated success.
+            Only used to fetch the calculation_id.
+
+    '''
+
+    calc_id = api_response.body.payload.calculation_id
+
+    # set browser cookie
+    request.session['pending_calc_id'] = calc_id
+
+
 def start_session(request, infile, command):
     '''Given an application and an input FileMetaData object, attempt to start
     a new Interactive Session, handling errors, messaging and logging as
@@ -315,7 +336,16 @@ def close_session(request, infile, command):
 
 def invoke_command(request, command_id, arguments):
     api_response = api.send_command(command_id, arguments)
-    return api_response
+
+    if api_response.is_valid:
+        create_calc_references(request, api_response)
+        return True
+
+    # else, if the client is busy, return a flag indicating no calcuation was
+    # started.
+    LOGGER.warning('Client is busy; aborting calculation!')
+
+    return False
 
 
 def update_apps(request):
@@ -432,13 +462,15 @@ def handle_command(request, command, infile):
             for i in cps.filter(dtype='QCrBox.cif_data_file').values_list('name',flat=True):
                 params[i] = {'data_file_id': params[i]}
 
-            invoked_command = invoke_command(
+            active_calc = invoke_command(
                 request,
                 command.pk,
                 params,
             )
 
-            print(invoked_command.is_valid)
+            if active_calc:
+                return WorkStatus(calc_is_pending=True)
+            return WorkStatus(calc_is_pending=False)
 
 
     # Check if user submitted using the 'end session' form
