@@ -163,7 +163,7 @@ def create_calc_references(request, api_response):
 
 
 def start_session(request, infile, command):
-    '''Given an application and an input FileMetaData object, attempt to start
+    '''Given a command and an input FileMetaData object, attempt to start
     a new Interactive Session, handling errors, messaging and logging as
     appropriate.
 
@@ -336,6 +336,24 @@ def close_session(request, infile, command):
 
 
 def invoke_command(request, command, arguments):
+    '''Given an command and a dict of command arguments, instruct
+    the API to invoke the command to start a calculation in the backend, 
+    handling errors, messaging and logging as appropriate.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to the view containing this workflow.
+    - command(AppCommand): the AppCommand object corresponding to the command
+            being used for this Session.
+    - arguments(dict): the additional kwargs to be passed to the API when
+            invoking the command.
+
+    Returns:
+    - calculation_created(bool or str): the calculation_id of the calculation
+            if it was invoked succesfully, otherwise False.
+
+    '''
+
     api_response = api.send_command(command.pk, arguments)
 
     if api_response.is_valid:
@@ -466,7 +484,7 @@ def fetch_calculation_result(request, infile, command):
         return 'PENDING'
 
     if calculation.status == 'success':
-        api_response = api.get_dataset(session_closure.output_dataset_id)
+        api_response = api.get_dataset(calculation.output_dataset_id)
 
         if api_response.is_valid:
 
@@ -526,7 +544,7 @@ def handle_command(request, command, infile):
 
             if open_session:
                 return WorkStatus(session_is_open=True)
-            return WorkStatus(session_is_open=False)
+
 
         # Otherwise, launch the command with any user-given args
         else:
@@ -560,10 +578,9 @@ def handle_command(request, command, infile):
 
                 if outfile == 'PENDING':
                     return WorkStatus(calc_is_pending=True)
-                if outfile == None:
+                if outfile is None:
                     return WorkStatus(calc_is_pending=False)
-                else:
-                    return WorkStatus(outfile_id=outfile.pk)
+                return WorkStatus(outfile_id=outfile.pk)
 
             return WorkStatus(calc_is_pending=False)
 

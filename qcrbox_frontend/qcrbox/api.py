@@ -290,6 +290,16 @@ def close_session(session_id):
 
 def send_command(command_id, parameters):
 
+    '''Sends a command to the API with properly formatted arguments
+
+    Parameters:
+    - command_id(int): the frontend db pk corresponding to the command to be
+            invoked.
+    - parameters(dict): a dict of kwargs to be passed to the API along with
+            the command.
+
+    '''
+
     client = get_client()
 
     command = models.AppCommand.objects.get(pk=command_id)              # pylint: disable=no-member
