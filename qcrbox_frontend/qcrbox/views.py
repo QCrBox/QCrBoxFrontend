@@ -210,6 +210,7 @@ def workflow(request, file_id):
 
             if work_status.calc_is_pending:
                 context['calculation_in_progress'] = True
+                context['refresh_time'] = settings.AUTO_REFRESH_TIME
 
 
     # Populate the workflow diagram with all steps leading up to the current file

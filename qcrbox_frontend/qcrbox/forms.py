@@ -314,7 +314,7 @@ class CommandForm(forms.Form):
                     )
 
             elif param.dtype in ('QCrBox.output_path', 'QCrBox.output_cif'):
-                filepath = '/opt/qcrbox'
+                filepath = '/opt/qcrbox/'
 
                 filepath += dataset.filename.split('.')[0]
 

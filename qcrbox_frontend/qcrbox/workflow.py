@@ -5,6 +5,7 @@ Frontend's functionality.  Refactored here for readability.
 '''
 
 import logging
+import time
 
 from django.contrib import messages
 
@@ -158,7 +159,7 @@ def create_calc_references(request, api_response):
     calc_id = api_response.body.payload.calculation_id
 
     # set browser cookie
-    request.session['pending_calc_id'] = calc_id
+    request.session['calculation_id'] = calc_id
 
 
 def start_session(request, infile, command):
@@ -334,16 +335,20 @@ def close_session(request, infile, command):
     return 'NO_OUTPUT'
 
 
-def invoke_command(request, command_id, arguments):
-    api_response = api.send_command(command_id, arguments)
+def invoke_command(request, command, arguments):
+    api_response = api.send_command(command.pk, arguments)
 
     if api_response.is_valid:
         create_calc_references(request, api_response)
-        return True
+        return api_response.body.payload.calculation_id
 
     # else, if the client is busy, return a flag indicating no calcuation was
     # started.
     LOGGER.warning('Client is busy; aborting calculation!')
+    messages.warning(
+        request,
+        f'Could not start calculation: a session of {command.name} may already be running.'
+    )
 
     return False
 
@@ -410,6 +415,79 @@ def get_file_history(infile):
     return prior_steps
 
 
+def fetch_calculation_result(request, infile, command):
+    '''Attempt to fetch the results of a non-interactive calculation
+    corresponding to the calculation_id stored in the user's browser cookies,
+    or return a flag if the calc is still pending.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to the view containing this workflow.
+    - infile(FileMetaData): the FileMetaData object corresponding to the file
+            being used for this Calculation.  Only used for generating
+            logs and user messages.
+    - command(AppCommand): the AppCommand data corresponding to the application
+            command used in this Interactive Session.  Only used for generating
+            logs and user messages.
+
+    Returns:
+    - out_file(FileMetaData or str or None): contains information on the status
+            of the session being closed, and information on the output file if
+            any.  A value of None indicates the calculation was not successfully
+            completed.  A string value of 'PENDING' indicates that the
+            calculation is still running.  Otherwise, returns the FileMetaData
+            object corresponding to the new file created by the calculation.
+
+    '''
+
+    # If cookie is lost, abort
+    if 'calculation_id' not in request.session:
+        LOGGER.error('No calculation cookie found!')
+        messages.warning(request, 'Calculation reference timed out! Please try again.')
+        return None
+
+    calculation_id = request.session['calculation_id']
+
+    # Fetch the calculation status from the API
+    api_response = api.get_calculation(calculation_id)
+
+    # If calculation can't be found, abort
+    if not api_response.is_valid:
+        LOGGER.error('Calculation error!')
+        messages.warning(
+            request,
+            'Calculation could not be found! Please start again.'
+        )
+        return None
+
+    calculation = api_response.body.payload.calculations[0]
+
+    if calculation.status in ('submitted', 'running'):
+        return 'PENDING'
+
+    if calculation.status == 'success':
+        api_response = api.get_dataset(session_closure.output_dataset_id)
+
+        if api_response.is_valid:
+
+            newfile = save_dataset_metadata(
+                request,
+                api_response,
+                infile.group,
+                infile=infile,
+                command=command,
+            )
+
+            return newfile
+
+    messages.warning(
+        request,
+        f'{command.name} did not execute successfully.'
+    )
+
+    return None
+
+
 def handle_command(request, command, infile):
     '''A function to handle the internal logic of launching commands, ending
     sessions, polling active calculations to see if outfiles have been
@@ -464,12 +542,29 @@ def handle_command(request, command, infile):
 
             active_calc = invoke_command(
                 request,
-                command.pk,
+                command,
                 params,
             )
 
             if active_calc:
-                return WorkStatus(calc_is_pending=True)
+                # Add a brief pause here to allow for short commands to
+                # execute without entering the workflow holding pattern
+                time.sleep(1)
+
+                # Poll the calculation to see if its ready
+                outfile = fetch_calculation_result(
+                    request,
+                    infile,
+                    command,
+                )
+
+                if outfile == 'PENDING':
+                    return WorkStatus(calc_is_pending=True)
+                if outfile == None:
+                    return WorkStatus(calc_is_pending=False)
+                else:
+                    return WorkStatus(outfile_id=outfile.pk)
+
             return WorkStatus(calc_is_pending=False)
 
 

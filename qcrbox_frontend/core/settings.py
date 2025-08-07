@@ -223,3 +223,9 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 MAX_LENGTH_API_LOG = int(os.environ.get('MAX_LENGTH_API_LOG', 10000))
+
+# Misc settings
+
+# The time (in seconds) between automatic page refreshes when waiting for a
+# calculation to finish
+AUTO_REFRESH_TIME = 10

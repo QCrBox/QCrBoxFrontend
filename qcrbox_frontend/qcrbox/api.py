@@ -14,7 +14,14 @@ import logging
 from qcrboxapiclient.api.applications import (
     list_applications,
 )
-from qcrboxapiclient.api.commands import invoke_command
+from qcrboxapiclient.api.calculations import (
+    get_calculation_by_id,
+    stop_running_calculation,
+)
+from qcrboxapiclient.client import Client
+from qcrboxapiclient.api.commands import (
+    invoke_command,
+)
 from qcrboxapiclient.api.datasets import (
     create_dataset,
     delete_dataset_by_id,
@@ -26,7 +33,6 @@ from qcrboxapiclient.api.interactive_sessions import (
     create_interactive_session_with_arguments,
     get_interactive_session_by_id,
 )
-from qcrboxapiclient.client import Client
 from qcrboxapiclient.models import (
     CreateDatasetBody,
     CreateInteractiveSessionParameters,
@@ -280,7 +286,7 @@ def close_session(session_id):
     return Response(raw_response)
 
 
-# ----- Command functionality -----
+# ----- Non-Interactive Command / calculation functionality -----
 
 def send_command(command_id, parameters):
 
@@ -306,6 +312,25 @@ def send_command(command_id, parameters):
     )
 
     raw_response = invoke_command.sync(client=client, body=create_session)
+
+    return Response(raw_response)
+
+def get_calculation(calculation_id):
+
+    '''Get the metadata of a Calculation
+
+    Parameters:
+    - calculation_id(str): the backend ID for the calculation to be fetched
+
+    '''
+
+    client = get_client()
+
+    LOGGER.info(
+        'API call: get_calculation_by_id, id=%s',
+        calculation_id,
+    )
+    raw_response = get_calculation_by_id.sync(id=calculation_id, client=client)
 
     return Response(raw_response)
 

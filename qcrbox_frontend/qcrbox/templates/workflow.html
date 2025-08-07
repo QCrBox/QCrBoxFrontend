@@ -120,6 +120,8 @@
                     End Session
                   </button>
                 </form>
+              {% elif calculation_in_progress %}
+                Calculation in progress: page will automatically refresh every {{refresh_time}} seconds.
               {% else %}
                 <form action="" method="POST" enctype="multipart/form-data">
                   {% csrf_token %}
@@ -132,7 +134,7 @@
                 </form>
               {% endif %}
             {% endif %}
-            {% if session_in_progress %}
+            {% if session_in_progress or calculation_in_progress %}
             {% else %}
               <hr>
               <center>
