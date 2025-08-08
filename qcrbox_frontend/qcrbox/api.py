@@ -304,6 +304,17 @@ def send_command(command_id, parameters):
 
     command = models.AppCommand.objects.get(pk=command_id)              # pylint: disable=no-member
 
+    # XXX added by EP for JC to clean up :-)
+    dataset_objs = models.FileMetaData.objects                          # pylint: disable=no-member
+    dataset_metadata = dataset_objs.get(backend_uuid=parameters["input_cif"]["data_file_id"])
+    get_response = get_dataset(parameters["input_cif"]["data_file_id"])
+    if not get_response.is_valid:
+        return get_response
+    dataset = get_response.body.payload.datasets[0]
+    datafile_id = dataset.data_files[dataset_metadata.filename].qcrbox_file_id
+    parameters["input_cif"] = {"data_file_id": datafile_id}
+    # XXX added by EP for JC to clean up :-)
+
     arguments = InvokeCommandParametersCommandArguments.from_dict(parameters)
 
     create_session = InvokeCommandParameters(
