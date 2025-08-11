@@ -7,6 +7,7 @@ the QCrBox Django Frontend.
 
 import textwrap
 
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 from qcrbox import api
@@ -227,3 +228,18 @@ def paginate_objects(object_list, page, per_page=13):
         objects = paginator.page(paginator.num_pages)
 
     return objects
+
+def check_user_view_file_permission(user, load_file):
+    ''' Check whether a given user has the permission to view a given file,
+    and raise a PermissionDemied error if not'''
+
+    file_group = load_file.group
+    user_groups = user.groups.all()
+
+    shared_groups = file_group in user_groups
+
+    if shared_groups or user.has_perm('qcrbox.global_access'):
+        pass
+
+    else:
+        raise PermissionDenied

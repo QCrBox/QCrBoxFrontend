@@ -16,7 +16,7 @@ from django.contrib import messages
 from django.contrib.auth.models import Group
 from django.contrib.auth.decorators import login_required
 
-from qcrbox import api, forms, models
+from qcrbox import api, forms, models, utility
 from qcrbox import workflow as wf
 from qcrbox.plotly_dash import plotly_app                           # pylint: disable=unused-import
 
@@ -163,12 +163,14 @@ def workflow(request, file_id):
 
     '''
 
-    # Setup context dict to be populated throughout
-    context = {}
-
     # Fetch the current file from the file_id passed in url
     load_file = models.FileMetaData.objects.get(pk=file_id)   # pylint: disable=no-member
-    context['file'] = load_file
+
+    # Check the user has permission to view this file
+    utility.check_user_view_file_permission(request.user, load_file)
+
+    # Setup context dict to be populated throughout
+    context = {'file' : load_file}
 
     # Get the most recent app list from the API at the start of each workflow, sync the local list
     if not (request.POST and 'application' in request.POST):
@@ -239,6 +241,8 @@ def workflow_pending(request, file_id, command_id):
 
     load_file = models.FileMetaData.objects.get(pk=file_id)   # pylint: disable=no-member
     command = models.AppCommand.objects.get(pk=command_id)    # pylint: disable=no-member
+
+    utility.check_user_view_file_permission(request.user, load_file)
 
     work_status = wf.poll_calculation(request, load_file, command)
 

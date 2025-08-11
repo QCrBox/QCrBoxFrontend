@@ -13,14 +13,12 @@ import logging
 from django.shortcuts import render, redirect
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth.models import Group
 from django.contrib.auth.decorators import permission_required, login_required
-from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 
 from qcrbox import api, models
 from qcrbox.plotly_dash import plotly_app                           # pylint: disable=unused-import
-from qcrbox.utility import DisplayField, paginate_objects
+from qcrbox.utility import check_user_view_file_permission, DisplayField, paginate_objects
 
 LOGGER = logging.getLogger(__name__)
 
@@ -108,24 +106,17 @@ def delete_dataset(request, dataset_id):
     '''
 
     deletion_data_meta = models.FileMetaData.objects.get(pk=dataset_id) # pylint: disable=no-member
-    deletion_data_group = deletion_data_meta.group
-    current_user_groups = request.user.groups.all()
-
-    shared_groups = deletion_data_group in current_user_groups
 
     # Check credentials before invoking the generic delete, as API will also need calling
-    if shared_groups or request.user.has_perm('qcrbox.global_access'):
+    check_user_view_file_permission(request.user, deletion_data_meta)
 
-        LOGGER.info(
-            'User %s deleting dataset %s',
-            request.user.username,
-            deletion_data_meta.display_filename,
-        )
-        api.get_dataset(deletion_data_meta.backend_uuid)
-        api_response = api.delete_dataset(deletion_data_meta.backend_uuid)
-
-    else:
-        raise PermissionDenied
+    LOGGER.info(
+        'User %s deleting dataset %s',
+        request.user.username,
+        deletion_data_meta.display_filename,
+    )
+    api.get_dataset(deletion_data_meta.backend_uuid)
+    api_response = api.delete_dataset(deletion_data_meta.backend_uuid)
 
     if not api_response.is_valid:
         LOGGER.warning('Delete request unsuccessful!')
@@ -182,25 +173,11 @@ def download(request, file_id):
 
     '''
 
-    # Fetch permitted groups based on the user's membership
-    if request.user.has_perm('qcrbox.global_access'):
-        # If user has the global access permission, ALL groups are visible
-        allowed_groups = Group.objects.all()
-    else:
-        # Else, restrict downloads to files linked the groups the user is a member of
-        allowed_groups = request.user.groups.all()
-
     # Fetch the metadata
     download_file_meta = models.FileMetaData.objects.get(pk=file_id)    # pylint: disable=no-member
 
     # Stop user accessing data from a group they have no access to
-    if download_file_meta.group not in allowed_groups:
-        LOGGER.info(
-            'User %s denied permission to download dataset "%s" (unaffiliated)',
-            request.user.username,
-            download_file_meta.display_filename,
-        )
-        raise PermissionDenied
+    check_user_view_file_permission(request.user, download_file_meta)
 
     LOGGER.info(
         'User %s downloading dataset "%s"',
@@ -240,29 +217,14 @@ def visualise(request, dataset_id):
 
     '''
 
-    # Fetch permitted groups based on the user's membership
-    if request.user.has_perm('qcrbox.global_access'):
-        # If user has the global access permission, ALL groups are visible
-        allowed_groups = Group.objects.all()
-    else:
-        # Else, restrict downloads to files linked the groups the user is a member of
-        allowed_groups = request.user.groups.all()
-
     # Fetch the metadata
     visualise_file_meta = models.FileMetaData.objects.get(pk=dataset_id)# pylint: disable=no-member
 
     # Stop user accessing data from a group they have no access to
-    if visualise_file_meta.group not in allowed_groups:
-        LOGGER.info(
-            'User %s denied permission to visualise dataset "%s" (unaffiliated)',
-            request.user.username,
-            visualise_file_meta.display_filename,
-        )
-        raise PermissionDenied
+    check_user_view_file_permission(request.user, visualise_file_meta)
 
     # Get host name without port, manually prepend http:// to stop django
     # treating this as a relative URL
-
     hostname = 'http://' + request.get_host().split(':')[0]
     v_url = f'{hostname}:{settings.API_VISUALISER_PORT}/retrieve/{visualise_file_meta.backend_uuid}'
     LOGGER.info(
