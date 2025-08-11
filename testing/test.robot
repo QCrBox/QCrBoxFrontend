@@ -548,7 +548,6 @@ As Any User: I should be able to close a blocking session even if the cookie is 
   
 As Any User: I should be able to launch a non-interactive session and collect its output
   Start App Session  ${workflow_url}  QCrBoxTools  To Unified Cif
-  Capture Page Screenshot  bim.png
   Wait Until Keyword Succeeds  6 x  10  Page Should Not Contain  Calculation in progress
   Page Should Not Contain  Could not start calculation
   Page Should Contain Element  ancestor-row
