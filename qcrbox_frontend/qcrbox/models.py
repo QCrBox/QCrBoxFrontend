@@ -227,7 +227,7 @@ class DataPermissionSupport(models.Model):
 
     '''
 
-    class Meta:
+    class Meta:                                            # pylint: disable=too-few-public-methods
         '''Additional model configuration'''
 
         managed = False  # No database table creation or deletion operations will be performed
