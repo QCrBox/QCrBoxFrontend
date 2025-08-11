@@ -15,8 +15,8 @@ import dash_mantine_components as dmc
 
 from django_plotly_dash import DjangoDash
 
-from . import graphs
-from .. import models
+from qcrbox import models
+from qcrbox.plotly_dash import graphs
 
 _dash_renderer._set_react_version("18.2.0")
 DASHSTYLE_URL = static('assets/css/dashstyle.css')

@@ -9,8 +9,8 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User, Group
 
-from . import models
-from . import utility as ut
+from qcrbox import models
+from qcrbox import utility as ut
 
 
 # Workflow Initialisation Forms

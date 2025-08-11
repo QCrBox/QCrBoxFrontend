@@ -7,8 +7,10 @@ the QCrBox Django Frontend.
 
 import textwrap
 
-from . import api
-from . import models
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+from qcrbox import api
+from qcrbox import models
 
 class DisplayField():
     '''A class to contain information on fields to be displayed in 'view list'
@@ -207,3 +209,21 @@ def twrap(text, width, min_width=5, max_lines=4):
     if len(text_split) > max_lines:
         return ''
     return '<br>'.join(text_split)
+
+def paginate_objects(object_list, page, per_page=13):
+    '''Paginate a list of objects (e.g. db records) using the django in-built
+    paginator, with in-built error correction for e.g. empty lists or accessing
+    pages out of range.
+
+    '''
+
+    paginator = Paginator(object_list, per_page)
+
+    try:
+        objects = paginator.get_page(page)
+    except PageNotAnInteger:
+        objects = paginator.page(1)
+    except EmptyPage:
+        objects = paginator.page(paginator.num_pages)
+
+    return objects

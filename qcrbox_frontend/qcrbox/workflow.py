@@ -9,28 +9,28 @@ import time
 
 from django.contrib import messages
 
-from . import api
-from . import models
-from . import utility
+from qcrbox import api
+from qcrbox import models
+from qcrbox import utility
 
 LOGGER = logging.getLogger(__name__)
 
 class WorkStatus():
-        '''A simple object to compactly return all salient information on
-        the status of the current session/command to the workflow
+    '''A simple object to compactly return all salient information on
+    the status of the current session/command to the workflow
+
+    '''
+
+    def __init__(self, session_is_open=False, calc_is_pending=False, outfile_id=None):
+        '''Store whether the command has an associated active session,
+        whether a calculation is pending, and whether an outfile has been
+        created.
 
         '''
 
-        def __init__(self, session_is_open=False, calc_is_pending=False, outfile_id=None):
-            '''Store whether the command has an associated active session,
-            whether a calculation is pending, and whether an outfile has been
-            created.
-
-            '''
-
-            self.session_is_open = session_is_open
-            self.calc_is_pending = calc_is_pending
-            self.outfile_id = outfile_id
+        self.session_is_open = session_is_open
+        self.calc_is_pending = calc_is_pending
+        self.outfile_id = outfile_id
 
 
 def save_dataset_metadata(request, api_response, group, infile=None, command=None):

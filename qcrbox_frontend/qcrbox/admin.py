@@ -6,7 +6,7 @@ with the django admin view.
 '''
 
 from django.contrib import admin
-from . import models
+from qcrbox import models
 
 @admin.register(models.FileMetaData)
 class FileMetaDataAdmin(admin.ModelAdmin):

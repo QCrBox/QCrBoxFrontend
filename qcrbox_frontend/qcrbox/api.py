@@ -44,7 +44,7 @@ from qcrboxapiclient.models import (
 from qcrboxapiclient.types import File
 
 from django.conf import settings
-from . import models
+from qcrbox import models
 
 LOGGER = logging.getLogger(__name__)
 
