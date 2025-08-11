@@ -30,15 +30,15 @@ from qcrboxapiclient.api.datasets import (
 )
 from qcrboxapiclient.api.interactive_sessions import (
     close_interactive_session,
-    create_interactive_session_with_arguments,
+    create_interactive_session,
     get_interactive_session_by_id,
 )
 from qcrboxapiclient.models import (
     CreateDatasetBody,
     CreateInteractiveSessionParameters,
-    CreateInteractiveSessionParametersArguments,
+    CreateInteractiveSessionParametersCommandArguments,
     InvokeCommandParameters,
-    InvokeCommandParametersArguments,
+    InvokeCommandParametersCommandArguments,
     QCrBoxErrorResponse,
 )
 from qcrboxapiclient.types import File
@@ -235,14 +235,14 @@ def start_session(app_id, dataset_id):
     datafile_id = dataset.data_files[dataset_metadata.filename].qcrbox_file_id
 
     # Set up arguments
-    arguments = CreateInteractiveSessionParametersArguments.from_dict(
+    arguments = CreateInteractiveSessionParametersCommandArguments.from_dict(
         {'input_file': {'data_file_id': datafile_id}}
     )
     create_session = CreateInteractiveSessionParameters(app.slug, app.version, arguments)
 
     # Initialise session
     LOGGER.info('API call: create_interactive_session_with_arguments')
-    raw_response = create_interactive_session_with_arguments.sync(
+    raw_response = create_interactive_session.sync(
         client=client,
         body=create_session,
     )
@@ -304,7 +304,18 @@ def send_command(command_id, parameters):
 
     command = models.AppCommand.objects.get(pk=command_id)              # pylint: disable=no-member
 
-    arguments = InvokeCommandParametersArguments.from_dict(parameters)
+    # XXX added by EP for JC to clean up :-)
+    dataset_objs = models.FileMetaData.objects                          # pylint: disable=no-member
+    dataset_metadata = dataset_objs.get(backend_uuid=parameters["input_cif"]["data_file_id"])
+    get_response = get_dataset(parameters["input_cif"]["data_file_id"])
+    if not get_response.is_valid:
+        return get_response
+    dataset = get_response.body.payload.datasets[0]
+    datafile_id = dataset.data_files[dataset_metadata.filename].qcrbox_file_id
+    parameters["input_cif"] = {"data_file_id": datafile_id}
+    # XXX added by EP for JC to clean up :-)
+
+    arguments = InvokeCommandParametersCommandArguments.from_dict(parameters)
 
     create_session = InvokeCommandParameters(
         command.app.slug,
