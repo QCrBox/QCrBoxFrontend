@@ -121,7 +121,8 @@
                   </button>
                 </form>
               {% elif calculation_in_progress %}
-                Calculation in progress: page will automatically refresh every {{refresh_time}} seconds.
+                <h5><b><i>Calculation in progress, do not close this tab!</i></b></h5> 
+                <p>The page will automatically refresh every {{refresh_time}} seconds.</p>
               {% else %}
                 <form action="" method="POST" enctype="multipart/form-data">
                   {% csrf_token %}
@@ -161,6 +162,15 @@
 
     document.getElementById("start-app-button").addEventListener("click", function(){ window.open(`http://${hostname}:{{ current_command.app.port }}/vnc.html?path=vnc&autoconnect=true&resize=remote&reconnect=true&show_dot=true`, '_blank'); }); 
   </script>
+{% elif calculation_in_progress %}
+  <script>
+    setTimeout(function(){
+      location.href="{% url 'workflow-pending' file.pk current_command.pk %}"
+      } , {{refresh_time}}000
+    );
+  </script>
 {% endif %}
+
+
 
 {% endblock %}

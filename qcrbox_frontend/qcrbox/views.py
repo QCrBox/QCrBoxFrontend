@@ -227,6 +227,28 @@ def workflow(request, file_id):
     return render(request, 'workflow.html', context)
 
 
+# A separate view to handle the auto-refreshing page when waiting for calc to finish
+def workflow_pending(request, file_id, command_id):
+
+    load_file = models.FileMetaData.objects.get(pk=file_id)   # pylint: disable=no-member
+    command = models.AppCommand.objects.get(pk=command_id)    # pylint: disable=no-member
+
+    work_status = wf.poll_calculation(request, load_file, command)
+
+    if work_status.outfile_id:
+        return redirect('workflow', file_id=work_status.outfile_id)
+
+    context = {
+        'file' : load_file,
+        'current_command' : command,
+        'calculation_in_progress' : True,
+        'refresh_time' : settings.AUTO_REFRESH_TIME,
+        'prior_steps' : wf.get_file_history(load_file),
+    }
+
+    return render(request, 'workflow.html', context)
+
+
 # ===================================================
 # ========== User management-related views ==========
 # ===================================================

@@ -24,6 +24,11 @@ urlpatterns = [
     path('', views.landing, name='landing'),
     path('workflow', views.initialise_workflow, name='initialise_workflow'),
     path('workflow/<file_id>', views.workflow, name='workflow'),
+    path(
+        'workflow/<file_id>/pending/<command_id>',
+        views.workflow_pending,
+        name='workflow-pending',
+    ),
     path('download/<file_id>', views.download, name='download'),
 
     path('login', views.login_view, name='login'),

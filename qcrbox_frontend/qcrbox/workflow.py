@@ -15,6 +15,24 @@ from . import utility
 
 LOGGER = logging.getLogger(__name__)
 
+class WorkStatus():
+        '''A simple object to compactly return all salient information on
+        the status of the current session/command to the workflow
+
+        '''
+
+        def __init__(self, session_is_open=False, calc_is_pending=False, outfile_id=None):
+            '''Store whether the command has an associated active session,
+            whether a calculation is pending, and whether an outfile has been
+            created.
+
+            '''
+
+            self.session_is_open = session_is_open
+            self.calc_is_pending = calc_is_pending
+            self.outfile_id = outfile_id
+
+
 def save_dataset_metadata(request, api_response, group, infile=None, command=None):
     '''Given a succesful upload of data to the backend, take the API response
     returned from that upload and create a Frontend FileMetaData object to
@@ -510,29 +528,32 @@ def fetch_calculation_result(request, infile, command):
     return None
 
 
+def poll_calculation(request, infile, command):
+    '''Poll a running calculation (based on the calc_id stored in the user's
+    browser cookies), fetches and saves the result if its ready, and returns
+    a status which contains the outfile_id if present
+
+    '''
+
+    outfile = fetch_calculation_result(
+        request,
+        infile,
+        command,
+    )
+
+    if outfile == 'PENDING':
+        return WorkStatus(calc_is_pending=True)
+    if outfile is None:
+        return WorkStatus(calc_is_pending=False)
+    return WorkStatus(outfile_id=outfile.pk)
+
+
 def handle_command(request, command, infile):
     '''A function to handle the internal logic of launching commands, ending
     sessions, polling active calculations to see if outfiles have been
     produced, and returning outfiles when they exist.
 
     '''
-
-    class WorkStatus():
-        '''A simple object to compactly return all salient information on
-        the status of the current session/command to the workflow
-
-        '''
-
-        def __init__(self, session_is_open=False, calc_is_pending=False, outfile_id=None):
-            '''Store whether the command has an associated active session,
-            whether a calculation is pending, and whether an outfile has been
-            created.
-
-            '''
-
-            self.session_is_open = session_is_open
-            self.calc_is_pending = calc_is_pending
-            self.outfile_id = outfile_id
 
     # Check if user submitted using the 'start session' form
     if 'startup' in request.POST:
@@ -574,17 +595,7 @@ def handle_command(request, command, infile):
                 time.sleep(1)
 
                 # Poll the calculation to see if its ready
-                outfile = fetch_calculation_result(
-                    request,
-                    infile,
-                    command,
-                )
-
-                if outfile == 'PENDING':
-                    return WorkStatus(calc_is_pending=True)
-                if outfile is None:
-                    return WorkStatus(calc_is_pending=False)
-                return WorkStatus(outfile_id=outfile.pk)
+                return poll_calculation(request, infile, command)
 
             return WorkStatus(calc_is_pending=False)
 
