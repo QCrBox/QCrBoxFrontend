@@ -16,7 +16,7 @@ from qcrboxapiclient.api.applications import (
 )
 from qcrboxapiclient.api.calculations import (
     get_calculation_by_id,
-    stop_running_calculation,
+    # stop_running_calculation,
 )
 from qcrboxapiclient.client import Client
 from qcrboxapiclient.api.commands import (
@@ -304,16 +304,19 @@ def send_command(command_id, parameters):
 
     command = models.AppCommand.objects.get(pk=command_id)              # pylint: disable=no-member
 
-    # XXX added by EP for JC to clean up :-)
+    # Fetch the ID of the Datafile associated with the Dataset
     dataset_objs = models.FileMetaData.objects                          # pylint: disable=no-member
     dataset_metadata = dataset_objs.get(backend_uuid=parameters["input_cif"]["data_file_id"])
+
     get_response = get_dataset(parameters["input_cif"]["data_file_id"])
     if not get_response.is_valid:
         return get_response
+
     dataset = get_response.body.payload.datasets[0]
     datafile_id = dataset.data_files[dataset_metadata.filename].qcrbox_file_id
+
+    # Overwrite dataset ID with datafile ID in the params
     parameters["input_cif"] = {"data_file_id": datafile_id}
-    # XXX added by EP for JC to clean up :-)
 
     arguments = InvokeCommandParametersCommandArguments.from_dict(parameters)
 

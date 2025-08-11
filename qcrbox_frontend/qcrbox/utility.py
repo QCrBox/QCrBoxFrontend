@@ -65,7 +65,7 @@ def update_applications():
 
     '''
 
-    local_apps = models.Application.objects.all()  # pylint: disable=no-member
+    local_apps = models.Application.objects.all()                       # pylint: disable=no-member
 
     # Fetch slugs to represent apps known to the frontend
     local_appdict = {(app.name, app.version) : app for app in local_apps}
@@ -146,22 +146,22 @@ def update_applications():
                 else:
                     default_value = None
 
-                new_parameter = models.CommandParameter(
+                models.CommandParameter(
                     command = new_command,
                     name = param_key,
                     dtype = parameter['dtype'],
                     description = parameter['description'],
                     required = parameter['required'],
                     default = default_value
-                )
+                ).save()
 
-                new_parameter.save()
+                #new_parameter.save()
 
         response['new_apps'].append(new_app.pk)
 
     # Flag local DB entries inactive if no longer present in the backend
 
-    for app in models.Application.objects.filter(active=True):      # pylint: disable=no-member
+    for app in models.Application.objects.filter(active=True):          # pylint: disable=no-member
 
         if (app.name, app.version) in backend_appset:
             continue

@@ -483,7 +483,7 @@ def fetch_calculation_result(request, infile, command):
     if calculation.status in ('submitted', 'running'):
         return 'PENDING'
 
-    if calculation.status == 'success':
+    if calculation.status == 'successful':
         api_response = api.get_dataset(calculation.output_dataset_id)
 
         if api_response.is_valid:
@@ -503,6 +503,10 @@ def fetch_calculation_result(request, infile, command):
         f'{command.name} did not execute successfully.'
     )
 
+    LOGGER.info(
+        'Calculation returned status: %s',
+        calculation.status,
+    )
     return None
 
 

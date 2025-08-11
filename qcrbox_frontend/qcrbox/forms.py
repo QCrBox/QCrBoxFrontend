@@ -322,9 +322,7 @@ class CommandForm(forms.Form):
 
                 parsed_param_name = param.name.split('_')
 
-                if param.dtype == 'QCrBox.output_cif':
-                    ext='cif'
-                elif (
+                if (
                     len(parsed_param_name)==3 and
                     parsed_param_name[0]=='output' and
                     parsed_param_name[-1]=='path'
@@ -342,5 +340,5 @@ class CommandForm(forms.Form):
 
             else:
                 raise NotImplementedError(
-                    f'Command parameter of dtype "{param.dtype}" is not supported!',
+                    f'Command contained parameter with illegal dtype "{param.dtype}"!',
                 )

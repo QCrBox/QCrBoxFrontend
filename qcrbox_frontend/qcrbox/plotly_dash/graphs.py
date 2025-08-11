@@ -158,10 +158,9 @@ def tree_plot(seed_dataset):
 
         # Track the number of generations of dependents
 
-        for descendant_pk in descendant_pks:
+        for d_pk in descendant_pks:
 
-            file_objs = models.FileMetaData.objects                     # pylint: disable=no-member
-            descendant = file_objs.get(pk=descendant_pk)
+            descendant = models.FileMetaData.objects.get(pk=d_pk)       # pylint: disable=no-member
 
             # Ensure that the points for each child are reasonably spaced,
             # while still vaguely below their parent

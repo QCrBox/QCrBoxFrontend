@@ -41,7 +41,8 @@ def plotly_direct_custom(context, name=None, slug=None, da=None, initial_argumen
     eh = context.request.dpd_content_handler.embedded_holder
 
     # Need to add in renderer launcher
-    renderer_launcher = '<script id="_dash-renderer" type="application/javascript">var renderer = new DashRenderer();</script>'
+    renderer_launcher = '<script id="_dash-renderer" type="application/javascript">'\
+                        'var renderer = new DashRenderer();</script>'
 
     app.set_embedded(eh)
     try:
