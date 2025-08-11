@@ -124,10 +124,10 @@ Upload Copied File
   Remove File  ${CURDIR}/${filename}
   
 Start App Session
-  [Arguments]  ${launching_workflow_url}  ${app_name}
+  [Arguments]  ${launching_workflow_url}  ${app_name}  ${command_name}
   Go To  ${launching_workflow_url}
   Wait Until Page Contains Element  workflow-display
-  Select From List By Label  id_application  ${app_name}
+  Select From List By Label  id_command  ${app_name} : ${command_name}
   Click Button  select-app-button
   Wait Until Page Contains Element  start-app-button
   Click Button  start-app-button
@@ -427,7 +427,7 @@ As Any User: I should be able to open and use the History Panel for the current 
 As Any User: The workflow should auto-populate installed Applications for selection
   Go To  ${workflow_url}
   Wait Until Page Contains Element  workflow-display
-  Element Should Contain  id_application  Olex2 (Linux)
+  Element Should Contain  id_command  Olex2 (Linux)
 
 As a Global Manager: I should be able to select *any* uploaded dataset when starting a new workflow
   Go To  ${SERVER}/workflow
@@ -506,7 +506,7 @@ As Any User: I should be able to navigate to a dataset's history panel from the 
   Page Should Contain  ${TEST_FILENAME}
 
 As Any User: I should be able to launch an interactive session from a workflow
-  Start App Session  ${workflow_url}  Olex2 (Linux)
+  Start App Session  ${workflow_url}  Olex2 (Linux)  Interactive Session
   Page Should Not Contain  Could not start session
   Switch Window  NEW
   Capture Page Screenshot  interactive_session.png
@@ -530,13 +530,13 @@ As Any User: I should be able to click the box next to an ancestor in a workflow
   Element Should Contain  current-row  ${TEST_FILENAME}
   
 As Any User: I should be able to close a blocking session even if the cookie is lost
-  Start App Session  ${workflow_url}  Olex2 (Linux)
+  Start App Session  ${workflow_url}  Olex2 (Linux)  Interactive Session
   Switch Window  NEW
   Close Window
   Switch Window  MAIN
   Delete All Cookies
   Log In As User  3
-  Start App Session  ${workflow_url}  Olex2 (Linux)
+  Start App Session  ${workflow_url}  Olex2 (Linux)  Interactive Session
   Page Should Not Contain  Could not start session
   Switch Window  NEW
   Close Window
@@ -545,6 +545,14 @@ As Any User: I should be able to close a blocking session even if the cookie is 
   Wait Until Page Contains  Dataset Metadata
   ${child_2_name}=  Get Text  current-filename
   Set suite variable  ${child_2_name}
+  
+As Any User: I should be able to launch a non-interactive session and collect its output
+  Start App Session  ${workflow_url}  QCrBoxTools  To Unified Cif
+  Capture Page Screenshot  bim.png
+  Wait Until Keyword Succeeds  6 x  10  Page Should Not Contain  Calculation in progress
+  Page Should Not Contain  Could not start calculation
+  Page Should Contain Element  ancestor-row
+  Element Should Contain  ancestor-row  ${TEST_FILENAME}
 
 As Any User: The History Panel for a given dataset should update to include its parents and children
   Click Link  history-link-current
