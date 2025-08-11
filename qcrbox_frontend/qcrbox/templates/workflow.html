@@ -8,6 +8,19 @@
   th, td {
     padding: 5px;
   }
+
+.tooltiphover {
+  color: blue;
+}
+
+.tooltiptext {
+  display: none;
+}
+
+.tooltiphover:hover + .tooltiptext {
+  display: block;
+}
+
 </style>
 
 <div class="container">
@@ -20,7 +33,7 @@
       </tr>
       <tr style="vertical-align:top">
         <td>
-          <table width=70% id="workflow-display">
+          <table width=90% id="workflow-display">
             {% for prior_step in prior_steps %}
               <tr id="ancestor-row">
                 <td align='right'>
@@ -83,52 +96,59 @@
         </td>
         <td vertical-align="top">
           <div class="card">
-            {% if not current_application %}
+            <div class="card-body">
+            {% if not current_command %}
               <h4>Dataset Metadata</h4>
               <ul>
                 <li>Dataset ID: {{file.backend_uuid}}</li>
                 <li>Filetype: {{file.filetype}}</li>
               </ul>
-              <i>Please select an application from the workflow to continue processing.</i>
+              <i>Please select a command from the workflow to continue processing.</i>
             {% else %}
-              <h4>{{current_application.name}}</h4>
+              <h4>{{current_command.app.name}} : {{current_command}}</h4>
               <ul>
-                <li>Version: {{current_application.version}}</li>
-                <li>Website: <a href="{{current_application.url}}" id="external-app-link">{{ current_application.name }}</a>
+                <li>Application: {{current_command.app.name}}</li>
+                <li>Version: {{current_command.app.version}}</li>
+                <li>Website: <a href="{{current_command.app.url}}" id="external-app-link">{{ current_command.app.name }}</a>
               </ul>
               {% if session_in_progress %}
                 <form action="" method="POST" enctype="multipart/form-data">
                   {% csrf_token %}
                   <input type="hidden" id="end_session" name="end_session" value=True>
-                  <input type="hidden" id="application" name="application" value={{ current_application.pk }}>
+                  <input type="hidden" id="command" name="command" value={{ current_command.pk }}>
                   <button type="submit" class="btn btn-primary" id="end-session-button">
                     End Session
                   </button>
                 </form>
+              {% elif calculation_in_progress %}
+                <h5><b><i>Calculation in progress, do not close this tab!</i></b></h5> 
+                <p>The page will automatically refresh every {{refresh_time}} seconds.</p>
               {% else %}
                 <form action="" method="POST" enctype="multipart/form-data">
                   {% csrf_token %}
                   <input type="hidden" id="startup" name="startup" value=True>
-                  <input type="hidden" id="application" name="application" value={{ current_application.pk }}>
+                  <input type="hidden" id="command" name="command" value={{ current_command.pk }}>
+                  {{ command_form.as_p }}
                   <button type="submit" class="btn btn-primary" id="start-app-button">
                     Launch Application
                   </button>
                 </form>
               {% endif %}
             {% endif %}
-            {% if session_in_progress %}
+            {% if session_in_progress or calculation_in_progress %}
             {% else %}
               <hr>
               <center>
                 <form action="" method="POST" enctype="multipart/form-data">
                   {% csrf_token %}
-                  {{ select_application_form.as_p }}
+                  {{ select_command_form.as_p }}
                   <button type="submit" class="btn btn-primary" id="select-app-button">
                     Select Application
                   </button>
                 </form>
               </center>
             {% endif %}
+            </div>
           </div>
         </td>
       </tr>
@@ -136,11 +156,18 @@
   </div>
 </div>
 
-{% if current_application.port %}
+{% if current_command.interactive %}
   <script>
     let hostname = window.location.hostname;
 
-    document.getElementById("start-app-button").addEventListener("click", function(){ window.open(`http://${hostname}:{{ current_application.port }}/vnc.html?path=vnc&autoconnect=true&resize=remote&reconnect=true&show_dot=true`, '_blank'); }); 
+    document.getElementById("start-app-button").addEventListener("click", function(){ window.open(`http://${hostname}:{{ current_command.app.port }}/vnc.html?path=vnc&autoconnect=true&resize=remote&reconnect=true&show_dot=true`, '_blank'); }); 
+  </script>
+{% elif calculation_in_progress %}
+  <script>
+    setTimeout(function(){
+      location.href="{% url 'workflow-pending' file.pk current_command.pk %}"
+      } , {{refresh_time}}000
+    );
   </script>
 {% endif %}
 

@@ -72,7 +72,7 @@ class Application(models.Model):
     - slug(str): the string used to uniquely refer to the Application in the
             backend.
     - port(str): the port through which an Interactive Session of this app
-            can be accessed via the browser
+            can be accessed via the browser, if one exists
     - active(bool): a flag to indicate whether the application is 'active'.
             This is set to False when the corresponding Application has been
             deleted or upgraded, and massively limits the functionality
@@ -98,6 +98,57 @@ class Application(models.Model):
         return str(self.name)
 
 
+class AppCommand(models.Model):
+    '''The AppCommand model stores information on commands; e.g. the commands
+    associated with the tools which have been installed as part of QCrBox
+    (not QCrBox Frontend).
+
+    Contains the following attributes:
+    - app(Application): the Application to which this command belongs
+    - name(str): the name of the command
+    - description(str): the human-readable description of a command
+    - interactive(bool): a boolean to denote whether this command opens an
+            interactive session of the attached app.
+
+    '''
+
+    app = models.ForeignKey(Application, on_delete=models.CASCADE, related_name='commands')
+    name = models.CharField(max_length=255)
+    description = models.CharField(max_length=255, null=True, blank=True)
+    interactive = models.BooleanField(default=False)
+
+    def __str__(self):
+        '''Return the human-readably parsed name of the command name'''
+
+        return str(self.name).replace('_',' ').title()
+
+
+class CommandParameter(models.Model):
+    '''The CommandParameter model stores information on an input parameter
+    for a given AppCommand, including their name, dtype, default value, etc.
+    Used to generate forms to collact parameters from the user when generating
+    a command, and used when calling that command via the API.
+
+    Contains the following attributes:
+    - command(AppCommand): the command to which this parameter belongs
+    - name(str): the display name of the parameter
+    - dtype(str): the expected data type for the parameter, used when
+            determining which form widget to display.
+    - description(str): the text description of the parameter.
+    - required(bool): whether user input is required.
+    - default(str): the JSON-serialized default value for the parameter, if
+            applicable.
+
+    '''
+
+    command = models.ForeignKey(AppCommand, on_delete=models.CASCADE, related_name='parameters')
+    name = models.CharField(max_length=255)
+    dtype = models.CharField(max_length=127)
+    description = models.CharField(max_length=255, blank=True, null=True)
+    required = models.BooleanField()
+    default = models.CharField(max_length=255, null=True, blank=True)
+
+
 class ProcessStep(models.Model):
     '''The ProcessStep model stores information pertaining to any process
     which takes an input Dataset and generates an output Dataset, e.g. an
@@ -105,15 +156,17 @@ class ProcessStep(models.Model):
     creation history and ancestry of a Dataset.
 
     Contains the following attributes:
-    - application(Application): the Application instance which corresponds to
-            the application used for this process.
+    - command(AppCommand): the AppCommand instance which corresponds to
+            the application command used for this process.
     - infile(FileMetaData): the metadata of the Dataset provided as input.
     - outfile(FileMetaData): the metadata of the Dataset yielded as output.
+    - parameters(str): a JSON-serialised dictionary of parameters and their
+            values used in this process.
 
     '''
 
-    application = models.ForeignKey(
-        Application,
+    command = models.ForeignKey(
+        AppCommand,
         null=True,
         on_delete=models.SET_NULL
     )
@@ -128,6 +181,10 @@ class ProcessStep(models.Model):
         null=True,
         on_delete=models.SET_NULL,
         related_name='processed_by'
+    )
+    parameters = models.CharField(
+        max_length=255,
+        default='{}',
     )
 
 
@@ -170,7 +227,7 @@ class DataPermissionSupport(models.Model):
 
     '''
 
-    class Meta:
+    class Meta:                                            # pylint: disable=too-few-public-methods
         '''Additional model configuration'''
 
         managed = False  # No database table creation or deletion operations will be performed

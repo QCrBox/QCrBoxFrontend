@@ -5,16 +5,35 @@ Frontend's functionality.  Refactored here for readability.
 '''
 
 import logging
+import time
 
 from django.contrib import messages
 
-from . import api
-from . import models
-from . import utility
+from qcrbox import api
+from qcrbox import models
+from qcrbox import utility
 
 LOGGER = logging.getLogger(__name__)
 
-def save_dataset_metadata(request, api_response, group, infile=None, application=None):
+class WorkStatus():
+    '''A simple object to compactly return all salient information on
+    the status of the current session/command to the workflow
+
+    '''
+
+    def __init__(self, session_is_open=False, calc_is_pending=False, outfile_id=None):
+        '''Store whether the command has an associated active session,
+        whether a calculation is pending, and whether an outfile has been
+        created.
+
+        '''
+
+        self.session_is_open = session_is_open
+        self.calc_is_pending = calc_is_pending
+        self.outfile_id = outfile_id
+
+
+def save_dataset_metadata(request, api_response, group, infile=None, command=None):
     '''Given a succesful upload of data to the backend, take the API response
     returned from that upload and create a Frontend FileMetaData object to
     refer to the uploaded dataset.  If the new file is the output of an
@@ -32,8 +51,8 @@ def save_dataset_metadata(request, api_response, group, infile=None, application
             to the file from which this file was generated, e.g. through
             Interactive Session.  Set blank to indicate that this file has
             no ancestor, i.e. it was created by direct upload.
-    - application(Application, optional): the Application data corresponding
-            to the application used in the Interactive Session which generated
+    - command(AppCommand, optional): the AppCommand data corresponding
+            to the application command used in the session which generated
             this dataset, if applicable.
 
     Returns:
@@ -76,10 +95,10 @@ def save_dataset_metadata(request, api_response, group, infile=None, application
         outset_meta.qcrbox_dataset_id,
     )
 
-    if application and infile:
+    if command and infile:
         # Create record for workflow step
         newprocessstep = models.ProcessStep(
-            application=application,
+            command=command,
             infile=infile,
             outfile=newfile,
         )
@@ -140,8 +159,29 @@ def clear_session_references(request, session_id):
     session.delete()
 
 
-def start_session(request, infile, application):
-    '''Given an application and an input FileMetaData object, attempt to start
+def create_calc_references(request, api_response):
+    '''When triggering a non-interactive command, this function can be invoked
+    to create a reference to the initiated calculation as a browser-side
+    cookie containing the backend calculation_id.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to the view containing this workflow.
+    - api_response(api.Response): an api.Response object containing the
+            response from the API on starting a Non-Interactive Session, and
+            a boolean flag indicating whether the response indicated success.
+            Only used to fetch the calculation_id.
+
+    '''
+
+    calc_id = api_response.body.payload.calculation_id
+
+    # set browser cookie
+    request.session['calculation_id'] = calc_id
+
+
+def start_session(request, infile, command):
+    '''Given a command and an input FileMetaData object, attempt to start
     a new Interactive Session, handling errors, messaging and logging as
     appropriate.
 
@@ -158,6 +198,8 @@ def start_session(request, infile, application):
             was successfully started.
 
     '''
+
+    application = command.app
 
     LOGGER.info(
         'User %s starting interactive "%s" session',
@@ -224,7 +266,7 @@ def start_session(request, infile, application):
     return False
 
 
-def close_session(request, infile, application):
+def close_session(request, infile, command):
     '''Attempt to close the session corresponding to the session_id stored in
     the user's browser cookies.
 
@@ -234,9 +276,9 @@ def close_session(request, infile, application):
     - infile(FileMetaData): the FileMetaData object corresponding to the file
             being used for this Interactive Session.  Only used for generating
             logs and user messages.
-    - application(Application): the Application data corresponding
-            to the application used in this Interactive Session.  Only used for
-            generating logs and user messages.
+    - command(AppCommand): the AppCommand data corresponding to the application
+            command used in this Interactive Session.  Only used for generating
+            logs and user messages.
 
     Returns:
     - out_file(FileMetaData or str or None): contains information on the status
@@ -282,8 +324,9 @@ def close_session(request, infile, application):
         LOGGER.warning('Session force-closed!')
         messages.warning(
             request,
-            f'{application.name} did not close properly!  Make sure to close the application in '
-            'the new browser tab before clicking End Session in order to avoid loss of data.'
+            f'{command.application.name} did not close properly!  Make sure to close the '
+            'application in the new browser tab before clicking End Session in order to avoid '
+            'loss of data.'
         )
 
     # If it was possible to get an outfile from the session via the API
@@ -298,7 +341,7 @@ def close_session(request, infile, application):
                 api_response,
                 infile.group,
                 infile=infile,
-                application=application,
+                command=command,
             )
 
             return newfile
@@ -308,6 +351,42 @@ def close_session(request, infile, application):
     messages.info(request, 'No output was produced in the interactive session.')
 
     return 'NO_OUTPUT'
+
+
+def invoke_command(request, command, arguments):
+    '''Given an command and a dict of command arguments, instruct
+    the API to invoke the command to start a calculation in the backend, 
+    handling errors, messaging and logging as appropriate.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to the view containing this workflow.
+    - command(AppCommand): the AppCommand object corresponding to the command
+            being used for this Session.
+    - arguments(dict): the additional kwargs to be passed to the API when
+            invoking the command.
+
+    Returns:
+    - calculation_created(bool or str): the calculation_id of the calculation
+            if it was invoked succesfully, otherwise False.
+
+    '''
+
+    api_response = api.send_command(command.pk, arguments)
+
+    if api_response.is_valid:
+        create_calc_references(request, api_response)
+        return api_response.body.payload.calculation_id
+
+    # else, if the client is busy, return a flag indicating no calcuation was
+    # started.
+    LOGGER.warning('Client is busy; aborting calculation!')
+    messages.warning(
+        request,
+        f'Could not start calculation: a session of {command.name} may already be running.'
+    )
+
+    return False
 
 
 def update_apps(request):
@@ -370,3 +449,169 @@ def get_file_history(infile):
             break
 
     return prior_steps
+
+
+def fetch_calculation_result(request, infile, command):
+    '''Attempt to fetch the results of a non-interactive calculation
+    corresponding to the calculation_id stored in the user's browser cookies,
+    or return a flag if the calc is still pending.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to the view containing this workflow.
+    - infile(FileMetaData): the FileMetaData object corresponding to the file
+            being used for this Calculation.  Only used for generating
+            logs and user messages.
+    - command(AppCommand): the AppCommand data corresponding to the application
+            command used in this Interactive Session.  Only used for generating
+            logs and user messages.
+
+    Returns:
+    - out_file(FileMetaData or str or None): contains information on the status
+            of the session being closed, and information on the output file if
+            any.  A value of None indicates the calculation was not successfully
+            completed.  A string value of 'PENDING' indicates that the
+            calculation is still running.  Otherwise, returns the FileMetaData
+            object corresponding to the new file created by the calculation.
+
+    '''
+
+    # If cookie is lost, abort
+    if 'calculation_id' not in request.session:
+        LOGGER.error('No calculation cookie found!')
+        messages.warning(request, 'Calculation reference timed out! Please try again.')
+        return None
+
+    calculation_id = request.session['calculation_id']
+
+    # Fetch the calculation status from the API
+    api_response = api.get_calculation(calculation_id)
+
+    # If calculation can't be found, abort
+    if not api_response.is_valid:
+        LOGGER.error('Calculation error!')
+        messages.warning(
+            request,
+            'Calculation could not be found! Please start again.'
+        )
+        return None
+
+    calculation = api_response.body.payload.calculations[0]
+
+    if calculation.status in ('submitted', 'running'):
+        return 'PENDING'
+
+    if calculation.status == 'successful':
+        api_response = api.get_dataset(calculation.output_dataset_id)
+
+        if api_response.is_valid:
+
+            newfile = save_dataset_metadata(
+                request,
+                api_response,
+                infile.group,
+                infile=infile,
+                command=command,
+            )
+
+            return newfile
+
+    messages.warning(
+        request,
+        f'{command.name} did not execute successfully.'
+    )
+
+    LOGGER.info(
+        'Calculation returned status: %s',
+        calculation.status,
+    )
+    return None
+
+
+def poll_calculation(request, infile, command):
+    '''Poll a running calculation (based on the calc_id stored in the user's
+    browser cookies), fetches and saves the result if its ready, and returns
+    a status which contains the outfile_id if present
+
+    '''
+
+    outfile = fetch_calculation_result(
+        request,
+        infile,
+        command,
+    )
+
+    if outfile == 'PENDING':
+        return WorkStatus(calc_is_pending=True)
+    if outfile is None:
+        return WorkStatus(calc_is_pending=False)
+    return WorkStatus(outfile_id=outfile.pk)
+
+
+def handle_command(request, command, infile):
+    '''A function to handle the internal logic of launching commands, ending
+    sessions, polling active calculations to see if outfiles have been
+    produced, and returning outfiles when they exist.
+
+    '''
+
+    # Check if user submitted using the 'start session' form
+    if 'startup' in request.POST:
+
+        # If the command corresponds to an interactive session, launch it
+        if command.interactive:
+
+            open_session = start_session(
+                request,
+                infile,
+                command,
+            )
+
+            if open_session:
+                return WorkStatus(session_is_open=True)
+
+
+        # Otherwise, launch the command with any user-given args
+        else:
+
+            # Fetch the params from the POST data
+            cps = command.parameters
+            expected_params = cps.values_list('name',flat=True)
+            params = {p:request.POST[p] for p in request.POST if p in expected_params}
+
+            # Format any params related to infiles to specify they should be fetched by ID
+            for i in cps.filter(dtype='QCrBox.cif_data_file').values_list('name',flat=True):
+                params[i] = {'data_file_id': params[i]}
+
+            active_calc = invoke_command(
+                request,
+                command,
+                params,
+            )
+
+            if active_calc:
+                # Add a brief pause here to allow for short commands to
+                # execute without entering the workflow holding pattern
+                time.sleep(1)
+
+                # Poll the calculation to see if its ready
+                return poll_calculation(request, infile, command)
+
+            return WorkStatus(calc_is_pending=False)
+
+
+    # Check if user submitted using the 'end session' form
+    elif 'end_session' in request.POST:
+
+        outfile = close_session(
+            request,
+            infile,
+            command,
+        )
+
+        if not outfile:
+            return WorkStatus(session_is_open=True)
+        if outfile != 'NO_OUTPUT':
+            return WorkStatus(outfile_id=outfile.pk)
+
+    return WorkStatus()

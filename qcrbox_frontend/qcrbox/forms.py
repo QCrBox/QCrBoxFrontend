@@ -9,7 +9,8 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User, Group
 
-from . import models
+from qcrbox import models
+from qcrbox import utility as ut
 
 
 # Workflow Initialisation Forms
@@ -99,7 +100,7 @@ class LoadFileForm(forms.Form):
 
 # Workflow Forms
 
-class SelectApplicationForm(forms.Form):
+class SelectCommandForm(forms.Form):
     '''A Django form to allow selecting an Application as part of initialising
     an Interactive Session.
 
@@ -108,7 +109,7 @@ class SelectApplicationForm(forms.Form):
 
     '''
 
-    application = forms.ChoiceField(choices=[])
+    command = forms.ChoiceField(choices=[])
 
     def __init__(self, *args, **kwargs):
         '''An additional form initialisation step to populate the choices in
@@ -119,10 +120,10 @@ class SelectApplicationForm(forms.Form):
 
         super().__init__(*args, **kwargs)
 
-        qset = models.Application.objects.all()                         # pylint: disable=no-member
-        choices = [(a.pk, a.name) for a in qset.filter(active=True)]
+        qset = models.AppCommand.objects.order_by('app__name','name')   # pylint: disable=no-member
+        choices = [(c.pk, ut.sanitize_command_name(c)) for c in qset.filter(app__active=True)]
 
-        self.fields['application'].choices = choices
+        self.fields['command'].choices = choices
 
 
 # User management forms
@@ -204,7 +205,7 @@ class RegisterUserForm(UserCreationForm):
 class UpdateUserForm(forms.ModelForm):
     '''A Django ModelForm for admin-level editing of User instances.'''
 
-    class Meta:
+    class Meta:                                            # pylint: disable=too-few-public-methods
         '''Additional ModelForm config'''
 
         model = User
@@ -213,7 +214,7 @@ class UpdateUserForm(forms.ModelForm):
 class EditUserForm(forms.ModelForm):
     '''A Django ModelForm for user-level editing User instances.'''
 
-    class Meta:
+    class Meta:                                            # pylint: disable=too-few-public-methods
         '''Additional ModelForm config'''
 
         model = User
@@ -225,8 +226,119 @@ class EditUserForm(forms.ModelForm):
 class GroupForm(forms.ModelForm):
     '''A Django ModelForm for creating or editing Group instances.'''
 
-    class Meta:
+    class Meta:                                            # pylint: disable=too-few-public-methods
         '''Additional ModelForm config'''
 
         model = Group
         fields = ['name']
+
+
+# Automatic form generation to get command parameters from user
+
+class CommandForm(forms.Form):
+    '''A Django form which auto-populates itself with fields for each of a
+    given command's associated parameters.'''
+
+    def __init__(self, *args, command, dataset, user, **kwargs):
+
+        '''An additional form initialisation step.  Modifies which fields are
+        editable based on the permissions of the creating user, and populates
+        the user_groups field's choices with groups to which the creating user
+        has access.
+
+        Additional Parameters:
+        - user(User): a django.contrib.auth.models User instance, corresponding
+                to the currently logged in user, to determine which groups
+                should be given as selection options and which form fields if
+                any should be disabled.
+
+        '''
+
+        super().__init__(*args, **kwargs)
+
+        # A boolean to track whether the main infile fields has been handled;
+        # the first one infile field just take the current file as a default
+        # and not be rendered as a widget.
+
+        handled_infile_field = False
+
+        for param in command.parameters.all():
+
+            # Construct kwargs common to all field types
+            misc_kwargs = {
+                'initial' : None if param.default=='None' else param.default,
+                'help_text' : f'<span class=\"tooltiphover\">&nbsp<i class="fa-solid fa-circle-in'\
+                              f'fo"></i></span><span class=\"tooltiptext\"><small>'\
+                              f'{param.description}</small></span>',
+                'required' : param.required,
+            }
+
+            if param.dtype == 'str':
+                self.fields[param.name] = forms.CharField(
+                    max_length=255,
+                    **misc_kwargs,
+                )
+            elif param.dtype == 'float':
+                self.fields[param.name] = forms.FloatField(
+                    **misc_kwargs,
+                )
+            elif param.dtype == 'QCrBox.cif_data_file':
+
+                # Hide the first file input field and populate it with the file of the active
+                # workflow
+                if not handled_infile_field:
+                    handled_infile_field = True
+                    self.fields[param.name] = forms.CharField(
+                        widget=forms.HiddenInput(),
+                        initial=dataset.backend_uuid,
+                    )
+
+                # Render any subsequent file input fields as choicefields
+                else:
+
+                    # Determine which groups the user is able to pick secondary files from
+                    # If they have global access, may pick file from any group
+                    if user.has_perm('qcrbox.global_access'):
+                        permitted_groups = Group.objects.all()
+
+                    # Otherwise restrict visibility and selection to files attached to groups the
+                    # user belongs to
+                    else:
+                        permitted_groups = user.groups.all()
+
+                    objs = models.FileMetaData.objects                  # pylint: disable=no-member
+                    qset = objs.filter(active=True).filter(group__in=permitted_groups)
+
+                    self.fields[param.name] = forms.ChoiceField(
+                        choices=[(f.backend_uuid, f.display_filename) for f in qset]
+                    )
+
+            elif param.dtype in ('QCrBox.output_path', 'QCrBox.output_cif'):
+                filepath = '/opt/qcrbox/'
+
+                filepath += dataset.filename.split('.')[0]
+
+                # Guess the intended extension from the name and dtype of the param
+
+                parsed_param_name = param.name.split('_')
+
+                if (
+                    len(parsed_param_name)==3 and
+                    parsed_param_name[0]=='output' and
+                    parsed_param_name[-1]=='path'
+                ):
+                    ext = parsed_param_name[1]
+                else:
+                    ext = 'cif'
+
+                filepath = filepath + f'_{command.name}.{ext}'
+
+                self.fields[param.name] = forms.CharField(
+                    widget=forms.HiddenInput(),
+                    initial=filepath,
+                )
+
+            else:
+                raise NotImplementedError(
+                    f'Command contained parameter with illegal dtype "{param.dtype}"!',
+                )

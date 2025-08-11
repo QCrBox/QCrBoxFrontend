@@ -158,10 +158,9 @@ def tree_plot(seed_dataset):
 
         # Track the number of generations of dependents
 
-        for descendant_pk in descendant_pks:
+        for d_pk in descendant_pks:
 
-            file_objs = models.FileMetaData.objects                     # pylint: disable=no-member
-            descendant = file_objs.get(pk=descendant_pk)
+            descendant = models.FileMetaData.objects.get(pk=d_pk)       # pylint: disable=no-member
 
             # Ensure that the points for each child are reasonably spaced,
             # while still vaguely below their parent
@@ -287,19 +286,22 @@ def infobox(seed_dataset):
     if creation_process.exists():
 
         process = creation_process.first()
-        app = process.application.name
-        version = process.application.version
+        app = process.command.app.name
+        version = process.command.app.version
+        command = process.command.name
         parent = process.infile.display_filename
 
     else:
 
         app = html.I('Upload')
         version = '-'
+        command = '-'
         parent = '-'
 
     creation_table = [
         table_row('Application: ', app),
         table_row('Version: ', version),
+        table_row('Command: ', command),
         table_row('Parent Dataset: ', parent),
         table_row('User: ', seed_dataset.user.username),
         table_row('Date: ', seed_dataset.creation_time.strftime('%Y-%m-%d')),

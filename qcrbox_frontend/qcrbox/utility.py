@@ -7,8 +7,11 @@ the QCrBox Django Frontend.
 
 import textwrap
 
-from . import api
-from . import models
+from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+from qcrbox import api
+from qcrbox import models
 
 class DisplayField():
     '''A class to contain information on fields to be displayed in 'view list'
@@ -65,7 +68,7 @@ def update_applications():
 
     '''
 
-    local_apps = models.Application.objects.all()  # pylint: disable=no-member
+    local_apps = models.Application.objects.all()                       # pylint: disable=no-member
 
     # Fetch slugs to represent apps known to the frontend
     local_appdict = {(app.name, app.version) : app for app in local_apps}
@@ -120,11 +123,48 @@ def update_applications():
         )
         new_app.save()
 
+        # Add commands to the new app
+
+        for command in app.commands:
+
+            # Ignore protected commands
+            if command.name[:2] == '__':
+                continue
+
+            new_command = models.AppCommand(
+                name=command.name,
+                app=new_app,
+                description=command.description,
+                interactive=command.name=='interactive_session',
+            )
+
+            new_command.save()
+
+            # Add information on the parameters to attach to the new command
+            for param_key in command.parameters.additional_properties:
+                parameter = command.parameters[param_key]
+
+                if parameter['default_value']:
+                    default_value = parameter['default_value']['value']['value']
+                else:
+                    default_value = None
+
+                models.CommandParameter(
+                    command = new_command,
+                    name = param_key,
+                    dtype = parameter['dtype'],
+                    description = parameter['description'],
+                    required = parameter['required'],
+                    default = default_value
+                ).save()
+
+                #new_parameter.save()
+
         response['new_apps'].append(new_app.pk)
 
     # Flag local DB entries inactive if no longer present in the backend
 
-    for app in models.Application.objects.filter(active=True):      # pylint: disable=no-member
+    for app in models.Application.objects.filter(active=True):          # pylint: disable=no-member
 
         if (app.name, app.version) in backend_appset:
             continue
@@ -136,6 +176,15 @@ def update_applications():
 
     return response
 
+
+def sanitize_command_name(command):
+    '''Simple function to parse a command name for display in the dropdown
+    command menu in the workflow.
+
+    '''
+
+    command_name = command.name.replace('_',' ').title()
+    return command.app.name + ' : ' + command_name
 
 def twrap(text, width, min_width=5, max_lines=4):
     '''Simple function to split text over a given length and reconcatenate
@@ -161,3 +210,36 @@ def twrap(text, width, min_width=5, max_lines=4):
     if len(text_split) > max_lines:
         return ''
     return '<br>'.join(text_split)
+
+def paginate_objects(object_list, page, per_page=13):
+    '''Paginate a list of objects (e.g. db records) using the django in-built
+    paginator, with in-built error correction for e.g. empty lists or accessing
+    pages out of range.
+
+    '''
+
+    paginator = Paginator(object_list, per_page)
+
+    try:
+        objects = paginator.get_page(page)
+    except PageNotAnInteger:
+        objects = paginator.page(1)
+    except EmptyPage:
+        objects = paginator.page(paginator.num_pages)
+
+    return objects
+
+def check_user_view_file_permission(user, load_file):
+    ''' Check whether a given user has the permission to view a given file,
+    and raise a PermissionDemied error if not'''
+
+    file_group = load_file.group
+    user_groups = user.groups.all()
+
+    shared_groups = file_group in user_groups
+
+    if shared_groups or user.has_perm('qcrbox.global_access'):
+        pass
+
+    else:
+        raise PermissionDenied

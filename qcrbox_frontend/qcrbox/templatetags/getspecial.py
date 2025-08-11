@@ -90,8 +90,8 @@ def get_special_metadata(value, arg):
     if arg == 'created_app':
         if value.processed_by.all():
             process = value.processed_by.first()
-            if process.application:
-                return process.application
+            if process.command:
+                return process.command.app
         return '-'
 
     # Failsafe

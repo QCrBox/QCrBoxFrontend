@@ -14,6 +14,14 @@ import logging
 from qcrboxapiclient.api.applications import (
     list_applications,
 )
+from qcrboxapiclient.api.calculations import (
+    get_calculation_by_id,
+    # stop_running_calculation,
+)
+from qcrboxapiclient.client import Client
+from qcrboxapiclient.api.commands import (
+    invoke_command,
+)
 from qcrboxapiclient.api.datasets import (
     create_dataset,
     delete_dataset_by_id,
@@ -22,20 +30,21 @@ from qcrboxapiclient.api.datasets import (
 )
 from qcrboxapiclient.api.interactive_sessions import (
     close_interactive_session,
-    create_interactive_session_with_arguments,
+    create_interactive_session,
     get_interactive_session_by_id,
 )
-from qcrboxapiclient.client import Client
 from qcrboxapiclient.models import (
     CreateDatasetBody,
-    CreateInteractiveSession,
-    CreateInteractiveSessionArguments,
+    CreateInteractiveSessionParameters,
+    CreateInteractiveSessionParametersCommandArguments,
+    InvokeCommandParameters,
+    InvokeCommandParametersCommandArguments,
     QCrBoxErrorResponse,
 )
 from qcrboxapiclient.types import File
 
 from django.conf import settings
-from . import models
+from qcrbox import models
 
 LOGGER = logging.getLogger(__name__)
 
@@ -226,14 +235,14 @@ def start_session(app_id, dataset_id):
     datafile_id = dataset.data_files[dataset_metadata.filename].qcrbox_file_id
 
     # Set up arguments
-    arguments = CreateInteractiveSessionArguments.from_dict(
+    arguments = CreateInteractiveSessionParametersCommandArguments.from_dict(
         {'input_file': {'data_file_id': datafile_id}}
     )
-    create_session = CreateInteractiveSession(app.slug, app.version, arguments)
+    create_session = CreateInteractiveSessionParameters(app.slug, app.version, arguments)
 
     # Initialise session
     LOGGER.info('API call: create_interactive_session_with_arguments')
-    raw_response = create_interactive_session_with_arguments.sync(
+    raw_response = create_interactive_session.sync(
         client=client,
         body=create_session,
     )
@@ -273,6 +282,79 @@ def close_session(session_id):
         session_id,
     )
     raw_response = close_interactive_session.sync(client=client, id=session_id)
+
+    return Response(raw_response)
+
+
+# ----- Non-Interactive Command / calculation functionality -----
+
+def send_command(command_id, parameters):
+
+    '''Sends a command to the API with properly formatted arguments
+
+    Parameters:
+    - command_id(int): the frontend db pk corresponding to the command to be
+            invoked.
+    - parameters(dict): a dict of kwargs to be passed to the API along with
+            the command.
+
+    '''
+
+    client = get_client()
+
+    command = models.AppCommand.objects.get(pk=command_id)              # pylint: disable=no-member
+
+    # Fetch the ID of the Datafile associated with the Dataset
+    dataset_objs = models.FileMetaData.objects                          # pylint: disable=no-member
+    dataset_metadata = dataset_objs.get(backend_uuid=parameters["input_cif"]["data_file_id"])
+
+    get_response = get_dataset(parameters["input_cif"]["data_file_id"])
+    if not get_response.is_valid:
+        return get_response
+
+    dataset = get_response.body.payload.datasets[0]
+    datafile_id = dataset.data_files[dataset_metadata.filename].qcrbox_file_id
+
+    # Overwrite dataset ID with datafile ID in the params
+    parameters["input_cif"] = {"data_file_id": datafile_id}
+
+    arguments = InvokeCommandParametersCommandArguments.from_dict(parameters)
+
+    create_session = InvokeCommandParameters(
+        command.app.slug,
+        command.app.version,
+        command.name,
+        arguments,
+    )
+
+    LOGGER.info(
+        'API call: invoke_command, app=%s %s, command=%s, arguments=%s',
+        command.app.slug,
+        command.app.version,
+        command.name,
+        arguments,
+    )
+
+    raw_response = invoke_command.sync(client=client, body=create_session)
+
+    return Response(raw_response)
+
+def get_calculation(calculation_id):
+
+    '''Get the metadata of a Calculation
+
+    Parameters:
+    - calculation_id(str): the backend ID for the calculation to be fetched
+
+    '''
+
+    client = get_client()
+
+    LOGGER.info(
+        'API call: get_calculation_by_id, id=%s',
+        calculation_id,
+    )
+    raw_response = get_calculation_by_id.sync(id=calculation_id, client=client)
 
     return Response(raw_response)
 
