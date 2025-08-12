@@ -190,7 +190,6 @@ def workflow(request, file_id):
             context['command_form'] = forms.CommandForm(
                 command=current_command,
                 dataset=load_file,
-                user=request.user,
             )
 
             # Deal with starting/ending sessions and/or starting/polling calculations

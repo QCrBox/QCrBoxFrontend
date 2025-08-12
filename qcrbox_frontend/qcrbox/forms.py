@@ -239,7 +239,7 @@ class CommandForm(forms.Form):
     '''A Django form which auto-populates itself with fields for each of a
     given command's associated parameters.'''
 
-    def __init__(self, *args, command, dataset, user, **kwargs):
+    def __init__(self, *args, command, dataset, **kwargs):
 
         '''An additional form initialisation step.  Modifies which fields are
         editable based on the permissions of the creating user, and populates
@@ -293,24 +293,26 @@ class CommandForm(forms.Form):
                         initial=dataset.backend_uuid,
                     )
 
-                # Render any subsequent file input fields as choicefields
+                # Render any subsequent file input fields as a choice of the dataset's ancestors
                 else:
 
-                    # Determine which groups the user is able to pick secondary files from
-                    # If they have global access, may pick file from any group
-                    if user.has_perm('qcrbox.global_access'):
-                        permitted_groups = Group.objects.all()
+                    ancestors = []
 
-                    # Otherwise restrict visibility and selection to files attached to groups the
-                    # user belongs to
-                    else:
-                        permitted_groups = user.groups.all()
+                    dataset_i = dataset
+                    steps = models.ProcessStep.objects                  # pylint: disable=no-member
 
-                    objs = models.FileMetaData.objects                  # pylint: disable=no-member
-                    qset = objs.filter(active=True).filter(group__in=permitted_groups)
+                    # Populate the ancestry
+                    while True:
+                        prior_step = steps.filter_by(outfile=dataset_i)
+                        if not prior_step.exists():
+                            break
+
+                        dataset_i = prior_step.infile
+                        if dataset_i.active:
+                            ancestors.append(dataset_i)
 
                     self.fields[param.name] = forms.ChoiceField(
-                        choices=[(f.backend_uuid, f.display_filename) for f in qset]
+                        choices=[(a.backend_uuid, a.display_filename) for a in ancestors[::-1]]
                     )
 
             elif param.dtype in ('QCrBox.output_path', 'QCrBox.output_cif'):
