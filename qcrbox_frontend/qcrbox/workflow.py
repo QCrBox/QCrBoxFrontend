@@ -33,7 +33,7 @@ class WorkStatus():
         self.outfile_id = outfile_id
 
 
-def save_dataset_metadata(request, api_response, group, infile=None, command=None):
+def save_dataset_metadata(request, api_response, group, infile=None, command=None, params='{}'):
     '''Given a succesful upload of data to the backend, take the API response
     returned from that upload and create a Frontend FileMetaData object to
     refer to the uploaded dataset.  If the new file is the output of an
@@ -101,6 +101,7 @@ def save_dataset_metadata(request, api_response, group, infile=None, command=Non
             command=command,
             infile=infile,
             outfile=newfile,
+            parameters=params,
         )
         newprocessstep.save()
 
@@ -512,6 +513,7 @@ def fetch_calculation_result(request, infile, command):
                 infile.group,
                 infile=infile,
                 command=command,
+                params=calculation.command_arguments.additional_properties,
             )
 
             return newfile

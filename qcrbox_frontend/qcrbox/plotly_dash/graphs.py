@@ -5,6 +5,8 @@ Plotly Dash app in the QCrBox Frontend
 
 '''
 
+import ast
+
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -12,7 +14,7 @@ from django.urls import reverse
 
 from dash import dcc, html
 
-from .. import models, utility
+from qcrbox import models, utility
 
 def tree_plot(seed_dataset):
     '''Generate the main Tree Plot for the History Dashboard
@@ -290,6 +292,17 @@ def infobox(seed_dataset):
         version = process.command.app.version
         command = process.command.name
         parent = process.infile.display_filename
+        params = ast.literal_eval(process.parameters)
+
+        # Remove some params which shouldnt be displayed in the table
+        for hidden_param in [
+            'cif1',
+            'input_cif',
+            'output_cif_path',
+            'output_json_path',
+            'output_tsc_path',
+        ]:
+            params.pop(hidden_param, None)
 
     else:
 
@@ -297,18 +310,29 @@ def infobox(seed_dataset):
         version = '-'
         command = '-'
         parent = '-'
+        params = {}
 
-    creation_table = [
+    creation_table_1 = [
         table_row('Application: ', app),
         table_row('Version: ', version),
         table_row('Command: ', command),
         table_row('Parent Dataset: ', parent),
+    ]
+
+    creation_table_2 = [
         table_row('User: ', seed_dataset.user.username),
         table_row('Date: ', seed_dataset.creation_time.strftime('%Y-%m-%d')),
         table_row('Time: ', seed_dataset.creation_time.strftime('%H:%M:%S')),
     ]
 
-    table_contents += creation_table
+    params_table = [
+        table_row(
+            p.replace('_', ' ').title() + ': ',
+            v,
+        ) for p, v in params.items()
+    ]
+
+    table_contents += creation_table_1 + params_table + creation_table_2
 
     # Create button to launch workflow
 
