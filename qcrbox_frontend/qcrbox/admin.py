@@ -47,5 +47,5 @@ class CommandParameter(admin.ModelAdmin):
 class SessionReferenceAdmin(admin.ModelAdmin):
     '''Admin Registration for the SessionReference model'''
 
-    list_display = ('application', 'session_id', 'user')
+    list_display = ('command__app', 'session_id', 'user')
     ordering = ('start_time',)

@@ -45,7 +45,7 @@ erDiagram
 
     SessionReference {
         foreignKey user
-        foreignKey application
+        foreignKey command
         string session_id
         datetime start_time
     }
@@ -71,4 +71,4 @@ erDiagram
     AppCommand || -- o{ ProcessStep : ""
     FileMetaData || -- o{ ProcessStep : "as infile"
     FileMetaData || -- o| ProcessStep : "as outfile"
-    Application || -- o{ SessionReference : ""
+    AppCommand || -- o{ SessionReference : ""

@@ -109,7 +109,7 @@ def save_dataset_metadata(request, api_response, group, infile=None, command=Non
     return newfile
 
 
-def create_session_references(request, api_response, application):
+def create_session_references(request, api_response, command):
     '''When starting a new session, this function can be invoked to create two
     references to that session; firstly, as a browser-side cookie containing
     the backend session_id and, secondly, a temporary SessionReference record
@@ -123,8 +123,8 @@ def create_session_references(request, api_response, application):
             response from the API on starting an Interactive Session, and
             a boolean flag indicating whether the response indicated success.
             Only used to fetch the session_id.
-    - application(Application): the Application data corresponding
-            to the application used to start the Interactive Session.
+    - command(AppCommand): the AppCommand data corresponding
+            to the command used to start the Interactive Session.
 
     '''
 
@@ -135,7 +135,7 @@ def create_session_references(request, api_response, application):
 
     session_reference = models.SessionReference(
         user=request.user,
-        application=application,
+        command=command,
         session_id=session_id,
     )
     session_reference.save()
@@ -213,14 +213,14 @@ def start_session(request, infile, command):
     )
 
     if api_response.is_valid:
-        create_session_references(request, api_response, application)
+        create_session_references(request, api_response, command)
         return True
 
     # else, if the client is busy and there's a session cookie, try to close it
     LOGGER.warning('Client is busy; attempting to close previous session')
 
     current_sessions = models.SessionReference.objects                  # pylint: disable=no-member
-    relevant_sessions = current_sessions.filter(application=application).order_by('start_time')
+    relevant_sessions = current_sessions.filter(command=command).order_by('start_time')
 
     if 'app_session_id' in request.session and request.session['app_session_id']:
         app_session_id = request.session['app_session_id']
@@ -254,7 +254,7 @@ def start_session(request, infile, command):
         )
 
         if api_response.is_valid:
-            create_session_references(request, api_response, application)
+            create_session_references(request, api_response, command)
             return True
 
     # If no session was opened even after all that, handle the error

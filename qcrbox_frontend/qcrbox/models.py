@@ -198,8 +198,8 @@ class SessionReference(models.Model):
     Contains the following attributes:
     - user(User): the User that initiated the session (for, e.g., determining
             their permission to close it, not currently implemented).
-    - application(Application): the Application instance which corresponds to
-            the application used in this session.
+    - command(AppCommand): the AppCommand instance which corresponds to
+            the command used in this session.
     - session_id(str): the ID used to access the session in the backend.
     - start_time(datetime): the time when the session began
 
@@ -210,8 +210,8 @@ class SessionReference(models.Model):
         null=True,
         on_delete=models.SET_NULL
     )
-    application = models.ForeignKey(
-        Application,
+    command = models.ForeignKey(
+        AppCommand,
         null=True,
         on_delete=models.CASCADE
     )
