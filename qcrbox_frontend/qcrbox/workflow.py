@@ -351,7 +351,7 @@ def close_session(request, infile, command):
         LOGGER.warning('Session force-closed!')
         messages.warning(
             request,
-            f'{command.application.name} did not close properly!  Make sure to close the '
+            f'{command.app.name} did not close properly!  Make sure to close the '
             'application in the new browser tab before clicking End Session in order to avoid '
             'loss of data.'
         )
@@ -399,20 +399,64 @@ def invoke_command(request, command, arguments):
 
     '''
 
+    LOGGER.info(
+        'User %s invoking command "%s" from app "%s"',
+        request.user.username,
+        command.app.name,
+        command.name,
+    )
+    print('1',arguments)
     api_response = api.send_command(command.pk, arguments)
+    print('2',arguments)
 
     if api_response.is_valid:
         create_calc_references(request, api_response, command)
         return api_response.body.payload.calculation_id
 
-    # else, if the client is busy, return a flag indicating no calcuation was
-    # started.
-    LOGGER.warning('Client is busy; aborting calculation!')
+    # else, if the client is busy and there's a session cookie, try to close it
+    LOGGER.warning('Client is busy; attempting to kill blocking calculation session')
+    current_sessions = models.SessionReference.objects                  # pylint: disable=no-member
+    relevant_sessions = current_sessions.filter(command=command).order_by('start_time')
+
+    if 'calculation_id' in request.session and request.session['calculation_id']:
+        calculation_id = request.session['calculation_id']
+
+    elif relevant_sessions.exists():
+        calculation_id = relevant_sessions.last().session_id
+        LOGGER.warning('No cookie found; fetching session ID from reference db')
+
+    else:
+        LOGGER.error('Could not find cookie or reference to blocking session!')
+        messages.warning(
+            request,
+            f'Could not invoke command of {command.name}!  Client seems '
+            f'to be busy, no reference to blocking calculation found.'
+        )
+        return False
+
+    cancel_api_response = api.cancel_calculation(calculation_id)
+
+    if not cancel_api_response.is_valid:
+        LOGGER.error('Could not cancel blocking calculation!')
+
+    # Try again to open the session
+    else:
+        # clear any dangling references to the old session
+
+        clear_calc_references(request, calc_id=calculation_id)
+        api_response = api.send_command(command.pk, arguments)
+
+        if api_response.is_valid:
+            create_calc_references(request, api_response, command)
+            return api_response.body.payload.calculation_id
+
+    # If no session was opened even after all that, handle the error
+    LOGGER.error('Calculation failed to start!')
     messages.warning(
         request,
-        f'Could not start calculation: a session of {command.name} may already be running.'
+        f'Could not invoke command!  Check if there is a instance of '
+        f'{command.name} already running and, if so, close it.'
     )
-
     return False
 
 

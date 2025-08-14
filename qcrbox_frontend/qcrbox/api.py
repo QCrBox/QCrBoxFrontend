@@ -16,7 +16,7 @@ from qcrboxapiclient.api.applications import (
 )
 from qcrboxapiclient.api.calculations import (
     get_calculation_by_id,
-    # stop_running_calculation,
+    stop_running_calculation,
 )
 from qcrboxapiclient.client import Client
 from qcrboxapiclient.api.commands import (
@@ -300,6 +300,9 @@ def send_command(command_id, parameters):
 
     '''
 
+    # Create local copy of mutable argument as it will be modified
+    parameters = parameters.copy()
+
     client = get_client()
 
     command = models.AppCommand.objects.get(pk=command_id)              # pylint: disable=no-member
@@ -355,6 +358,24 @@ def get_calculation(calculation_id):
         calculation_id,
     )
     raw_response = get_calculation_by_id.sync(id=calculation_id, client=client)
+
+    return Response(raw_response)
+
+def cancel_calculation(calc_id):
+    '''Command the API to cancel a running calculation.
+
+    Parameters:
+    - calc_id(str): the backend ID for the session to be closed
+
+    '''
+
+    client = get_client()
+
+    LOGGER.info(
+        'API call: stop_running_calculation, id=%s',
+        calc_id,
+    )
+    raw_response = stop_running_calculation.sync(client=client, id=calc_id)
 
     return Response(raw_response)
 
