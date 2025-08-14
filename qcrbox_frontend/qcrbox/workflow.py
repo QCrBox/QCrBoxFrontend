@@ -160,7 +160,7 @@ def clear_session_references(request, session_id):
     session.delete()
 
 
-def create_calc_references(request, api_response):
+def create_calc_references(request, api_response, command):
     '''When triggering a non-interactive command, this function can be invoked
     to create a reference to the initiated calculation as a browser-side
     cookie containing the backend calculation_id.
@@ -175,10 +175,36 @@ def create_calc_references(request, api_response):
 
     '''
 
-    calc_id = api_response.body.payload.calculation_id
+    calc_id = api_response.body.payload.calculation_id #####
 
     # set browser cookie
     request.session['calculation_id'] = calc_id
+
+    session_reference = models.SessionReference(
+        user=request.user,
+        command=command,
+        session_id=calc_id,
+    )
+    session_reference.save()
+
+
+def clear_calc_references(request, calc_id):
+    '''When closing a non-interactive calculation, this function can be invoked
+    to clear the browser cookie referring to it and delete the SessionReference
+    record in the Frontend db.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to the view containing this workflow.
+    - session_id(str): the ID used to refer to this session in the backend.
+
+    '''
+
+    # clear cookie
+    request.session['calculation_id'] = None
+
+    session = models.SessionReference.objects.get(session_id=calc_id)   # pylint: disable=no-member
+    session.delete()
 
 
 def start_session(request, infile, command):
@@ -376,7 +402,7 @@ def invoke_command(request, command, arguments):
     api_response = api.send_command(command.pk, arguments)
 
     if api_response.is_valid:
-        create_calc_references(request, api_response)
+        create_calc_references(request, api_response, command)
         return api_response.body.payload.calculation_id
 
     # else, if the client is busy, return a flag indicating no calcuation was
@@ -504,6 +530,7 @@ def fetch_calculation_result(request, infile, command):
 
     if calculation.status == 'successful':
         api_response = api.get_dataset(calculation.output_dataset_id)
+        clear_calc_references(request, calc_id=calculation_id)
 
         if api_response.is_valid:
 
