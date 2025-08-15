@@ -1,4 +1,4 @@
-FROM python:3.11
+FROM python:3.11-bookworm
 
 ENV LANG=C.UTF-8
 
@@ -8,8 +8,9 @@ ENV PYTHONDONTWRITEBYTECODE 1
 # prevents python from buffering stdout and stderr
 ENV PYTHONUNBUFFERED 1
 
-RUN apt update -y
-RUN apt install libgl1-mesa-glx -y python3-dev gcc libc-dev
+RUN apt update && \
+	apt install -y --no-install-recommends libgl1-mesa-glx python3-dev gcc libc-dev && \
+	rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
