@@ -270,7 +270,7 @@ class CommandForm(forms.Form):
                 'help_text' : f'<span class=\"tooltiphover\">&nbsp<i class="fa-solid fa-circle-in'\
                               f'fo"></i></span><span class=\"tooltiptext\"><small>'\
                               f'{param.description}</small></span>',
-                'required' : param.required,
+                'required' : True,
             }
 
             if param.dtype == 'str':
@@ -280,6 +280,10 @@ class CommandForm(forms.Form):
                 )
             elif param.dtype == 'float':
                 self.fields[param.name] = forms.FloatField(
+                    **misc_kwargs,
+                )
+            elif param.dtype == 'bool':
+                self.fields[param.name] = forms.BooleanField(
                     **misc_kwargs,
                 )
             elif param.dtype == 'QCrBox.cif_data_file':
@@ -303,11 +307,11 @@ class CommandForm(forms.Form):
 
                     # Populate the ancestry
                     while True:
-                        prior_step = steps.filter_by(outfile=dataset_i)
+                        prior_step = steps.filter(outfile=dataset_i)
                         if not prior_step.exists():
                             break
 
-                        dataset_i = prior_step.infile
+                        dataset_i = prior_step.first().infile
                         if dataset_i.active:
                             ancestors.append(dataset_i)
 

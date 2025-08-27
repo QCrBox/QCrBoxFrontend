@@ -405,9 +405,7 @@ def invoke_command(request, command, arguments):
         command.app.name,
         command.name,
     )
-    print('1',arguments)
     api_response = api.send_command(command.pk, arguments)
-    print('2',arguments)
 
     if api_response.is_valid:
         create_calc_references(request, api_response, command)

@@ -307,19 +307,28 @@ def send_command(command_id, parameters):
 
     command = models.AppCommand.objects.get(pk=command_id)              # pylint: disable=no-member
 
-    # Fetch the ID of the Datafile associated with the Dataset
+    # Fetch the ID of the Datafile associated with input datasets
     dataset_objs = models.FileMetaData.objects                          # pylint: disable=no-member
-    dataset_metadata = dataset_objs.get(backend_uuid=parameters["input_cif"]["data_file_id"])
 
-    get_response = get_dataset(parameters["input_cif"]["data_file_id"])
-    if not get_response.is_valid:
-        return get_response
+    for parameter in parameters:
 
-    dataset = get_response.body.payload.datasets[0]
-    datafile_id = dataset.data_files[dataset_metadata.filename].qcrbox_file_id
+        if not type(parameters[parameter]) == dict:
+            continue
 
-    # Overwrite dataset ID with datafile ID in the params
-    parameters["input_cif"] = {"data_file_id": datafile_id}
+        if not parameters[parameter]["data_file_id"]:
+            continue
+
+        dataset_metadata = dataset_objs.get(backend_uuid=parameters[parameter]["data_file_id"])
+
+        get_response = get_dataset(parameters[parameter]["data_file_id"])
+        if not get_response.is_valid:
+            return get_response
+
+        dataset = get_response.body.payload.datasets[0]
+        datafile_id = dataset.data_files[dataset_metadata.filename].qcrbox_file_id
+
+        # Overwrite dataset ID with datafile ID in the params
+        parameters[parameter] = {"data_file_id": datafile_id}
 
     arguments = InvokeCommandParametersCommandArguments.from_dict(parameters)
 
