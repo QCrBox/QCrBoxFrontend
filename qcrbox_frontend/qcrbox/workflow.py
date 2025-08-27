@@ -652,7 +652,10 @@ def handle_command(request, command, infile):
 
             # Format any params related to infiles to specify they should be fetched by ID
             for i in cps.filter(dtype='QCrBox.cif_data_file').values_list('name',flat=True):
-                params[i] = {'data_file_id': params[i]}
+                try:
+                    params[i] = {'data_file_id': params[i]}
+                except KeyError:
+                    params[i] = {'data_file_id': ''}
 
             active_calc = invoke_command(
                 request,
