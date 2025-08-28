@@ -23,6 +23,7 @@ from qcrboxapiclient.api.commands import (
     invoke_command,
 )
 from qcrboxapiclient.api.datasets import (
+    append_to_dataset,
     create_dataset,
     delete_dataset_by_id,
     download_dataset_by_id,
@@ -34,6 +35,7 @@ from qcrboxapiclient.api.interactive_sessions import (
     get_interactive_session_by_id,
 )
 from qcrboxapiclient.models import (
+    AppendToDatasetBody,
     CreateDatasetBody,
     CreateInteractiveSessionParameters,
     CreateInteractiveSessionParametersCommandArguments,
@@ -115,7 +117,7 @@ def get_client():
 
 def upload_dataset(im_file):
     '''Take a django InMemoryFile, prepare it, then send to the API to upload
-    to the backend
+    to the backend as a new dataset
 
     Parameters:
     - im_file(InMemoryFile): a byte-like file object stored in memory after
@@ -132,6 +134,32 @@ def upload_dataset(im_file):
 
     LOGGER.info('API call: create_dataset')
     raw_response = create_dataset.sync(client=client, body=upload_payload)
+
+    return Response(raw_response)
+
+
+def add_file_to_dataset(im_file, dataset_id):
+    '''Take a django InMemoryFile, prepare it, then send to the API to append
+    to a pre-existing dataset
+
+    Parameters:
+    - im_file(InMemoryFile): a byte-like file object stored in memory after
+            being uploaded by a user via the file upload form.
+
+    '''
+
+    client = get_client()
+    file_bytes = im_file.file
+    file_name = str(im_file)
+
+    payload_file = File(file_bytes, file_name)
+    upload_payload = AppendToDatasetBody(payload_file)
+
+    LOGGER.info(
+        'API call: append_to_dataset, id=%s',
+        dataset_id
+    )
+    raw_response = append_to_dataset.sync(id=dataset_id, client=client, body=upload_payload)
 
     return Response(raw_response)
 

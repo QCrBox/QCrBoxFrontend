@@ -145,7 +145,7 @@ def update_applications():
                 parameter = command.parameters[param_key]
 
                 if parameter['default_value']:
-                    default_value = parameter['default_value']['value']['value']
+                    default_value = parameter['default_value']
                 else:
                     default_value = None
 

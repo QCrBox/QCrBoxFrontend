@@ -175,7 +175,7 @@ def create_calc_references(request, api_response, command):
 
     '''
 
-    calc_id = api_response.body.payload.calculation_id #####
+    calc_id = api_response.body.payload.calculation_id
 
     # set browser cookie
     request.session['calculation_id'] = calc_id
@@ -650,12 +650,46 @@ def handle_command(request, command, infile):
             expected_params = cps.values_list('name',flat=True)
             params = {p:request.POST[p] for p in request.POST if p in expected_params}
 
+            # Also fetch any uploaded files
+            auxfiles = {f:request.FILES[f] for f in request.FILES if f in expected_params}
+
             # Format any params related to infiles to specify they should be fetched by ID
             for i in cps.filter(dtype='QCrBox.cif_data_file').values_list('name',flat=True):
+
                 try:
                     params[i] = {'data_file_id': params[i]}
+
                 except KeyError:
-                    params[i] = {'data_file_id': ''}
+                    messages.error(f'No file provided for "{i}"')
+                    return WorkStatus()
+
+            # Handle aux files uploaded as part of the form
+
+            for i in cps.filter(dtype='QCrBox.data_file').values_list('name',flat=True):
+                try:
+                    # Attempt to upload dataset via the API
+                    api_response = api.add_file_to_dataset(auxfiles[i], infile.backend_uuid)
+
+                    if not api_response.is_valid:
+
+                        LOGGER.error(
+                            'File "%s" failed to upload!',
+                            str(auxfiles[i]),
+                        )
+
+                        messages.warning(request, f'File {auxfiles[i]} failed to upload!')
+
+                        return WorkStatus()
+
+                    # Fetch the new file ID from the API response message
+                    aux_file_id = api_response.body.message.split('\'')[1]
+
+                    # Add the newly uploaded aux file's ID to the params list
+                    params[i] = {'data_file_id': aux_file_id}
+
+                except KeyError:
+                    messages.error(f'No file provided for "{i}"')
+                    return WorkStatus()
 
             active_calc = invoke_command(
                 request,

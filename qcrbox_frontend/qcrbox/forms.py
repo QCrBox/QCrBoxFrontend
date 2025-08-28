@@ -270,7 +270,7 @@ class CommandForm(forms.Form):
                 'help_text' : f'<span class=\"tooltiphover\">&nbsp<i class="fa-solid fa-circle-in'\
                               f'fo"></i></span><span class=\"tooltiptext\"><small>'\
                               f'{param.description}</small></span>',
-                'required' : True,
+                'required' : param.required,
             }
 
             if param.dtype == 'str':
@@ -343,6 +343,12 @@ class CommandForm(forms.Form):
                     widget=forms.HiddenInput(),
                     initial=filepath,
                 )
+
+            elif param.dtype == 'QCrBox.data_file':
+
+                # Create file upload field which will be handled uniquely in views on submit
+
+                self.fields[param.name] = forms.FileField(label=param.name.replace('_',' ').title())
 
             else:
                 raise NotImplementedError(
