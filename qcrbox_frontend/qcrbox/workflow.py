@@ -660,7 +660,7 @@ def handle_command(request, command, infile):
                     params[i] = {'data_file_id': params[i]}
 
                 except KeyError:
-                    messages.error(f'No file provided for "{i}"')
+                    messages.error(request, f'No file provided for "{i}"')
                     return WorkStatus()
 
             # Handle aux files uploaded as part of the form
@@ -688,7 +688,7 @@ def handle_command(request, command, infile):
                     params[i] = {'data_file_id': aux_file_id}
 
                 except KeyError:
-                    messages.error(f'No file provided for "{i}"')
+                    messages.error(request, f'No file provided for "{i}"')
                     return WorkStatus()
 
             active_calc = invoke_command(

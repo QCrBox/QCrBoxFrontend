@@ -340,7 +340,7 @@ def send_command(command_id, parameters):
 
     for parameter in parameters:
 
-        if not type(parameters[parameter]) == dict:
+        if not isinstance(parameters[parameter], dict):
             continue
 
         if not parameters[parameter]["data_file_id"]:
