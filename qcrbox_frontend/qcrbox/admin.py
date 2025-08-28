@@ -40,7 +40,7 @@ class AppCommand(admin.ModelAdmin):
 class CommandParameter(admin.ModelAdmin):
     '''Admin Registration for the Command Parameter model'''
 
-    list_display = ('command__app__name', 'command__app__version', 'command', 'name', 'dtype')
+    list_display = ('command__app__name','command__app__version','command','name','dtype')
     ordering = ('command__app__name', 'command__app__version', 'command', 'name')
 
 @admin.register(models.SessionReference)

@@ -138,6 +138,11 @@ class CommandParameter(models.Model):
     - required(bool): whether user input is required.
     - default(str): the JSON-serialized default value for the parameter, if
             applicable.
+    - validation_type(str): the type of validation that should be applied to
+            this parameter (numeric_range, choices or regex).
+    - validation_value(str): a string representing the validation which should
+            be applied (e.g. a [a, b] for numeric_range, [options...] for
+            choices or a regex string for regex.
 
     '''
 
@@ -147,6 +152,8 @@ class CommandParameter(models.Model):
     description = models.CharField(max_length=255, blank=True, null=True)
     required = models.BooleanField()
     default = models.CharField(max_length=255, null=True, blank=True)
+    validation_type = models.CharField(max_length=255, null=True, blank=True)
+    validation_value = models.CharField(max_length=255, null=True, blank=True)
 
 
 class ProcessStep(models.Model):

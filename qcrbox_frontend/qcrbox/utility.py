@@ -149,16 +149,28 @@ def update_applications():
                 else:
                     default_value = None
 
-                models.CommandParameter(
+                new_param = models.CommandParameter(
                     command = new_command,
                     name = param_key,
                     dtype = parameter['dtype'],
                     description = parameter['description'],
                     required = parameter['required'],
                     default = default_value
-                ).save()
+                )
 
-                #new_parameter.save()
+                # Add any validation to the new parameter object as needed
+                validation = parameter['valid_value']
+
+                if validation:
+
+                    # Get the highest priority validation type and save it
+                    for validation_type in ('choices', 'numeric_range', 'regex'):
+                        if validation_type in validation and validation[validation_type]:
+                            new_param.validation_type = validation_type
+                            new_param.validation_value = validation[validation_type]
+                            break
+
+                new_param.save()
 
         response['new_apps'].append(new_app.pk)
 
