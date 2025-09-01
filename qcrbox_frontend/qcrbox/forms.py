@@ -5,6 +5,8 @@ context arguments to generate interactive HTML forms.
 
 '''
 
+import json
+
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User, Group
@@ -273,7 +275,17 @@ class CommandForm(forms.Form):
                 'required' : param.required,
             }
 
-            if param.dtype == 'str':
+            # First check if the validation is 'choice', which overrides the other types of inputs
+            # with a ChoiceField
+
+            if param.validation_type == 'choices':
+                self.fields[param.name] = forms.ChoiceField(
+                    choices=[[c,c] for c in json.loads(param.validation_value)],
+                    **misc_kwargs,
+                )
+
+            # Then handle the other field types based on dtypes
+            elif param.dtype == 'str':
                 self.fields[param.name] = forms.CharField(
                     max_length=255,
                     **misc_kwargs,

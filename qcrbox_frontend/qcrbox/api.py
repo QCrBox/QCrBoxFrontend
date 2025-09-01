@@ -31,14 +31,11 @@ from qcrboxapiclient.api.datasets import (
 )
 from qcrboxapiclient.api.interactive_sessions import (
     close_interactive_session,
-    create_interactive_session,
     get_interactive_session_by_id,
 )
 from qcrboxapiclient.models import (
     AppendToDatasetBody,
     CreateDatasetBody,
-    CreateInteractiveSessionParameters,
-    CreateInteractiveSessionParametersCommandArguments,
     InvokeCommandParameters,
     InvokeCommandParametersCommandArguments,
     QCrBoxErrorResponse,
@@ -228,93 +225,7 @@ def get_dataset(dataset_id):
     return Response(raw_response)
 
 
-# ----- Session Functionality -----
-
-def start_session(app_id, dataset_id):
-    '''Command the API to start an Interactive Session using a given
-    Application and Dataset.
-
-    Parameters:
-    - app_id(int): the primary key of the Application to be used as stored on
-            the frontend database.
-    - dataset_id(str): the backend ID of the dataset to be fetched (equivalent
-            to the backend_uuid attribute of the frontend's FileMetaData
-            Model)
-
-    '''
-
-    client = get_client()
-
-    # Get relevant metadata instances from local db
-    app = models.Application.objects.get(pk=app_id)                     # pylint: disable=no-member
-    dataset_objs = models.FileMetaData.objects                          # pylint: disable=no-member
-    dataset_metadata = dataset_objs.get(backend_uuid=dataset_id)
-
-    # Sessions are started with a data_file_id (not a dataset_id), so need to fetch that ID from
-    # a dataset
-    get_response = get_dataset(dataset_id)
-
-    # Check a dataset was actually found
-    if not get_response.is_valid:
-        return get_response
-
-    # Get the associated data_file's ID
-    dataset = get_response.body.payload.datasets[0]
-    datafile_id = dataset.data_files[dataset_metadata.filename].qcrbox_file_id
-
-    # Set up arguments
-    arguments = CreateInteractiveSessionParametersCommandArguments.from_dict(
-        {'input_file': {'data_file_id': datafile_id}}
-    )
-    create_session = CreateInteractiveSessionParameters(app.slug, app.version, arguments)
-
-    # Initialise session
-    LOGGER.info('API call: create_interactive_session_with_arguments')
-    raw_response = create_interactive_session.sync(
-        client=client,
-        body=create_session,
-    )
-
-    return Response(raw_response)
-
-def get_session(session_id):
-    '''Get the metadata of an Interactive Session
-
-    Parameters:
-    - session_id(str): the backend ID for the session to be fetched
-
-    '''
-
-    client = get_client()
-
-    LOGGER.info(
-        'API call: get_interactive_session_by_id, id=%s',
-        session_id,
-    )
-    raw_response = get_interactive_session_by_id.sync(client=client, id=session_id)
-
-    return Response(raw_response)
-
-def close_session(session_id):
-    '''Command the API to close an Interactive Session.
-
-    Parameters:
-    - session_id(str): the backend ID for the session to be closed
-
-    '''
-
-    client = get_client()
-
-    LOGGER.info(
-        'API call: close_interactive_session, id=%s',
-        session_id,
-    )
-    raw_response = close_interactive_session.sync(client=client, id=session_id)
-
-    return Response(raw_response)
-
-
-# ----- Non-Interactive Command / calculation functionality -----
+# ----- General Command functionality -----
 
 def send_command(command_id, parameters):
 
@@ -378,6 +289,48 @@ def send_command(command_id, parameters):
     raw_response = invoke_command.sync(client=client, body=create_session)
 
     return Response(raw_response)
+
+
+# ----- Interactive Session Functionality -----
+
+def get_session(session_id):
+    '''Get the metadata of an Interactive Session
+
+    Parameters:
+    - session_id(str): the backend ID for the session to be fetched
+
+    '''
+
+    client = get_client()
+
+    LOGGER.info(
+        'API call: get_interactive_session_by_id, id=%s',
+        session_id,
+    )
+    raw_response = get_interactive_session_by_id.sync(client=client, id=session_id)
+
+    return Response(raw_response)
+
+def close_session(session_id):
+    '''Command the API to close an Interactive Session.
+
+    Parameters:
+    - session_id(str): the backend ID for the session to be closed
+
+    '''
+
+    client = get_client()
+
+    LOGGER.info(
+        'API call: close_interactive_session, id=%s',
+        session_id,
+    )
+    raw_response = close_interactive_session.sync(client=client, id=session_id)
+
+    return Response(raw_response)
+
+
+# ----- Non-Interactive Command / calculation functionality -----
 
 def get_calculation(calculation_id):
 
