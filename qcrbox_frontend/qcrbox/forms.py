@@ -307,10 +307,8 @@ class CommandForm(forms.Form):
                 )
             elif param.dtype == 'bool':
 
-                # Override requiredness and initial for Boolean fields
+                # Override requiredness for Boolean fields
                 misc_kwargs['required'] = False
-                if misc_kwargs['initial'] != True:
-                    misc_kwargs['initial'] = False
 
                 self.fields[param.name] = forms.BooleanField(
                     **misc_kwargs,
