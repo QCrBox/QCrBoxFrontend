@@ -10,6 +10,7 @@ import time
 from django.contrib import messages
 
 from qcrbox import api
+from qcrbox import forms
 from qcrbox import models
 from qcrbox import utility
 
@@ -623,6 +624,16 @@ def handle_command(request, command, infile):
     # Check if user submitted using the 'start session' form
     if 'startup' in request.POST:
 
+        # Check the form is valid
+        submitted_form = forms.CommandForm(
+            request.POST,
+            command=command,
+            dataset=infile,
+        )
+        if not submitted_form.is_valid():
+            messages.warning(request, 'Input values not valid: try again!')
+            return WorkStatus()
+
         # Fetch the params from the POST data
         cps = command.parameters
         expected_params = cps.values_list('name',flat=True)
@@ -631,6 +642,13 @@ def handle_command(request, command, infile):
         # Also fetch any uploaded files
         auxfiles = {f:request.FILES[f] for f in request.FILES if f in expected_params}
 
+        # Populate any missing bool params with 'False' (default includes no POST data for
+        # unchecked checkbox widgets)
+        for i in cps.filter(dtype='bool').values_list('name',flat=True):
+
+            if not i in params:
+                params[i] = False
+
         # Format any params related to infiles to specify they should be fetched by ID
         for i in cps.filter(dtype='QCrBox.cif_data_file').values_list('name',flat=True):
 
@@ -638,7 +656,7 @@ def handle_command(request, command, infile):
                 params[i] = {'data_file_id': params[i]}
 
             except KeyError:
-                messages.error(request, f'No file provided for "{i}"')
+                messages.warning(request, f'No file provided for "{i}"')
                 return WorkStatus()
 
         # Handle aux files uploaded as part of the form
@@ -666,7 +684,7 @@ def handle_command(request, command, infile):
                 params[i] = {'data_file_id': aux_file_id}
 
             except KeyError:
-                messages.error(request, f'No file provided for "{i}"')
+                messages.warning(request, f'No file provided for "{i}"')
                 return WorkStatus()
 
         # If the command corresponds to an interactive session, launch it

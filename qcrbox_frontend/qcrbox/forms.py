@@ -10,6 +10,7 @@ import json
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User, Group
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 
 from qcrbox import models
 from qcrbox import utility as ut
@@ -273,7 +274,17 @@ class CommandForm(forms.Form):
                               f'fo"></i></span><span class=\"tooltiptext\"><small>'\
                               f'{param.description}</small></span>',
                 'required' : param.required,
+                'validators' : [],
             }
+
+            # Add appropriate validator(s) for any implemented validation type (except choices)
+            if param.validation_type == 'numeric_range':
+                nrange = json.loads(param.validation_value)
+                misc_kwargs['validators'].append(MinValueValidator(limit_value=min(nrange)))
+                misc_kwargs['validators'].append(MaxValueValidator(limit_value=max(nrange)))
+
+            if param.validation_type == 'regex':
+                misc_kwargs['validators'].append(RegexValidator(regex=param.validation_value))
 
             # First check if the validation is 'choice', which overrides the other types of inputs
             # with a ChoiceField
@@ -295,6 +306,12 @@ class CommandForm(forms.Form):
                     **misc_kwargs,
                 )
             elif param.dtype == 'bool':
+
+                # Override requiredness and initial for Boolean fields
+                misc_kwargs['required'] = False
+                if misc_kwargs['initial'] != True:
+                    misc_kwargs['initial'] = False
+
                 self.fields[param.name] = forms.BooleanField(
                     **misc_kwargs,
                 )
@@ -360,7 +377,11 @@ class CommandForm(forms.Form):
 
                 # Create file upload field which will be handled uniquely in views on submit
 
-                self.fields[param.name] = forms.FileField(label=param.name.replace('_',' ').title())
+                # Set required=False as validation for upload files is handled elsewhere
+                self.fields[param.name] = forms.FileField(
+                    label=param.name.replace('_',' ').title(),
+                    required=False
+                )
 
             else:
                 raise NotImplementedError(
