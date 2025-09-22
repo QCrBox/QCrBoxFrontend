@@ -239,6 +239,7 @@ def start_session(request, command, arguments):
     if api_response.is_valid:
         create_session_references(request, api_response, command)
         return True
+    startup_error = api_response.body.error.message
 
     # else, if the client is busy and there's a session cookie, try to close it
     LOGGER.warning('Client is busy; attempting to close previous session')
@@ -257,8 +258,7 @@ def start_session(request, command, arguments):
         LOGGER.error('Could not find cookie or reference to blocking session!')
         messages.warning(
             request,
-            f'Could not start session of {application.name}!  Client seems '
-            f'to be busy, no reference to blocking session found.'
+            f'Could not start session of {application.name}! {startup_error}.'
         )
         return False
 
@@ -266,6 +266,10 @@ def start_session(request, command, arguments):
 
     if not closure_api_response.is_valid:
         LOGGER.error('Could not close blocking session!')
+        messages.warning(
+            request,
+            f'Could not start session of {application.name}! {startup_error}.'
+        )
 
     # Try again to open the session
     else:
@@ -278,13 +282,15 @@ def start_session(request, command, arguments):
             create_session_references(request, api_response, command)
             return True
 
+        # If response wasnt valid, let the user know why
+        messages.warning(
+            request,
+            f'Could not start session!  Returned error: '
+            f'{application.name}'
+        )
+
     # If no session was opened even after all that, handle the error
     LOGGER.error('Session failed to start!')
-    messages.warning(
-        request,
-        f'Could not start session!  Check if there is a session of '
-        f'{application.name} already running and, if so, close it.'
-    )
     return False
 
 
@@ -405,6 +411,7 @@ def invoke_command(request, command, arguments):
     if api_response.is_valid:
         create_calc_references(request, api_response, command)
         return api_response.body.payload.calculation_id
+    startup_error = api_response.body.error.message
 
     # else, if the client is busy and there's a session cookie, try to close it
     LOGGER.warning('Client is busy; attempting to kill blocking calculation session')
@@ -422,8 +429,7 @@ def invoke_command(request, command, arguments):
         LOGGER.error('Could not find cookie or reference to blocking session!')
         messages.warning(
             request,
-            f'Could not invoke command of {command.name}!  Client seems '
-            f'to be busy, no reference to blocking calculation found.'
+            f'Could not invoke command of {command.name}! {startup_error}.'
         )
         return False
 
@@ -447,8 +453,7 @@ def invoke_command(request, command, arguments):
     LOGGER.error('Calculation failed to start!')
     messages.warning(
         request,
-        f'Could not invoke command!  Check if there is a instance of '
-        f'{command.name} already running and, if so, close it.'
+        f'Could not invoke command! {startup_error}.'
     )
     return False
 
