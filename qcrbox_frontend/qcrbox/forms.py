@@ -267,6 +267,16 @@ class CommandForm(forms.Form):
 
         for param in command.parameters.all():
 
+            # The following dtypes are defined for command params:
+            # - str
+            # - float
+            # - int
+            # - bool
+            # - QCrBox.cif_data_file
+            # - QCrBox.output_path
+            # - QCrBox.output_cif
+            # - QCrBox.data_file
+
             # Construct kwargs common to all field types
             misc_kwargs = {
                 'initial' : None if param.default=='None' else param.default,
@@ -303,6 +313,10 @@ class CommandForm(forms.Form):
                 )
             elif param.dtype == 'float':
                 self.fields[param.name] = forms.FloatField(
+                    **misc_kwargs,
+                )
+            elif param.dtype == 'int':
+                self.fields[param.name] = forms.IntegerField(
                     **misc_kwargs,
                 )
             elif param.dtype == 'bool':
