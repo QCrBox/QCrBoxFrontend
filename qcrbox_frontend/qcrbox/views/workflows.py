@@ -182,6 +182,11 @@ def workflow(request, file_id):
     # Check if user submitted a form
     if request.method == 'POST':
 
+        # Check if a 'end calculation' command was issued
+        if 'end_calculation' in request.POST:
+            wf.cancel_calculation(request)
+            return redirect('workflow', file_id=file_id)
+
         # Check user actually picked a command
         if 'command' in request.POST:
             comm_id = request.POST['command']
@@ -241,8 +246,11 @@ def workflow_pending(request, file_id, command_id):
     load_file = models.FileMetaData.objects.get(pk=file_id)   # pylint: disable=no-member
     command = models.AppCommand.objects.get(pk=command_id)    # pylint: disable=no-member
 
-    utility.check_user_view_file_permission(request.user, load_file)
+    if 'end_calculation' in request.POST:
+        wf.cancel_calculation(request)
+        return redirect('workflow', file_id=file_id)
 
+    utility.check_user_view_file_permission(request.user, load_file)
     work_status = wf.poll_calculation(request, load_file, command)
 
     if work_status.outfile_id:

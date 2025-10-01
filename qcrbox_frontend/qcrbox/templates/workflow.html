@@ -123,6 +123,14 @@
               {% elif calculation_in_progress %}
                 <h5><b><i>Calculation in progress, do not close this tab!</i></b></h5> 
                 <p>The page will automatically refresh every {{refresh_time}} seconds.</p>
+                <form action="" method="POST" enctype="multipart/form-data">
+                  {% csrf_token %}
+                  <input type="hidden" id="end_calculation" name="end_calculation" value=True>
+                  <input type="hidden" id="command" name="command" value={{ current_command.pk }}>
+                  <button type="submit" class="btn btn-primary" id="end-session-button">
+                    Cancel Calculation
+                  </button>
+                </form>
               {% else %}
                 <form action="" method="POST" enctype="multipart/form-data">
                   {% csrf_token %}

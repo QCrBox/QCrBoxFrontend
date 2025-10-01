@@ -599,6 +599,18 @@ def fetch_calculation_result(request, infile, command):
     return None
 
 
+def cancel_calculation(request):
+
+    # If cookie is lost, abort
+    if 'calculation_id' not in request.session:
+        LOGGER.error('No calculation cookie found!')
+        messages.warning(request, 'Calculation reference timed out! Could not cancel session.')
+        return None
+
+    api.cancel_calculation(request.session['calculation_id'])
+    clear_calc_references(request, calc_id=calculation_id)
+
+
 def poll_calculation(request, infile, command):
     '''Poll a running calculation (based on the calc_id stored in the user's
     browser cookies), fetches and saves the result if its ready, and returns
