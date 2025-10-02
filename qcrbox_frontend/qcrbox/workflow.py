@@ -587,6 +587,12 @@ def fetch_calculation_result(request, infile, command):
 
             return newfile
 
+        messages.info(
+            request,
+            f'{command.name} produced no output.'
+        )
+        return None
+
     messages.warning(
         request,
         f'{command.name} did not execute successfully.'
