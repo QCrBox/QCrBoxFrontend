@@ -695,7 +695,7 @@ def handle_command(request, command, infile):
                     return WorkStatus()
 
                 # Fetch the new file ID from the API response message
-                aux_file_id = api_response.body.message.split('\'')[1]
+                aux_file_id = api_response.body.payload.appended_file.qcrbox_file_id
 
                 # Add the newly uploaded aux file's ID to the params list
                 params[i] = {'data_file_id': aux_file_id}

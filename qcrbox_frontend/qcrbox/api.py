@@ -257,6 +257,11 @@ def send_command(command_id, parameters):
         if not parameters[parameter]["data_file_id"]:
             continue
 
+        # Skip any values which already have a datafile ID, otherwise convert
+        # from a dataset ID to a datafile ID
+        if parameters[parameter]["data_file_id"].split('_')[1]=='df':
+            continue
+
         dataset_metadata = dataset_objs.get(backend_uuid=parameters[parameter]["data_file_id"])
 
         get_response = get_dataset(parameters[parameter]["data_file_id"])
