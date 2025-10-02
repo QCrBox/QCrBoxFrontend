@@ -322,7 +322,7 @@ def infobox(seed_dataset):
     creation_table_2 = [
         table_row('User: ', seed_dataset.user.username),
         table_row('Date: ', seed_dataset.creation_time.strftime('%Y-%m-%d')),
-        table_row('Time: ', seed_dataset.creation_time.strftime('%H:%M:%S')),
+        table_row('Time: ', seed_dataset.creation_time.strftime('%H:%M:%S')+' UTC+0'),
     ]
 
     params_table = [
