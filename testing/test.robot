@@ -513,13 +513,9 @@ As Any User: I should be able to launch an interactive session from a workflow
   Close Window
   Switch Window  MAIN
   
-As Any User: I should be able to close an interactive session using a browser-cached session ID
-  ${cached_session_id}=  Get Element Attribute  cached-interactive-session-id  title
-  Should Not Be Equal  ${cached_session_id}  None
+As Any User: Closing a session with output should take me to a workflow showing the output file from the session and its descendant(s)
   Click Button  end-session-button
   Wait Until Page Contains  Dataset Metadata
-  
-As Any User: Closing a session with output should take me to a workflow showing the output file from the session and its descendant(s)
   Page Should Contain Element  ancestor-row
   Element Should Contain  ancestor-row  ${TEST_FILENAME}
   ${child_1_name}=  Get Text  current-filename

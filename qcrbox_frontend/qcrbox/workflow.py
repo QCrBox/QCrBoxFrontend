@@ -132,7 +132,7 @@ def create_session_references(request, api_response, command):
     session_id = api_response.body.payload.calculation_id
 
     # set browser cookie
-    request.session['app_session_id'] = session_id
+    request.session['session_id'] = session_id
 
     session_reference = models.SessionReference(
         user=request.user,
@@ -154,57 +154,10 @@ def clear_session_references(request, session_id):
 
     '''
 
-    # clear cookie
-    request.session['app_session_id'] = None
+    # remove browser cookie
+    request.session['session_id'] = None
 
     session = models.SessionReference.objects.get(session_id=session_id)# pylint: disable=no-member
-    session.delete()
-
-
-def create_calc_references(request, api_response, command):
-    '''When triggering a non-interactive command, this function can be invoked
-    to create a reference to the initiated calculation as a browser-side
-    cookie containing the backend calculation_id.
-
-    Parameters:
-    - request(WSGIRequest): the request from a user which triggers a url
-            associated to the view containing this workflow.
-    - api_response(api.Response): an api.Response object containing the
-            response from the API on starting a Non-Interactive Session, and
-            a boolean flag indicating whether the response indicated success.
-            Only used to fetch the calculation_id.
-
-    '''
-
-    calc_id = api_response.body.payload.calculation_id
-
-    # set browser cookie
-    request.session['calculation_id'] = calc_id
-
-    session_reference = models.SessionReference(
-        user=request.user,
-        command=command,
-        session_id=calc_id,
-    )
-    session_reference.save()
-
-
-def clear_calc_references(request, calc_id):
-    '''When closing a non-interactive calculation, this function can be invoked
-    to clear the browser cookie referring to it and delete the SessionReference
-    record in the Frontend db.
-
-    Parameters:
-    - request(WSGIRequest): the request from a user which triggers a url
-            associated to the view containing this workflow.
-    - session_id(str): the ID used to refer to this session in the backend.
-
-    '''
-
-    # clear cookie
-    request.session['calculation_id'] = None
-
-    session = models.SessionReference.objects.get(session_id=calc_id)   # pylint: disable=no-member
     session.delete()
 
 
@@ -245,37 +198,34 @@ def start_session(request, command, arguments):
     LOGGER.warning('Client is busy; attempting to close previous session')
 
     current_sessions = models.SessionReference.objects                  # pylint: disable=no-member
-    relevant_sessions = current_sessions.filter(command=command).order_by('start_time')
+    relevant_sessions = current_sessions.filter(command__app=command.app)
 
-    if 'app_session_id' in request.session and request.session['app_session_id']:
-        app_session_id = request.session['app_session_id']
-
-    elif relevant_sessions.exists():
-        app_session_id = relevant_sessions.last().session_id
-        LOGGER.warning('No cookie found; fetching session ID from reference db')
+    if relevant_sessions.exists():
+        if relevant_sessions.exclude(user=request.user).exists():
+            messages.warning(
+                request,
+                f'Could not start session of {application.name}: currently in use by another user!',
+            )
+            return False
+        killed_a_session = kill_sessions(request, sessions=relevant_sessions)
 
     else:
-        LOGGER.error('Could not find cookie or reference to blocking session!')
+        LOGGER.error('Could not find reference to blocking session!')
         messages.warning(
             request,
             f'Could not start session of {application.name}! {startup_error}.'
         )
         return False
 
-    closure_api_response = api.close_session(app_session_id)
-
-    if not closure_api_response.is_valid:
+    if not killed_a_session:
         LOGGER.error('Could not close blocking session!')
         messages.warning(
             request,
-            f'Could not start session of {application.name}! {startup_error}.'
+            f'Could not start session of {application.name}! Could not close blocking session.'
         )
 
     # Try again to open the session
     else:
-        # clear any dangling references to the old session
-        clear_session_references(request, session_id=app_session_id)
-
         api_response = api.send_command(command.pk, arguments)
 
         if api_response.is_valid:
@@ -325,12 +275,12 @@ def close_session(request, infile, command):
     )
 
     # If cookie is lost, abort
-    if 'app_session_id' not in request.session:
+    if 'session_id' not in request.session:
         LOGGER.error('No session cookie found!')
         messages.warning(request, 'Session timed out! Please try again.')
         return None
 
-    app_session_id = request.session['app_session_id']
+    app_session_id = request.session['session_id']
 
     # Close the session and fetch the response from the API
     api_response = api.close_session(app_session_id)
@@ -381,6 +331,42 @@ def close_session(request, infile, command):
     return 'NO_OUTPUT'
 
 
+def kill_sessions(request, sessions):
+    '''Given a queryset of SessionReference objects, attempt to close each
+    session its session_id, purging the corresponding SessionReference for
+    each succesful closure.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to the view containing this workflow.
+    - sessions(QuerySet): a queryset of SessionReference objects which
+            are to be force-closed.
+
+    Returns:
+    - at_least_one_closed(bool): a Boolean which states whether the kill
+            command resulted in any change to the db/filestore (i.e.
+            whether at least one closure was succesfully performed)
+
+    '''
+
+    at_least_one_closed = False
+
+    for session in sessions:
+
+        closure_api_response = api.close_session(session.session_id)
+
+        if closure_api_response.is_valid:
+            at_least_one_closed = True
+            clear_session_references(request, session.session_id)
+        else:
+            LOGGER.error(
+                'Could not close blocking session [%s]!',
+                session.session_id
+            )
+
+    return at_least_one_closed
+
+
 def invoke_command(request, command, arguments):
     '''Given an command and a dict of command arguments, instruct
     the API to invoke the command to start a calculation in the backend, 
@@ -409,44 +395,45 @@ def invoke_command(request, command, arguments):
     api_response = api.send_command(command.pk, arguments)
 
     if api_response.is_valid:
-        create_calc_references(request, api_response, command)
+        create_session_references(request, api_response, command)
         return api_response.body.payload.calculation_id
     startup_error = api_response.body.error.message
 
-    # else, if the client is busy and there's a session cookie, try to close it
+    # else, if the client is busy and there's an open session of the same app, try to close it
     LOGGER.warning('Client is busy; attempting to kill blocking calculation session')
     current_sessions = models.SessionReference.objects                  # pylint: disable=no-member
-    relevant_sessions = current_sessions.filter(command=command).order_by('start_time')
+    relevant_sessions = current_sessions.filter(command__app=command.app)
 
-    if 'calculation_id' in request.session and request.session['calculation_id']:
-        calculation_id = request.session['calculation_id']
-
-    elif relevant_sessions.exists():
-        calculation_id = relevant_sessions.last().session_id
-        LOGGER.warning('No cookie found; fetching session ID from reference db')
+    if relevant_sessions.exists():
+        if relevant_sessions.exclude(user=request.user).exists():
+            messages.warning(
+                request,
+                f'Could not start session of {command.app.name}: currently in use by another user!',
+            )
+            return False
+        killed_a_session = kill_sessions(request, sessions=relevant_sessions)
 
     else:
-        LOGGER.error('Could not find cookie or reference to blocking session!')
+        LOGGER.error('Could not find reference to blocking session!')
         messages.warning(
             request,
             f'Could not invoke command of {command.name}! {startup_error}.'
         )
         return False
 
-    cancel_api_response = api.cancel_calculation(calculation_id)
-
-    if not cancel_api_response.is_valid:
+    if not killed_a_session:
         LOGGER.error('Could not cancel blocking calculation!')
+        messages.warning(
+            request,
+            f'Could not start session of {command.app.name}! Could not close blocking session.'
+        )
 
     # Try again to open the session
     else:
-        # clear any dangling references to the old session
-
-        clear_calc_references(request, calc_id=calculation_id)
         api_response = api.send_command(command.pk, arguments)
 
         if api_response.is_valid:
-            create_calc_references(request, api_response, command)
+            create_session_references(request, api_response, command)
             return api_response.body.payload.calculation_id
 
     # If no session was opened even after all that, handle the error
@@ -546,12 +533,12 @@ def fetch_calculation_result(request, infile, command):
     '''
 
     # If cookie is lost, abort
-    if 'calculation_id' not in request.session:
+    if 'session_id' not in request.session:
         LOGGER.error('No calculation cookie found!')
         messages.warning(request, 'Calculation reference timed out! Please try again.')
         return None
 
-    calculation_id = request.session['calculation_id']
+    calculation_id = request.session['session_id']
 
     # Fetch the calculation status from the API
     api_response = api.get_calculation(calculation_id)
@@ -572,7 +559,7 @@ def fetch_calculation_result(request, infile, command):
 
     if calculation.status == 'successful':
         api_response = api.get_dataset(calculation.output_dataset_id)
-        clear_calc_references(request, calc_id=calculation_id)
+        clear_session_references(request, session_id=calculation_id)
 
         if api_response.is_valid:
 
@@ -606,15 +593,19 @@ def fetch_calculation_result(request, infile, command):
 
 
 def cancel_calculation(request):
+    '''Fetch the current session cookie from the user's browser, and instruct
+    API to close the corresponding calculation
+
+    '''
 
     # If cookie is lost, abort
-    if 'calculation_id' not in request.session:
+    if 'session_id' not in request.session:
         LOGGER.error('No calculation cookie found!')
         messages.warning(request, 'Calculation reference timed out! Could not cancel session.')
-        return None
+        return
 
-    api.cancel_calculation(request.session['calculation_id'])
-    clear_calc_references(request, calc_id=calculation_id)
+    api.cancel_calculation(request.session['session_id'])
+    clear_session_references(request, session_id=request.session['session_id'])
 
 
 def poll_calculation(request, infile, command):
