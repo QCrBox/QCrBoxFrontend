@@ -361,9 +361,8 @@ class CommandForm(forms.Form):
                     )
 
             elif param.dtype in ('QCrBox.output_path', 'QCrBox.output_cif'):
-                filepath = '/opt/qcrbox/'
 
-                filepath += dataset.filename.split('.')[0]
+                filepath = dataset.filename.split('.')[0]
 
                 # Guess the intended extension from the name and dtype of the param
 
@@ -381,7 +380,6 @@ class CommandForm(forms.Form):
                 filepath = filepath + f'_{command.name}.{ext}'
 
                 self.fields[param.name] = forms.CharField(
-                    widget=forms.HiddenInput(),
                     initial=filepath,
                 )
 

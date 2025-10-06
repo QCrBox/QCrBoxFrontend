@@ -674,7 +674,6 @@ def handle_command(request, command, infile):
                 return WorkStatus()
 
         # Handle aux files uploaded as part of the form
-
         for i in cps.filter(dtype='QCrBox.data_file').values_list('name',flat=True):
             try:
                 # Attempt to upload dataset via the API
@@ -700,6 +699,11 @@ def handle_command(request, command, infile):
             except KeyError:
                 messages.warning(request, f'No file provided for "{i}"')
                 return WorkStatus()
+
+        # Sanitise any arguments which dictate output filenames on the file system
+        output_dtypes = ('QCrBox.output_path','QCrBox.output_cif')
+        for i in cps.filter(dtype__in=output_dtypes).values_list('name',flat=True):
+            params[i] = params[i].replace('/','_')
 
         # If the command corresponds to an interactive session, launch it
         if command.interactive:
