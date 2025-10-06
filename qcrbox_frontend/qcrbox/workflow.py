@@ -201,13 +201,13 @@ def start_session(request, command, arguments):
     relevant_sessions = current_sessions.filter(command__app=command.app)
 
     if relevant_sessions.exists():
-        if relevant_sessions.exclude(user=request.user).exists()
+        if relevant_sessions.exclude(user=request.user).exists():
             messages.warning(
                 request,
                 f'Could not start session of {application.name}: currently in use by another user!',
             )
             return False
-        app_session_id = relevant_sessions.last().session_id
+        killed_a_session = kill_sessions(request, sessions=relevant_sessions)
 
     else:
         LOGGER.error('Could not find reference to blocking session!')
@@ -217,20 +217,15 @@ def start_session(request, command, arguments):
         )
         return False
 
-    closure_api_response = api.close_session(app_session_id)
-
-    if not closure_api_response.is_valid:
+    if not killed_a_session:
         LOGGER.error('Could not close blocking session!')
         messages.warning(
             request,
-            f'Could not start session of {application.name}! {startup_error}.'
+            f'Could not start session of {application.name}! Could not close blocking session.'
         )
 
     # Try again to open the session
     else:
-        # clear any dangling references to the old session
-        clear_session_references(request, session_id=app_session_id)
-
         api_response = api.send_command(command.pk, arguments)
 
         if api_response.is_valid:
@@ -280,7 +275,7 @@ def close_session(request, infile, command):
     )
 
     # If cookie is lost, abort
-    if 'app_session_id' not in request.session:
+    if 'session_id' not in request.session:
         LOGGER.error('No session cookie found!')
         messages.warning(request, 'Session timed out! Please try again.')
         return None
@@ -336,6 +331,26 @@ def close_session(request, infile, command):
     return 'NO_OUTPUT'
 
 
+def kill_sessions(request, sessions):
+
+    at_least_one_closed = False
+
+    for session in sessions:
+
+        closure_api_response = api.close_session(session.session_id)
+
+        if closure_api_response.is_valid:
+            at_least_one_closed = True
+            clear_session_references(request, session.session_id)
+        else:
+            LOGGER.error(
+                'Could not close blocking session [%s]!',
+                session.session_id
+            )
+
+    return at_least_one_closed
+
+
 def invoke_command(request, command, arguments):
     '''Given an command and a dict of command arguments, instruct
     the API to invoke the command to start a calculation in the backend, 
@@ -374,13 +389,13 @@ def invoke_command(request, command, arguments):
     relevant_sessions = current_sessions.filter(command__app=command.app)
 
     if relevant_sessions.exists():
-        if relevant_sessions.exclude(user=request.user).exists()
+        if relevant_sessions.exclude(user=request.user).exists():
             messages.warning(
                 request,
-                f'Could not start session of {application.name}: currently in use by another user!',
+                f'Could not start session of {command.app.name}: currently in use by another user!',
             )
             return False
-        calculation_id = relevant_sessions.last().session_id
+        killed_a_session = kill_sessions(request, sessions=relevant_sessions)
 
     else:
         LOGGER.error('Could not find reference to blocking session!')
@@ -390,16 +405,15 @@ def invoke_command(request, command, arguments):
         )
         return False
 
-    cancel_api_response = api.cancel_calculation(calculation_id)
-
-    if not cancel_api_response.is_valid:
+    if not killed_a_session:
         LOGGER.error('Could not cancel blocking calculation!')
+        messages.warning(
+            request,
+            f'Could not start session of {command.app.name}! Could not close blocking session.'
+        )
 
     # Try again to open the session
     else:
-        # clear any dangling references to the old session
-
-        clear_session_references(request, session_id=calculation_id)
         api_response = api.send_command(command.pk, arguments)
 
         if api_response.is_valid:
