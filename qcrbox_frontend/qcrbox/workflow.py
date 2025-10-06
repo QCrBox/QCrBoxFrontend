@@ -332,6 +332,22 @@ def close_session(request, infile, command):
 
 
 def kill_sessions(request, sessions):
+    '''Given a queryset of SessionReference objects, attempt to close each
+    session its session_id, purging the corresponding SessionReference for
+    each succesful closure.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to the view containing this workflow.
+    - sessions(QuerySet): a queryset of SessionReference objects which
+            are to be force-closed.
+
+    Returns:
+    - at_least_one_closed(bool): a Boolean which states whether the kill
+            command resulted in any change to the db/filestore (i.e.
+            whether at least one closure was succesfully performed)
+
+    '''
 
     at_least_one_closed = False
 
@@ -577,6 +593,10 @@ def fetch_calculation_result(request, infile, command):
 
 
 def cancel_calculation(request):
+    '''Fetch the current session cookie from the user's browser, and instruct
+    API to close the corresponding calculation
+
+    '''
 
     # If cookie is lost, abort
     if 'session_id' not in request.session:
