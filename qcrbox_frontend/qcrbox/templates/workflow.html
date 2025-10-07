@@ -108,6 +108,7 @@
               <h4>{{current_command.app.name}} : {{current_command}}</h4>
               <ul>
                 <li>Application: {{current_command.app.name}}</li>
+                {% if current_command.description %}<li>Description: {{current_command.description}}</li>{% endif %}
                 <li>Version: {{current_command.app.version}}</li>
                 <li>Website: <a href="{{current_command.app.url}}" id="external-app-link">{{ current_command.app.name }}</a>
               </ul>
