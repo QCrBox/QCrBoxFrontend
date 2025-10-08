@@ -273,7 +273,7 @@ def workflow_pending(request, file_id, command_id):
 
 
 # Edit Users permission is used as a proxy for Group Manager status
-@permission_required('qcrbox.edit_users', raise_exception=True)
+@login_required(login_url='login')
 def view_sessions(request):
     '''A view to handle generating and rendering the 'view sessions' page which
     displays active Sessions and allows them to be terminated.  The contents of
