@@ -39,6 +39,9 @@
             <th scope="col" class="text-center" style="border: none;"></th>
           {% endif %}
         {% endif %}
+        {% if kill_link %}
+          <th scope="col" class="text-center" style="border: none;"></th>
+        {% endif %}
       </tr>
     </thead>
     <tbody>
@@ -76,6 +79,13 @@
                 </a>
               </td>
             {% endif %}
+          {% endif %}
+          {% if kill_link %}
+            <td class="text-center">
+              <a class="btn btn-outline-danger btn-sm" href="{% url kill_link object.pk %}" role="button" onclick="return confirm('Are you sure you want to kill this session?');" id="delete-link-{{object}}">
+                <i class="fas fa-square-xmark"></i> End Session
+              </a>
+            </td>
           {% endif %}
         </tr>
       {% endfor %}

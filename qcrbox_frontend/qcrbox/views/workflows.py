@@ -14,11 +14,13 @@ from django.shortcuts import render, redirect
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import Group
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
+from django.core.exceptions import PermissionDenied
 
 from qcrbox import api, forms, models, utility
 from qcrbox import workflow as wf
 from qcrbox.plotly_dash import plotly_app                           # pylint: disable=unused-import
+from qcrbox.utility import DisplayField, paginate_objects
 
 LOGGER = logging.getLogger(__name__)
 
@@ -39,6 +41,7 @@ def landing(_):
     '''
 
     return redirect('initialise_workflow')
+
 
 @login_required(login_url='login')
 def initialise_workflow(request):
@@ -143,6 +146,7 @@ def initialise_workflow(request):
         context,
     )
 
+
 @login_required(login_url='login')
 def workflow(request, file_id):
     '''A view to handle the serving and the internal functionality of the
@@ -222,6 +226,7 @@ def workflow(request, file_id):
 
     return render(request, 'workflow.html', context)
 
+
 # A separate view to handle the auto-refreshing page when waiting for calc to finish
 @login_required(login_url='login')
 def workflow_pending(request, file_id, command_id):
@@ -265,3 +270,137 @@ def workflow_pending(request, file_id, command_id):
     }
 
     return render(request, 'workflow.html', context)
+
+
+# Edit Users permission is used as a proxy for Group Manager status
+@login_required(login_url='login')
+def view_sessions(request):
+    '''A view to handle generating and rendering the 'view sessions' page which
+    displays active Sessions and allows them to be terminated.  The contents of
+    this page assume the user has Group Manager status, but the Sessions visible
+    are filtered based on the request user's groups and are paginated.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to this view.
+
+    Returns:
+    - response(HttpResponse): the http response served to the user on
+            accessing this view's associated url.
+
+    '''
+
+    fields = [
+        DisplayField('App', 'command__app', is_header=True),
+        DisplayField('Command', 'command'),
+        DisplayField('Invoked By', 'user'),
+        DisplayField('At Time', 'start_time'),
+        ]
+
+    object_list = models.SessionReference.objects.all()                 # pylint: disable=no-member
+
+    # If a user can view unaffiliated data, they can view it all
+    if request.user.has_perm('qcrbox.global_access'):
+        pass
+    elif request.user.has_perm('qcrbox.edit_users'):
+        object_list = object_list.filter(user__groups__in=request.user.groups.all())
+    else:
+        object_list = object_list.filter(user=request.user)
+
+    object_list = object_list.order_by('start_time')
+    page = request.GET.get('page')
+
+    objects = paginate_objects(object_list, page)
+
+    return render(request, 'view_list_generic.html', {
+        'objects': objects,
+        'type':'Session',
+        'fields':fields,
+        'kill_link':'kill_session',
+    })
+
+@login_required(login_url='login')
+def kill_session(request, sessionref_id):
+    '''A view to handle the manual killing of sessions via the group
+    admin-level 'View Sessions' panel.  Attempts to close a session
+    with an API call; if succesful (or the call fails with a 404),
+    also deletes the related SessionReference object.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to this view.
+    - sessionref_id(int): the Frontend db primary key of the SessionReference
+            which refers to the session/calculation to be killed.
+
+    Returns:
+    - response(HttpResponse): the http response served to the user on
+            accessing this view's associated url.
+    '''
+
+    # Fetch the session reference object
+    session_ref = models.SessionReference.objects.get(pk=sessionref_id) # pylint: disable=no-member
+
+    # Run some last minute permission checks to ensure the user should be allowed to do this
+    if request.user.has_perm('qcrbox.global_access'):
+        pass
+    elif request.user.has_perm('edit_users'):
+        if not (session_ref.user.groups.all() & request.user.groups.all()).exists():
+            raise PermissionDenied
+    else:
+        if session_ref.user != request.user:
+            raise PermissionDenied
+
+    # Fetch the relevant getters and closers for whether the command is interactive or not
+    if session_ref.command.interactive:
+        api_get = api.get_session
+        api_kill = api.close_session
+        def check_inactive(_):
+            return False
+
+    else:
+        api_get = api.get_calculation
+        api_kill = api.cancel_calculation
+        def check_inactive(get_response):
+            return get_response.body.payload.calculations[0].status in ('successful', 'failed')
+
+    get_response = api_get(session_ref.session_id)
+
+    # See if the session can be found
+    if not get_response.is_valid:
+        if get_response.body.error.code == 404:
+            # If the related session doesn't actually exist, just quietly delete the reference
+            session_ref.delete()
+            messages.info(
+                request,
+                'Session ended successfully',
+            )
+        else:
+            messages.warning(
+                request,
+                'Could not kill session!',
+            )
+
+    # Is session already ended, then again quietly delete the frontend reference
+    elif check_inactive(get_response):
+        session_ref.delete()
+        messages.info(
+            request,
+            'Session ended successfully',
+        )
+
+    # If the session is found, try to close it
+    else:
+        api_response = api_kill(session_ref.session_id)
+        if api_response.is_valid:
+            session_ref.delete()
+            messages.info(
+                request,
+                'Session ended successfully',
+            )
+        else:
+            messages.warning(
+                request,
+                'Could not kill session!',
+            )
+
+    return redirect('view_sessions')

@@ -29,6 +29,8 @@ urlpatterns = [
         workflows.workflow_pending,
         name='workflow-pending',
     ),
+    path('active_sessions', workflows.view_sessions, name='view_sessions'),
+    path('kill_session/<sessionref_id>', workflows.kill_session, name='kill_session'),
     path('download/<file_id>', datasets.download, name='download'),
 
     path('login', users.login_view, name='login'),

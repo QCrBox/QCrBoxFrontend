@@ -20,6 +20,9 @@
         <li class="nav-item">
           <a class="nav-link" href="{% url 'view_groups' %}" id="groups-link">Groups</a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'view_sessions' %}" id="sessions-link">Active Sessions</a>
+        </li>
         {% if perms.qcrbox.edit_users %}
           <li class="nav-item">
             <a class="nav-link" href="{% url 'view_users' %}" id="users-link">Users</a>
