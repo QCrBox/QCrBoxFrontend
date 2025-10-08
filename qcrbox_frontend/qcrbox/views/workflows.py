@@ -15,6 +15,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import Group
 from django.contrib.auth.decorators import login_required, permission_required
+from django.core.exceptions import PermissionDenied
 
 from qcrbox import api, forms, models, utility
 from qcrbox import workflow as wf
@@ -301,8 +302,10 @@ def view_sessions(request):
     # If a user can view unaffiliated data, they can view it all
     if request.user.has_perm('qcrbox.global_access'):
         pass
+    elif request.user.has_perm('qcrbox.edit_users'):
+        object_list = object_list.filter(user__groups__in=request.user.groups.all())
     else:
-        object_list = object_list.filter(user__group__in=request.user.groups.all())
+        object_list = object_list.filter(user=request.user)
 
     object_list = object_list.order_by('start_time')
     page = request.GET.get('page')
@@ -316,8 +319,7 @@ def view_sessions(request):
         'kill_link':'kill_session',
     })
 
-# Edit Users permission is used as a proxy for Group Manager status
-@permission_required('qcrbox.edit_users', raise_exception=True)
+@login_required(login_url='login')
 def kill_session(request, sessionref_id):
     '''A view to handle the manual killing of sessions via the group
     admin-level 'View Sessions' panel.  Attempts to close a session
@@ -335,7 +337,18 @@ def kill_session(request, sessionref_id):
             accessing this view's associated url.
     '''
 
+    # Fetch the session reference object
     session_ref = models.SessionReference.objects.get(pk=sessionref_id) # pylint: disable=no-member
+
+    # Run some last minute permission checks to ensure the user should be allowed to do this
+    if request.user.has_perm('qcrbox.global_access'):
+        pass
+    elif request.user.has_perm('edit_users'):
+        if not (session_ref.user.groups.all() & request.user.groups.all()).exists():
+            raise PermissionDenied 
+    else:
+        if session_ref.user != request.user:
+            raise PermissionDenied
 
     # Fetch the relevant getters and closers for whether the command is interactive or not
     if session_ref.command.interactive:
