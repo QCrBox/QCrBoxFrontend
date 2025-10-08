@@ -335,16 +335,59 @@ def kill_session(request, sessionref_id):
             accessing this view's associated url.
     '''
 
-    session_ref = models.SessionReference.objects.get(pk=sessionref_id)
-    api_response = api.cancel_calculation(session_ref.session_id)
+    session_ref = models.SessionReference.objects.get(pk=sessionref_id) # pylint: disable=no-member
 
-    if api_response.is_valid:
+    # Fetch the relevant getters and closers for whether the command is interactive or not
+    if session_ref.command.interactive:
+        api_get = api.get_session
+        api_kill = api.close_session
+        def check_inactive(_):
+            return False
+
+    else:
+        api_get = api.get_calculation
+        api_kill = api.cancel_calculation
+        def check_inactive(get_response):
+            return get_response.body.payload.calculations[0].status in ('successful', 'failed')
+
+    get_response = api_get(session_ref.session_id)
+
+    # See if the session can be found
+    if not get_response.is_valid:
+        if get_response.body.error.code == 404:
+            # If the related session doesn't actually exist, just quietly delete the reference
+            session_ref.delete()
+            messages.info(
+                request,
+                'Session ended successfully',
+            )
+        else:
+            messages.warning(
+                request,
+                'Could not kill session!',
+            )
+
+    # Is session already ended, then again quietly delete the frontend reference
+    elif check_inactive(get_response):
         session_ref.delete()
         messages.info(
             request,
-            'Session ended succesfully',
+            'Session ended successfully',
         )
+
+    # If the session is found, try to close it
     else:
-        messages.warning('Could not kill session!')
+        api_response = api_kill(session_ref.session_id)
+        if api_response.is_valid:
+            session_ref.delete()
+            messages.info(
+                request,
+                'Session ended successfully',
+            )
+        else:
+            messages.warning(
+                request,
+                'Could not kill session!',
+            )
 
     return redirect('view_sessions')
