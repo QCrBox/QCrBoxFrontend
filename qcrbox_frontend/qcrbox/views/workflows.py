@@ -345,7 +345,7 @@ def kill_session(request, sessionref_id):
         pass
     elif request.user.has_perm('edit_users'):
         if not (session_ref.user.groups.all() & request.user.groups.all()).exists():
-            raise PermissionDenied 
+            raise PermissionDenied
     else:
         if session_ref.user != request.user:
             raise PermissionDenied
