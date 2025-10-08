@@ -14,7 +14,7 @@ from django.shortcuts import render, redirect
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import Group
-from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 
 from qcrbox import api, forms, models, utility
@@ -392,6 +392,13 @@ def kill_session(request, sessionref_id):
     else:
         api_response = api_kill(session_ref.session_id)
         if api_response.is_valid:
+            session_ref.delete()
+            messages.info(
+                request,
+                'Session ended successfully',
+            )
+        elif api_response.body.error.code == 404:
+            # If no listener for the related session exists, assume it is actually dead already
             session_ref.delete()
             messages.info(
                 request,
