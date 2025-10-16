@@ -84,7 +84,7 @@ class Application(models.Model):
     name = models.CharField(max_length=255)
     url = models.CharField(max_length=255)
     version = models.CharField(max_length=255)
-    description = models.CharField(blank=True, null=True, max_length=255)
+    description = models.TextField(blank=True, null=True, max_length=1023)
     slug = models.CharField(max_length=255)
 
     # Specify which port is assigned to VNC sessions of the given app
@@ -114,7 +114,7 @@ class AppCommand(models.Model):
 
     app = models.ForeignKey(Application, on_delete=models.CASCADE, related_name='commands')
     name = models.CharField(max_length=255)
-    description = models.CharField(max_length=255, null=True, blank=True)
+    description = models.TextField(max_length=1023, null=True, blank=True)
     interactive = models.BooleanField(default=False)
 
     def __str__(self):
@@ -148,8 +148,8 @@ class CommandParameter(models.Model):
 
     command = models.ForeignKey(AppCommand, on_delete=models.CASCADE, related_name='parameters')
     name = models.CharField(max_length=255)
-    dtype = models.CharField(max_length=127)
-    description = models.CharField(max_length=255, blank=True, null=True)
+    dtype = models.CharField(max_length=255)
+    description = models.TextField(max_length=1023, blank=True, null=True)
     required = models.BooleanField()
     default = models.CharField(max_length=255, null=True, blank=True)
     validation_type = models.CharField(max_length=255, null=True, blank=True)
