@@ -22,7 +22,9 @@ The Dockerised Setup for QCrBox Frontend is designed to be a quick and portable 
 1. Ensure that `docker` is installed on the deployment machine (see [www.docker.com/](https://www.docker.com/) for more information on Docker)
 2. Navigate to [`QCrBox_Frontend/`](..), e.g. the folder containing this repository.
 3. Copy the environment template with `cp environment.env.template environment.env`
-4. Edit the settings `environment.env` to be used in your Dockerised deployment.  The settings are as follows:
+4. Edit the settings `environment.env` to be used in your Dockerised deployment. For most cases, you should only need to edit `DJANGO_SUPERUSER_EMAIL`, `DJANGO_SUPERUSER_USERNAME` and `DJANGO_SUPERUSER_PASSWORD`, and the other values can be left as the defaults copied from the template.  **Note:** If you do not set these values, no user will be created at setup and you will have to create one manually by directly interfacing with the django inside the container.
+
+The full list of settings is as follows:
 
     | Setting | Description |
     | --- | --- |
@@ -38,13 +40,12 @@ The Dockerised Setup for QCrBox Frontend is designed to be a quick and portable 
     | `DJANGO_SUPERUSER_EMAIL` | The email address for the default admin account to be created for the web app. |
     | `DJANGO_SUPERUSER_USERNAME` | The username for the default admin account to be created for the web app. |
     | `DJANGO_SUPERUSER_PASSWORD` | The password for the default admin account to be created for the web app. |
-
-    For most cases, you should only need to edit `DJANGO_SUPERUSER_EMAIL`, `DJANGO_SUPERUSER_USERNAME` and `DJANGO_SUPERUSER_PASSWORD`, and the other values can be left as the defaults copied from the template.  **Note:** If you do not set these values, no user will be created at setup and you will have to create one manually by directly interfacing with the django inside the container.
 5. Build the Docker container with `docker compose build`.
 6. Run the Docker container with `docker compose up`.
 7. Open your choice of browser and navigate to your deployment URL; for local deployment, this URL will be [`http://localhost:8888/`](http://localhost:8888/).
 8. Log in to the app using the `DJANGO_SUPERUSER_USERNAME` and `DJANGO_SUPERUSER_PASSWORD` you set in step 4.
-9. Enjoy using QCrBox Frontend!
+9. Navigate the Groups in the navigation bar and create at least one group (you will not be able to upload any data until you have created a group to assign it to).
+10. Enjoy using QCrBox Frontend!
 
 ## Non-Dockerised Setup
 
@@ -59,7 +60,8 @@ You may also install QCrBox Frontend in a non-Dockerised way through the use of 
 7. Collect staticfiles (e.g. css required to render plotly plots) with `python manage.py collectstatic`.
 8. Start the server with `python manage.py runserver`.
 9. Open your choice of browser and navigate to your deployment URL; by default, this URL will be [`http://localhost:8000/`](http://localhost:8000/).
-10. Log in to the app using the credentuals you set in step 6.
-11. Enjoy using QCrBox Frontend!
+10. Log in to the app using the credentials you set in step 6.
+11. Navigate the Groups in the navigation bar and create at least one group (you will not be able to upload any data until you have created a group to assign it to).
+12. Enjoy using QCrBox Frontend!
 
 For more information, please check the documentation readme at [`QCRBox_Frontend/documentation/README.md`](./README.md)
