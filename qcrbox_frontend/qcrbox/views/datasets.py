@@ -227,13 +227,13 @@ def visualise(request, dataset_id):
     # treating this as a relative URL
     hostname = request.get_host().split(':')[0]
     
-    # Construct the subdomain URL
+    # Construct the visualiser domain URL
     # Format: http://[app-slug].gui.[hostname]:[traefik-port]/
-    subdomain = f'qcrbox-quality{settings.GUI_DOMAIN_PREFIX}{hostname}'
+    visualiser_domain = f'qcrbox-quality{settings.GUI_DOMAIN_PREFIX}{hostname}'
     
     port_suffix = f':{settings.TRAEFIK_HTTP_PORT}' if settings.TRAEFIK_HTTP_PORT else ''
     
-    v_url = f'http://{subdomain}{port_suffix}/retrieve/{visualise_file_meta.backend_uuid}'
+    v_url = f'http://{visualiser_domain}{port_suffix}/retrieve/{visualise_file_meta.backend_uuid}'
     LOGGER.info(
         'Opening Visualiser at "%s"',
         v_url,

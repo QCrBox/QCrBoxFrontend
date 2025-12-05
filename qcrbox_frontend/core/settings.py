@@ -213,7 +213,7 @@ logging.config.dictConfig(LOGGING)
 API_BASE_URL = os.environ.get('API_BASE_URL', 'http://127.0.0.1:11000')
 
 # Traefik / GUI Routing settings
-TRAEFIK_HTTP_PORT = os.environ.get('TRAEFIK_HTTP_PORT', '12345')
+TRAEFIK_HTTP_PORT = int(os.environ.get('TRAEFIK_HTTP_PORT', '12345') or 12345)
 GUI_DOMAIN_PREFIX = os.environ.get('GUI_DOMAIN_PREFIX', '.gui.')
 
 # Static files (CSS, JavaScript, Images)
