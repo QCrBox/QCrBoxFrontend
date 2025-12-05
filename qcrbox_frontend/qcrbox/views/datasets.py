@@ -225,8 +225,15 @@ def visualise(request, dataset_id):
 
     # Get host name without port, manually prepend http:// to stop django
     # treating this as a relative URL
-    hostname = 'http://' + request.get_host().split(':')[0]
-    v_url = f'{hostname}:{settings.API_VISUALISER_PORT}/retrieve/{visualise_file_meta.backend_uuid}'
+    hostname = request.get_host().split(':')[0]
+    
+    # Construct the subdomain URL
+    # Format: http://[app-slug].gui.[hostname]:[traefik-port]/
+    subdomain = f'qcrbox-quality{settings.GUI_DOMAIN_PREFIX}{hostname}'
+    
+    port_suffix = f':{settings.TRAEFIK_HTTP_PORT}' if settings.TRAEFIK_HTTP_PORT else ''
+    
+    v_url = f'http://{subdomain}{port_suffix}/retrieve/{visualise_file_meta.backend_uuid}'
     LOGGER.info(
         'Opening Visualiser at "%s"',
         v_url,

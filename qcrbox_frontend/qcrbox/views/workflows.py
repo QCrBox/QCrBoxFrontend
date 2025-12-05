@@ -224,6 +224,10 @@ def workflow(request, file_id):
     else:
         context['app_session_id'] = None
 
+    # Pass Traefik config to template
+    context['traefik_port'] = settings.TRAEFIK_HTTP_PORT
+    context['gui_domain_prefix'] = settings.GUI_DOMAIN_PREFIX
+
     return render(request, 'workflow.html', context)
 
 
