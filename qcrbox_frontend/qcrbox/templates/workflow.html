@@ -38,7 +38,7 @@
               <tr id="ancestor-row">
                 <td align='right'>
                   {% if prior_step.infile.active %}
-                    <a href="{% url 'workflow' prior_step.infile.pk %}" id="workflow-link-{{prior_step.infile.display_filename}}"><i class="fa-regular fa-square"></i></a>
+                    <span title="Load File"><a href="{% url 'workflow' prior_step.infile.pk %}" id="workflow-link-{{prior_step.infile.display_filename}}"><i class="fa-regular fa-square"></i></a></span>
                   {% else %}
                     <i class="fa-regular fa-square"></i>
                   {% endif %}
@@ -52,15 +52,15 @@
                 </td>
                 <td align='left' >
                   {% if prior_step.infile.active %}
-                    <a href="{% url 'download' prior_step.infile.pk %}" id="download-link-{{prior_step.infile.display_filename}}">
+                    <span title="Download File"><a href="{% url 'download' prior_step.infile.pk %}" id="download-link-{{prior_step.infile.display_filename}}">
                       <i class="fas fa-download"></i>
-                    </a>&nbsp 
-                    <a href="{% url 'visualise' prior_step.infile.pk %}" target="_blank" id="visualise-link-{{prior_step.infile.display_filename}}">
+                    </a></span>&nbsp
+                    <span title="Visualise Data"><a href="{% url 'visualise' prior_step.infile.pk %}" target="_blank" id="visualise-link-{{prior_step.infile.display_filename}}">
                       <i class="fas fa-eye"></i>
-                    </a>&nbsp
-                    <a href="{% url 'dataset_history' prior_step.infile.pk %}" id="history-link-{{prior_step.infile.display_filename}}">
+                    </a></span>&nbsp
+                    <span title="Data History"><a href="{% url 'dataset_history' prior_step.infile.pk %}" id="history-link-{{prior_step.infile.display_filename}}">
                       <i class="fas fa-clock"></i>
-                    </a>
+                    </a></span>
                   {% endif %}
                 </td>
               </tr>
@@ -81,15 +81,15 @@
                 <b id='current-filename'>{{file.display_filename}}</b>
               </td>
               <td align='left'>
-                <a href="{% url 'download' file.pk %}" id="download-link-current">
+                <span title="Download File"><a href="{% url 'download' file.pk %}" id="download-link-current">
                   <i class="fas fa-download"></i>
-                </a>&nbsp
-                <a href="{% url 'visualise' file.pk %}" target="_blank" id="visualise-link-current">
+                </a></span>&nbsp
+                <span title="Visualise Data"><a href="{% url 'visualise' file.pk %}" target="_blank" id="visualise-link-current">
                   <i class="fas fa-eye"></i>
-                </a>&nbsp
-                <a href="{% url 'dataset_history' file.pk %}" id="history-link-current">
+                </a></span>&nbsp
+                <span title="Data History"><a href="{% url 'dataset_history' file.pk %}" id="history-link-current">
                   <i class="fas fa-clock"></i>
-                </a>
+                </a></span>
               </td>
             </tr>
           </table>
