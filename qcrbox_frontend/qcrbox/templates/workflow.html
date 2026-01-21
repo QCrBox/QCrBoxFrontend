@@ -45,7 +45,7 @@
                 </td>
                 <td align='left' padding=15px>
                   {% if prior_step.infile.active %}
-                    {{prior_step.infile.display_filename}}
+                    {{prior_step.infile}}
                   {% else %}
                     <i>Deleted</i>
                   {% endif %}
@@ -78,7 +78,7 @@
                 <i class="fa-solid fa-square"></i>
               </td>
               <td align='left'>
-                <b id='current-filename'>{{file.display_filename}}</b>
+                <b id='current-filename'>{{file}}</b>
               </td>
               <td align='left'>
                 <span title="Download File"><a href="{% url 'download' file.pk %}" id="download-link-current">
@@ -100,7 +100,7 @@
             {% if not current_command %}
               <h4>Dataset Metadata</h4>
               <ul>
-                <li>Dataset ID: {{file.backend_uuid}}</li>
+                <li>Filename: {{file.display_filename}}</li>
                 <li>Filetype: {{file.filetype}}</li>
               </ul>
               <i>Please select a command from the workflow to continue processing.</i>

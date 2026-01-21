@@ -96,7 +96,7 @@ class LoadFileForm(forms.Form):
 
         objs = models.FileMetaData.objects                              # pylint: disable=no-member
         qset = objs.filter(active=True).filter(group__in=permitted_groups)
-        choices = [(f.pk, f.display_filename) for f in qset.all()]
+        choices = [(f.pk, str(f)) for f in qset.all()]
 
         self.fields['file'].choices = choices
 
