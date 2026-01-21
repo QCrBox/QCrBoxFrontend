@@ -704,6 +704,9 @@ def handle_command(request, command, infile):
         output_dtypes = ('QCrBox.output_path','QCrBox.output_cif')
         for i in cps.filter(dtype__in=output_dtypes).values_list('name',flat=True):
             params[i] = params[i].replace('/','_')
+            print(params[i])
+            params[i] = utility.get_next_valid_filename(params[i])
+            print(params[i])
 
         # If the command corresponds to an interactive session, launch it
         if command.interactive:

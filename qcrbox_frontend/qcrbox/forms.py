@@ -377,7 +377,7 @@ class CommandForm(forms.Form):
                 else:
                     ext = 'cif'
 
-                filepath = filepath + f'_{command.name}.{ext}'
+                filepath = filepath + f'.{ext}'
 
                 self.fields[param.name] = forms.CharField(
                     initial=filepath,
