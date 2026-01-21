@@ -146,13 +146,21 @@
             {% endif %}
             {% if session_in_progress or calculation_in_progress %}
             {% else %}
-              <hr>
+              {% if current_command %}
+                </div></div>
+                <br/>
+                <div class="card">
+                <div class="card-body">
+                <h4>Select Different Command</h4>
+              {% else %}
+                <hr>
+              {% endif %}
               <center>
                 <form action="" method="POST" enctype="multipart/form-data">
                   {% csrf_token %}
                   {{ select_command_form.as_p }}
                   <button type="submit" class="btn btn-primary" id="select-app-button">
-                    Select Application
+                    Select Command
                   </button>
                 </form>
               </center>
