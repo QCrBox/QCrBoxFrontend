@@ -5,6 +5,7 @@ the QCrBox Django Frontend.
 
 '''
 
+import re
 import textwrap
 
 from django.core.exceptions import PermissionDenied
@@ -255,3 +256,28 @@ def check_user_view_file_permission(user, load_file):
 
     else:
         raise PermissionDenied
+
+def get_next_valid_filename(filename):
+    ''' Check whether a proposed output filename already exists on record and,
+    if so, modify it to prevent a clash.'''
+
+    file_metas = models.FileMetaData.objects                            # pylint: disable=no-member
+    inv_filenames = file_metas.values_list('filename', flat=True)
+    if not filename in inv_filenames:
+        return filename
+
+    fname_components = filename.split('.')
+    fn_root = fname_components[0]
+    fn_ext = fname_components[-1]
+
+    fn_root = re.sub(r'\(\d+\)$', '', fn_root)
+    if not f'{fn_root}.{fn_ext}' in inv_filenames:
+        return f'{fn_root}.{fn_ext}'
+
+    f_ind = 1
+
+    # Find the next valid pattern 'filename_root(x).ext' which is not already in use
+    while True:
+        if not f'{fn_root}({f_ind}).{fn_ext}' in inv_filenames:
+            return f'{fn_root}({f_ind}).{fn_ext}'
+        f_ind += 1
