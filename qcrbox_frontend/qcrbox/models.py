@@ -55,8 +55,11 @@ class FileMetaData(models.Model):
 
     def __str__(self):
         '''Return the filename when an instance of this is parsed as string'''
+        max_len = 30
 
-        return str(self.display_filename)
+        if len(self.display_filename) < max_len:
+            return str(self.display_filename)
+        return str(str(self.display_filename)[:max_len-3]+'...')
 
 
 class Application(models.Model):
