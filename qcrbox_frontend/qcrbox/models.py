@@ -61,6 +61,31 @@ class FileMetaData(models.Model):
             return str(self.display_filename)
         return str(str(self.display_filename)[:max_len-3]+'...')
 
+    def get_newest_descendant(self):
+        '''Get the most recently created FileMetaData object which is a direct
+        descendant of this FileMetaData'''
+
+        related_pks = [self.pk]
+        last_gen_pks = [self.pk]
+
+        process_step_objs = ProcessStep.objects                         # pylint: disable=no-member
+
+        # Recursively scan all related process_steps for descendant pks
+        while len(last_gen_pks)>0:
+            gen_processes = process_step_objs.filter(infile__pk__in=last_gen_pks)
+            this_gen_pks = gen_processes.values_list('outfile__pk', flat=True)
+            related_pks += this_gen_pks
+            last_gen_pks = this_gen_pks
+
+        # Fetch the object corresponding to the most recently created related
+        # FileMetaData
+        file_metadata_objs = FileMetaData.objects                       # pylint: disable=no-member
+
+        related_objs = file_metadata_objs.filter(pk__in=related_pks)
+        recent_obj = related_objs.order_by('creation_time').last()
+
+        return recent_obj
+
 
 class Application(models.Model):
     '''The Application model stores information on Applications; e.g. the
