@@ -96,6 +96,13 @@ class LoadFileForm(forms.Form):
 
         objs = models.FileMetaData.objects                              # pylint: disable=no-member
         qset = objs.filter(active=True).filter(group__in=permitted_groups)
+
+        # Filter to only retain the oldest file in each workflow tree, i.e. files which are
+        # not the output of any process
+        process_objs = models.ProcessStep.objects                       # pylint: disable=no-member
+        process_outfiles = process_objs.all().values_list('outfile', flat=True)
+        qset = qset.exclude(pk__in=process_outfiles)
+
         choices = [(f.pk, str(f)) for f in qset.all()]
 
         self.fields['file'].choices = choices

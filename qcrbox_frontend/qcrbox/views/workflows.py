@@ -77,7 +77,11 @@ def initialise_workflow(request):
             ## Handle file loading here.
 
             # If user chose to load pre-existing file, fetch that file's ID
-            redirect_pk = request.POST['file']
+            mod_objs = models.FileMetaData.objects                      # pylint: disable=no-member
+            selected_file = mod_objs.get(pk=request.POST['file'])
+
+            # Find most recently created descendant of selected file
+            redirect_pk = selected_file.get_newest_descendant().pk
 
         else:
 
