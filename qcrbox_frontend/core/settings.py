@@ -24,7 +24,10 @@ GET_ENV = os.environ.get
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ts$cb&@9ilx_3g2!we7v8bh7!8my^m*aq12na)aw&1@p-hsr_h'
+# The hardcoded value is a development fallback; any real deployment must set
+# DJANGO_SECRET_KEY in the environment.
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or \
+    'django-insecure-ts$cb&@9ilx_3g2!we7v8bh7!8my^m*aq12na)aw&1@p-hsr_h'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')

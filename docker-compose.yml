@@ -40,9 +40,11 @@ services:
         volumes:
             - postgres_data:/var/lib/postgresql/data/
         environment:
+            # POSTGRES_PASSWORD must match the value in environment.env;
+            # it is substituted from the compose project's .env file or shell.
             POSTGRES_DB: postgres
             POSTGRES_USER: postgres
-            POSTGRES_PASSWORD: postgres
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
         expose:
             - 5432
         networks:
