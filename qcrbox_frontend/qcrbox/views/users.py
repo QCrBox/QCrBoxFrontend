@@ -9,6 +9,7 @@ Contains views pertaining to User creation / management and Logging In / Out.
 
 import logging
 
+from django.conf import settings
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
@@ -77,6 +78,12 @@ def logout_view(request):
         'User %s logged out',
         username,
     )
+
+    # Under Authelia SSO the Django session would be re-established from the
+    # Remote-User header immediately, so the Authelia session must be ended too.
+    if settings.AUTHELIA_LOGOUT_URL:
+        return redirect(settings.AUTHELIA_LOGOUT_URL)
+
     messages.success(request, 'Logout Successful!')
 
     return redirect('login')

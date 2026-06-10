@@ -15,6 +15,12 @@ qcb up --all
 
 See the QCrBox documentation for more information on setting up QCrBox.
 
+**Important:** the Dockerised frontend is served *through* QCrBox's Traefik reverse proxy and authenticates users via QCrBox's Authelia single sign-on.  This means:
+
+- The QCrBox stack must be running *before* the frontend is started (the frontend joins QCrBox's `qcrbox_qcrbox-net` docker network).
+- The frontend is reached at `https://<QCRBOX_DOMAIN>` (e.g. `https://localhost.local` for local setups), not on a port of its own.
+- The required `/etc/hosts` entries and the end-to-end walkthrough are described in QCrBox's how-to guide ["Spinning up the full QCrBox stack locally"](https://github.com/QCrBox/QCrBox/blob/dev/docs/how_to_guides/spin_up_full_stack_locally.md).
+
 ## Dockerised Setup
 
 The Dockerised Setup for QCrBox Frontend is designed to be a quick and portable way to get the web app up and running on any machine without having to worry too much about the host machine's environment.  The steps for setting up the Dockerised version are as follows:
@@ -34,23 +40,28 @@ The full list of settings is as follows:
     | `POSTGRES_USER` | The username for Postgres access.  This should be set to `'postgres'`. |
     | `POSTGRES_PASSWORD` | The password for Postgres access.  This should be set to `'postgres'`. |
     | `POSTGRES_PORT` | The port through which the Postgres is exposed.  This should be set to `5432`. |
-    | `API_BASE_URL` | The URL and port by which the QCrBox tool manager can be accessed.  If QCrBox is installed on the same machine as this setup, this should be set to `'http://host.docker.internal:11000'`. |
-    | `TRAEFIK_HTTP_PORT` | The port through which the Traefik router (which handles GUI routing) is exposed.  For development, this should be set to `12345`. |
+    | `API_BASE_URL` | The URL by which the QCrBox registry API is reached from inside the frontend's `server` container.  This should be set to `'http://qcrbox-registry:8000'`, i.e. direct access over the shared docker network. |
+    | `QCRBOX_DOMAIN` | The domain QCrBox is served under.  Must match `QCRBOX_DOMAIN` in the QCrBox stack's `.env` file (`localhost.local` for local setups). |
+    | `ALLOWED_HOSTS` | Comma-separated list of hostnames Django accepts requests for.  Normally the same as `QCRBOX_DOMAIN`. |
+    | `CSRF_TRUSTED_ORIGINS` | Comma-separated list of trusted origins, e.g. `https://localhost.local`. |
+    | `AUTHELIA_SSO` | Set to `True` to log users in from the `Remote-User` header set by Authelia via Traefik (single sign-on).  Only enable when the frontend is reachable exclusively through the reverse proxy. |
+    | `AUTHELIA_LOGOUT_URL` | Where the logout button sends users to end the Authelia session, e.g. `https://auth.localhost.local/logout`. |
+    | `TRAEFIK_HTTP_PORT` | The port the reverse proxy serves HTTPS on.  Leave empty for the default port 443. |
     | `GUI_DOMAIN_PREFIX` | The prefix for GUI subdomains.  This should be set to `.gui.` for default setups. |
     | `MAX_LENGTH_API_LOG` | The maximum length of API output to be saved in the logs.  As some API outputs can be quite long, this gives the option to truncate them in the logs, making the logs more unwieldy at the cost of losing some debug information. |
     | `DJANGO_SUPERUSER_EMAIL` | The email address for the default admin account to be created for the web app. |
     | `DJANGO_SUPERUSER_USERNAME` | The username for the default admin account to be created for the web app. |
     | `DJANGO_SUPERUSER_PASSWORD` | The password for the default admin account to be created for the web app. |
-5. Build the Docker container with `docker compose build`.
-6. Run the Docker container with `docker compose up`.
-7. Open your choice of browser and navigate to your deployment URL; for local deployment, this URL will be [`http://localhost:8888/`](http://localhost:8888/).
-8. Log in to the app using the `DJANGO_SUPERUSER_USERNAME` and `DJANGO_SUPERUSER_PASSWORD` you set in step 4.
+5. Make sure the QCrBox stack is running (see Pre-Setup); the frontend joins its docker network.
+6. Build and run the containers with `docker compose up -d --build`.
+7. Open your choice of browser and navigate to your deployment URL; for local deployment, this URL will be [`https://localhost.local/`](https://localhost.local/) (accept the self-signed-certificate warning on local setups).
+8. Log in at the Authelia portal you are redirected to (development default: `admin` / `changeme`, managed in QCrBox's `services/core/qcrbox_auth/users_database.yml`).  A matching frontend user is created automatically on first visit.  The `DJANGO_SUPERUSER_*` account from step 4 is only needed for the Django admin interface at `/admin`.
 9. Navigate the Groups in the navigation bar and create at least one group (you will not be able to upload any data until you have created a group to assign it to).
 10. Enjoy using QCrBox Frontend!
 
 ## Non-Dockerised Setup
 
-You may also install QCrBox Frontend in a non-Dockerised way through the use of virtual environments, but this is neither portable nor secure and hence is only recommended for development purposes.  To install QCrBox Frontend in this way:
+You may also install QCrBox Frontend in a non-Dockerised way through the use of virtual environments, but this is neither portable nor secure and hence is only recommended for development purposes.  In this setup the app is served directly (not through Traefik/Authelia), so the Authelia single sign-on stays disabled (`AUTHELIA_SSO` defaults to `False`) and the frontend's own login page is used instead.  To install QCrBox Frontend in this way:
 
 1. Navigate to [`QCrBox_Frontend/`](..), e.g. the folder containing this repository.
 2. Create and activate a local Python virtual environment.  This environment must be based on python version `python>=3.11`.
