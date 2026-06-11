@@ -15,7 +15,6 @@ services:
             # Served on the root domain, behind Authelia (single sign-on via Remote-User)
             traefik.http.routers.qcrbox-frontend.rule: Host(`${QCRBOX_DOMAIN:-localhost.local}`)
             traefik.http.routers.qcrbox-frontend.entrypoints: websecure
-            traefik.http.routers.qcrbox-frontend.tls: true
             traefik.http.routers.qcrbox-frontend.middlewares: authelia-auth
             traefik.http.services.qcrbox-frontend-service.loadbalancer.server.port: 80
 
