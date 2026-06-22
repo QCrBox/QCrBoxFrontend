@@ -176,8 +176,14 @@
 {% if current_command.interactive %}
   <script>
     let hostname = window.location.hostname;
+    let appSlug = "{{ current_command.app.slug }}".replace(/_/g, "-");
+    let domainPrefix = "{{ gui_domain_prefix }}";
+    let port = "{{ traefik_port }}";
+    let portSuffix = port ? ":" + port : "";
+    
+    let url = `http://${appSlug}${domainPrefix}${hostname}${portSuffix}/`;
 
-    document.getElementById("start-app-button").addEventListener("click", function(){ window.open(`http://${hostname}:{{ current_command.app.port }}/vnc.html?path=vnc&autoconnect=true&resize=remote&reconnect=true&show_dot=true`, '_blank'); }); 
+    document.getElementById("start-app-button").addEventListener("click", function(){ window.open(url, '_blank'); }); 
   </script>
 {% elif calculation_in_progress %}
   <script>
