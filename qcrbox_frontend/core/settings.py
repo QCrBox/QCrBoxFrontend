@@ -24,12 +24,24 @@ GET_ENV = os.environ.get
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ts$cb&@9ilx_3g2!we7v8bh7!8my^m*aq12na)aw&1@p-hsr_h'
+# The hardcoded value is a development fallback; any real deployment must set
+# DJANGO_SECRET_KEY in the environment.
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or \
+    'django-insecure-ts$cb&@9ilx_3g2!we7v8bh7!8my^m*aq12na)aw&1@p-hsr_h'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', True)
+DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '*').split(',') if h.strip()]
+
+# Single sign-on via Authelia: trust the Remote-User header set by the
+# Traefik forwardAuth middleware. Only enable this when the frontend is
+# reachable exclusively through the reverse proxy.
+AUTHELIA_SSO = os.environ.get('AUTHELIA_SSO', 'False').lower() in ('true', '1', 'yes')
+
+# Where the logout view sends users to terminate the Authelia session
+# (e.g. https://auth.example.com/logout). Empty disables the redirect.
+AUTHELIA_LOGOUT_URL = os.environ.get('AUTHELIA_LOGOUT_URL', '')
 
 
 # Application definition
@@ -58,6 +70,24 @@ MIDDLEWARE = [
     'django_plotly_dash.middleware.ExternalRedirectionMiddleware',
     'django_plotly_dash.middleware.BaseMiddleware',
 ]
+
+if AUTHELIA_SSO:
+    MIDDLEWARE.insert(
+        MIDDLEWARE.index('django.contrib.auth.middleware.AuthenticationMiddleware') + 1,
+        'core.middleware.AutheliaRemoteUserMiddleware',
+    )
+    AUTHENTICATION_BACKENDS = [
+        # Creates Django users for authenticated Authelia usernames on first
+        # visit; group membership is still assigned within Django.
+        'django.contrib.auth.backends.RemoteUserBackend',
+        # Keep the model backend so existing local accounts (e.g. the
+        # superuser) can still authenticate via the admin login form.
+        'django.contrib.auth.backends.ModelBackend',
+    ]
+
+# Honour the scheme Traefik forwarded the request with, so request.is_secure()
+# and generated absolute URLs are correct behind the reverse proxy.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
@@ -164,8 +194,9 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Additional CSRF settings
+# Additional CSRF settings (comma-separated, e.g. https://qcrbox.example.com)
 CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()
     ]
 
 # Default superuser credentials
@@ -212,8 +243,10 @@ logging.config.dictConfig(LOGGING)
 # API settings
 API_BASE_URL = os.environ.get('API_BASE_URL', 'http://127.0.0.1:11000')
 
-# Traefik / GUI Routing settings
-TRAEFIK_HTTP_PORT = int(os.environ.get('TRAEFIK_HTTP_PORT', '12345') or 12345)
+# Traefik / GUI Routing settings.
+# Leave TRAEFIK_HTTP_PORT empty when QCrBox serves HTTPS on the default port
+# 443; set it only for setups where the reverse proxy uses a custom port.
+TRAEFIK_HTTP_PORT = os.environ.get('TRAEFIK_HTTP_PORT', '')
 GUI_DOMAIN_PREFIX = os.environ.get('GUI_DOMAIN_PREFIX', '.gui.')
 
 # Static files (CSS, JavaScript, Images)

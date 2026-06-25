@@ -181,7 +181,7 @@
     let port = "{{ traefik_port }}";
     let portSuffix = port ? ":" + port : "";
     
-    let url = `http://${appSlug}${domainPrefix}${hostname}${portSuffix}/`;
+    let url = `${window.location.protocol}//${appSlug}${domainPrefix}${hostname}${portSuffix}/`;
 
     document.getElementById("start-app-button").addEventListener("click", function(){ window.open(url, '_blank'); }); 
   </script>

@@ -2,13 +2,21 @@ services:
     nginx:
         restart: always
         image: nginx:1.23-alpine
-        ports:
-            - 80:80
         volumes:
             - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf
             - static_volume:/app/qcrbox_frontend/staticfiles
         depends_on:
             - server
+        networks:
+            - default
+            - qcrbox-net
+        labels:
+            traefik.enable: true
+            # Served on the root domain, behind Authelia (single sign-on via Remote-User)
+            traefik.http.routers.qcrbox-frontend.rule: Host(`${QCRBOX_DOMAIN:-localhost.local}`)
+            traefik.http.routers.qcrbox-frontend.entrypoints: websecure
+            traefik.http.routers.qcrbox-frontend.middlewares: authelia-auth
+            traefik.http.services.qcrbox-frontend-service.loadbalancer.server.port: 80
 
     # Web server
     server:
@@ -19,13 +27,11 @@ services:
         entrypoint: /app/docker/server-entrypoint.sh
         volumes:
             - static_volume:/app/qcrbox_frontend/staticfiles
-        ports:
-            - 8888:8888
         env_file:
             - ./environment.env
-        extra_hosts:
-            - "host.docker.internal:host-gateway"
-
+        networks:
+            - default
+            - qcrbox-net
 
     db:
         image: postgres:14.0-alpine
@@ -33,13 +39,25 @@ services:
         volumes:
             - postgres_data:/var/lib/postgresql/data/
         environment:
+            # POSTGRES_PASSWORD must match the value in environment.env;
+            # it is substituted from the compose project's .env file or shell.
             POSTGRES_DB: postgres
             POSTGRES_USER: postgres
-            POSTGRES_PASSWORD: postgres
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
         expose:
             - 5432
+        networks:
+            - default
 
 volumes:
     static_volume: {}
     postgres_data: {}
 
+networks:
+    default: {}
+    # The QCrBox docker network: provides the Traefik reverse proxy (which
+    # routes to nginx) and direct access to the registry API for the server.
+    # The QCrBox stack must be running before this compose project is started.
+    qcrbox-net:
+        external: true
+        name: qcrbox_qcrbox-net

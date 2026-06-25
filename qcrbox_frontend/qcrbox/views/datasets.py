@@ -228,12 +228,12 @@ def visualise(request, dataset_id):
     hostname = request.get_host().split(':')[0]
     
     # Construct the visualiser domain URL
-    # Format: http://[app-slug].gui.[hostname]:[traefik-port]/
+    # Format: [scheme]://[app-slug].gui.[hostname]:[traefik-port]/
     visualiser_domain = f'qcrbox-quality{settings.GUI_DOMAIN_PREFIX}{hostname}'
-    
+
     port_suffix = f':{settings.TRAEFIK_HTTP_PORT}' if settings.TRAEFIK_HTTP_PORT else ''
-    
-    v_url = f'http://{visualiser_domain}{port_suffix}/retrieve/{visualise_file_meta.backend_uuid}'
+
+    v_url = f'{request.scheme}://{visualiser_domain}{port_suffix}/retrieve/{visualise_file_meta.backend_uuid}'
     LOGGER.info(
         'Opening Visualiser at "%s"',
         v_url,
