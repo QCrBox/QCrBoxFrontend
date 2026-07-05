@@ -85,6 +85,19 @@ if AUTHELIA_SSO:
         'django.contrib.auth.backends.ModelBackend',
     ]
 
+# Record the acting user's username in a request-scoped contextvar so that
+# outgoing QCrBox registry API calls can identify the user (X-QCrBox-User).
+# Inserted after the SSO block so it runs after AutheliaRemoteUserMiddleware
+# (when enabled) and after AuthenticationMiddleware in any case.
+MIDDLEWARE.insert(
+    MIDDLEWARE.index(
+        'core.middleware.AutheliaRemoteUserMiddleware'
+        if AUTHELIA_SSO
+        else 'django.contrib.auth.middleware.AuthenticationMiddleware'
+    ) + 1,
+    'core.middleware.CurrentUserMiddleware',
+)
+
 # Honour the scheme Traefik forwarded the request with, so request.is_secure()
 # and generated absolute URLs are correct behind the reverse proxy.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -242,6 +255,12 @@ logging.config.dictConfig(LOGGING)
 
 # API settings
 API_BASE_URL = os.environ.get('API_BASE_URL', 'http://127.0.0.1:11000')
+
+# Shared secret authorising the frontend to act on behalf of its users when
+# calling the registry API (sent as X-QCrBox-Service-Token alongside
+# X-QCrBox-User). Must match QCRBOX_SERVICE_TOKEN on the QCrBox side; when
+# empty, no identity headers are sent and API calls are anonymous.
+QCRBOX_SERVICE_TOKEN = os.environ.get('QCRBOX_SERVICE_TOKEN', '')
 
 # Traefik / GUI Routing settings.
 # Leave TRAEFIK_HTTP_PORT empty when QCrBox serves HTTPS on the default port

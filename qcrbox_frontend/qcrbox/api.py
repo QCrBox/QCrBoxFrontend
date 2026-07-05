@@ -44,6 +44,7 @@ from qcrboxapiclient.types import File
 
 from django.conf import settings
 from qcrbox import models
+from qcrbox.request_context import get_current_username
 
 LOGGER = logging.getLogger(__name__)
 
@@ -104,9 +105,20 @@ def get_client():
     '''A function to return an API client object pointing to the API base URL
     set in settings.py
 
+    When the acting user is known (recorded per-request by
+    CurrentUserMiddleware) and a service token is configured, identity headers
+    are attached so the registry can attribute actions (e.g. spawned
+    containers) to the user. Otherwise calls are anonymous.
+
     '''
 
-    client = Client(base_url=settings.API_BASE_URL)
+    headers = {}
+    username = get_current_username()
+    if username and settings.QCRBOX_SERVICE_TOKEN:
+        headers['X-QCrBox-User'] = username
+        headers['X-QCrBox-Service-Token'] = settings.QCRBOX_SERVICE_TOKEN
+
+    client = Client(base_url=settings.API_BASE_URL, headers=headers)
     return client
 
 
