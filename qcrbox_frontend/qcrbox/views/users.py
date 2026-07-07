@@ -3,7 +3,9 @@
 Module containing the view methods which generate and serve http responses to
 the browser when their related url is accessed.
 
-Contains views pertaining to User creation / management and Logging In / Out.
+Contains views pertaining to Logging In / Out and a read-only user list.
+Users and groups themselves are managed in lldap (the single source of truth
+for identities; see core.auth_backends), not in the frontend.
 
 '''
 
@@ -13,13 +15,12 @@ from django.conf import settings
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
-from django.contrib.auth.models import User, Permission
+from django.contrib.auth.models import User
 from django.contrib.auth.forms import PasswordChangeForm
-from django.contrib.auth.decorators import permission_required, login_required
+from django.contrib.auth.decorators import login_required
 
 from qcrbox import forms
 from qcrbox.utility import DisplayField, paginate_objects
-from qcrbox.views import generic
 
 LOGGER = logging.getLogger(__name__)
 
@@ -88,70 +89,6 @@ def logout_view(request):
 
     return redirect('login')
 
-@permission_required('qcrbox.edit_users', raise_exception=True)
-def create_user(request):
-    '''A view to handle rendering the 'create new user' page and handle the
-    creation of a new user on the submittal of the embedded form.
-
-    Parameters:
-    - request(WSGIRequest): the request from a user which triggers a url
-            associated to this view.
-
-    Returns:
-    - response(HttpResponse): the http response served to the user on
-            accessing this view's associated url.
-
-    '''
-
-    if request.method == 'POST':
-
-        form = forms.RegisterUserForm(request.POST, user=request.user)
-        if form.is_valid():
-            form.save()
-            username = form.cleaned_data['username']
-
-            # Collect pk of desired user type from form checkboxes
-            user_groups = form.cleaned_data['user_groups']
-
-            # Fetch the user we just created
-            new_user = User.objects.get(username=username)
-
-            # Populate the user info
-            new_user.first_name = form.cleaned_data['first_name']
-            new_user.last_name = form.cleaned_data['last_name']
-            new_user.email = form.cleaned_data['email']
-            new_user.save()
-
-            # Add user to the selected user group
-            for user_group in user_groups.all():
-
-                user_group.user_set.add(new_user)
-
-            # Add non-group related permissions
-            if form.cleaned_data['group_manager']:
-                new_user.user_permissions.add(Permission.objects.get(codename='edit_users'))
-
-            if form.cleaned_data['data_manager']:
-                new_user.user_permissions.add(Permission.objects.get(codename='edit_data'))
-
-            if form.cleaned_data['global_access']:
-                new_user.user_permissions.add(Permission.objects.get(codename='global_access'))
-
-            LOGGER.info(
-                'User %s created new user "%s"',
-                request.user.username,
-                new_user.username,
-            )
-            messages.success(request, 'Registration Successful!')
-            form = forms.RegisterUserForm(user=request.user)
-    else:
-        form = forms.RegisterUserForm(user=request.user)
-
-    return render(request, 'create_generic.html', {
-        'form':form,
-        'instance_name':'User',
-    })
-
 @login_required(login_url='login')
 def view_users(request):
     '''A view to handle generating and rendering the 'view user list' page.
@@ -192,46 +129,7 @@ def view_users(request):
         'objects': objects,
         'type':'User',
         'fields':fields,
-        'edit_perms':request.user.has_perm('qcrbox.edit_users'),
-        'edit_link':'edit_user',
-        'delete_link':'delete_user',
-        'create_link':'create_user',
     })
-
-@permission_required('qcrbox.edit_users', raise_exception=True)
-def update_user(request, user_id):
-    '''A view to handle rendering the admin-level 'edit user' page and
-    handle the updating of a user on the submittal of the embedded form.
-    Based on generic.update().
-
-    Parameters:
-    - request(WSGIRequest): the request from a user which triggers a url
-            associated to this view.
-    - user_id(int): the Frontend db primary key of the user being
-            edited.
-
-    Returns:
-    - response(HttpResponse): the http response served to the user on
-            accessing this view's associated url.
-
-    '''
-
-    edit_user_groups = User.objects.get(pk=user_id).groups.all()
-    current_user_groups = request.user.groups.all()
-
-    shared_groups = edit_user_groups & current_user_groups
-
-    return generic.update(
-        request=request,
-        model=User,
-        obj_id=user_id,
-        meta={
-            'obj_type':'User',
-            'model_form':forms.UpdateUserForm,
-            'link_suffix':'users',
-        },
-        user_is_affiliated=shared_groups.exists(),
-    )
 
 @login_required(login_url='login')
 def edit_user(request):
@@ -247,6 +145,12 @@ def edit_user(request):
             accessing this view's associated url.
 
     '''
+
+    # With SSO, account details (name, email, password) live in lldap and are
+    # managed via the Authelia/lldap UIs, not in the frontend mirror.
+    if settings.AUTHELIA_SSO:
+        messages.info(request, 'Account details are managed by the QCrBox user directory.')
+        return redirect('landing')
 
     form = forms.EditUserForm(request.POST or None, instance=request.user)
 
@@ -284,6 +188,11 @@ def update_password(request):
 
     '''
 
+    # With SSO, passwords are managed by Authelia/lldap, not the frontend.
+    if settings.AUTHELIA_SSO:
+        messages.info(request, 'Passwords are managed by the QCrBox user directory.')
+        return redirect('landing')
+
     if request.method == 'POST':
         form = PasswordChangeForm(user=request.user, data=request.POST)
         if form.is_valid():
@@ -306,40 +215,3 @@ def update_password(request):
         'form':form,
         'view_link':'landing',
     })
-
-@permission_required('qcrbox.edit_users', raise_exception=True)
-def delete_user(request, user_id):
-    '''A view to handle the deletion of users.  Based on generic.delete().
-
-    Parameters:
-    - request(WSGIRequest): the request from a user which triggers a url
-            associated to this view.
-    - user_id(int): the Frontend db primary key of the user being
-            deleted.
-
-    Returns:
-    - response(HttpResponse): the http response served to the user on
-            accessing this view's associated url.
-
-    '''
-
-    # Stop an admin accidentally deleting themself
-    if int(request.user.pk) == int(user_id):
-        messages.warning(request, 'Cannot delete current account from this view.')
-        return redirect('view_users')
-
-    deletion_user_groups = User.objects.get(pk=user_id).groups.all()
-    current_user_groups = request.user.groups.all()
-
-    shared_groups = deletion_user_groups & current_user_groups
-
-    return generic.delete(
-        request=request,
-        model=User,
-        obj_id=user_id,
-        meta={
-            'obj_type':'User',
-            'link_suffix':'users',
-        },
-        user_is_affiliated=shared_groups.exists(),
-    )

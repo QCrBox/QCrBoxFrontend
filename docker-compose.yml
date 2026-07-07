@@ -12,6 +12,10 @@ services:
             - qcrbox-net
         labels:
             traefik.enable: true
+            # nginx is on two networks (default + qcrbox-net); pin the one
+            # Traefik can reach, or it load-balances across both IPs and
+            # half the requests time out.
+            traefik.docker.network: qcrbox_qcrbox-net
             # Served on the root domain, behind Authelia (single sign-on via Remote-User)
             traefik.http.routers.qcrbox-frontend.rule: Host(`${QCRBOX_DOMAIN:-localhost.local}`)
             traefik.http.routers.qcrbox-frontend.entrypoints: websecure

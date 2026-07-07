@@ -27,6 +27,11 @@
           <li class="nav-item">
             <a class="nav-link" href="{% url 'view_users' %}" id="users-link">Users</a>
           </li>
+          {% if authelia_sso and lldap_admin_url %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ lldap_admin_url }}" target="_blank" id="manage-users-link">Manage Users <i class="fas fa-external-link-alt fa-xs"></i></a>
+            </li>
+          {% endif %}
         {% endif %}
       {% endif %}
     </ul>
@@ -46,8 +51,10 @@
               <i class="fas fa-user"></i> Logged in as <span class="username">{{ user.username }}</span>
             </div>
             <div class="dropdown-divider"></div>
-            <a class="dropdown-item" href="{% url 'edit_account' %}" id="edit-account-link"><i class="fas fa-cog"></i> Edit Account<span class="sr-only">(current)</span></a>
-            <a class="dropdown-item" href="{% url 'edit_password' %}" id="edit-password-link"><i class="fas fa-key"></i> Change Password<span class="sr-only">(current)</span></a>
+            {% if not authelia_sso %}
+              <a class="dropdown-item" href="{% url 'edit_account' %}" id="edit-account-link"><i class="fas fa-cog"></i> Edit Account<span class="sr-only">(current)</span></a>
+              <a class="dropdown-item" href="{% url 'edit_password' %}" id="edit-password-link"><i class="fas fa-key"></i> Change Password<span class="sr-only">(current)</span></a>
+            {% endif %}
             <a class="dropdown-item" href="{% url 'logout' %}" id="logout-link"><i class="fas fa-sign-out-alt"></i> Logout<span class="sr-only">(current)</span></a>
           </div>
         {% else %}

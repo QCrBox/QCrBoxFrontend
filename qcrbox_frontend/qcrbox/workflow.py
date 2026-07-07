@@ -161,6 +161,50 @@ def clear_session_references(request, session_id):
     session.delete()
 
 
+def get_session_gui_url(request, max_attempts=3, retry_delay=1.0):
+    '''Fetch the per-instance GUI URL of the user's open interactive session.
+
+    The registry attaches `gui_url` to interactive session info when the
+    session runs on an orchestrator-spawned container with its own route;
+    it is None for static/pool containers (whose GUI is reachable via the
+    per-application route instead). The session record is written by the
+    application container shortly after the session starts, so this retries
+    briefly if it is not available yet.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to the view containing this workflow.
+    - max_attempts(int): how often to poll for the session record.
+    - retry_delay(float): seconds to wait between attempts.
+
+    Returns:
+    - gui_url(str or None): the session-specific GUI URL, if any.
+
+    '''
+
+    session_id = request.session.get('session_id')
+    if not session_id:
+        return None
+
+    for attempt in range(max_attempts):
+        if attempt:
+            time.sleep(retry_delay)
+        api_response = api.get_session(session_id)
+        if not api_response.is_valid:
+            continue
+        sessions = api_response.body.payload.interactive_sessions
+        if not sessions:
+            continue
+        session_info = sessions[0]
+        # `gui_url` is newer than the pinned API client, so it surfaces via the
+        # generated model's additional_properties rather than a typed attribute.
+        gui_url = session_info.additional_properties.get('gui_url')
+        if gui_url:
+            return gui_url
+
+    return None
+
+
 def start_session(request, command, arguments):
     '''Given a command and an input FileMetaData object, attempt to start
     a new Interactive Session, handling errors, messaging and logging as
@@ -192,55 +236,16 @@ def start_session(request, command, arguments):
     if api_response.is_valid:
         create_session_references(request, api_response, command)
         return True
+
+    # Since the registry binds each user's sessions to their own container
+    # (spawning one on demand if needed), contention with other users no
+    # longer occurs; any failure here is a genuine error.
     startup_error = api_response.body.error.message
-
-    # else, if the client is busy and there's a session cookie, try to close it
-    LOGGER.warning('Client is busy; attempting to close previous session')
-
-    current_sessions = models.SessionReference.objects                  # pylint: disable=no-member
-    relevant_sessions = current_sessions.filter(command__app=command.app)
-
-    if relevant_sessions.exists():
-        if relevant_sessions.exclude(user=request.user).exists():
-            messages.warning(
-                request,
-                f'Could not start session of {application.name}: currently in use by another user!',
-            )
-            return False
-        killed_a_session = kill_sessions(request, sessions=relevant_sessions)
-
-    else:
-        LOGGER.error('Could not find reference to blocking session!')
-        messages.warning(
-            request,
-            f'Could not start session of {application.name}! {startup_error}.'
-        )
-        return False
-
-    if not killed_a_session:
-        LOGGER.error('Could not close blocking session!')
-        messages.warning(
-            request,
-            f'Could not start session of {application.name}! Could not close blocking session.'
-        )
-
-    # Try again to open the session
-    else:
-        api_response = api.send_command(command.pk, arguments)
-
-        if api_response.is_valid:
-            create_session_references(request, api_response, command)
-            return True
-
-        # If response wasnt valid, let the user know why
-        messages.warning(
-            request,
-            f'Could not start session!  Returned error: '
-            f'{application.name}'
-        )
-
-    # If no session was opened even after all that, handle the error
-    LOGGER.error('Session failed to start!')
+    LOGGER.error('Session failed to start: %s', startup_error)
+    messages.warning(
+        request,
+        f'Could not start session of {application.name}! {startup_error}.'
+    )
     return False
 
 
@@ -331,42 +336,6 @@ def close_session(request, infile, command):
     return 'NO_OUTPUT'
 
 
-def kill_sessions(request, sessions):
-    '''Given a queryset of SessionReference objects, attempt to close each
-    session its session_id, purging the corresponding SessionReference for
-    each succesful closure.
-
-    Parameters:
-    - request(WSGIRequest): the request from a user which triggers a url
-            associated to the view containing this workflow.
-    - sessions(QuerySet): a queryset of SessionReference objects which
-            are to be force-closed.
-
-    Returns:
-    - at_least_one_closed(bool): a Boolean which states whether the kill
-            command resulted in any change to the db/filestore (i.e.
-            whether at least one closure was succesfully performed)
-
-    '''
-
-    at_least_one_closed = False
-
-    for session in sessions:
-
-        closure_api_response = api.close_session(session.session_id)
-
-        if closure_api_response.is_valid:
-            at_least_one_closed = True
-            clear_session_references(request, session.session_id)
-        else:
-            LOGGER.error(
-                'Could not close blocking session [%s]!',
-                session.session_id
-            )
-
-    return at_least_one_closed
-
-
 def invoke_command(request, command, arguments):
     '''Given an command and a dict of command arguments, instruct
     the API to invoke the command to start a calculation in the backend, 
@@ -397,47 +366,12 @@ def invoke_command(request, command, arguments):
     if api_response.is_valid:
         create_session_references(request, api_response, command)
         return api_response.body.payload.calculation_id
+
+    # Since the registry binds each user's calculations to their own container
+    # (spawning one on demand if needed), contention with other users no
+    # longer occurs; any failure here is a genuine error.
     startup_error = api_response.body.error.message
-
-    # else, if the client is busy and there's an open session of the same app, try to close it
-    LOGGER.warning('Client is busy; attempting to kill blocking calculation session')
-    current_sessions = models.SessionReference.objects                  # pylint: disable=no-member
-    relevant_sessions = current_sessions.filter(command__app=command.app)
-
-    if relevant_sessions.exists():
-        if relevant_sessions.exclude(user=request.user).exists():
-            messages.warning(
-                request,
-                f'Could not start session of {command.app.name}: currently in use by another user!',
-            )
-            return False
-        killed_a_session = kill_sessions(request, sessions=relevant_sessions)
-
-    else:
-        LOGGER.error('Could not find reference to blocking session!')
-        messages.warning(
-            request,
-            f'Could not invoke command of {command.name}! {startup_error}.'
-        )
-        return False
-
-    if not killed_a_session:
-        LOGGER.error('Could not cancel blocking calculation!')
-        messages.warning(
-            request,
-            f'Could not start session of {command.app.name}! Could not close blocking session.'
-        )
-
-    # Try again to open the session
-    else:
-        api_response = api.send_command(command.pk, arguments)
-
-        if api_response.is_valid:
-            create_session_references(request, api_response, command)
-            return api_response.body.payload.calculation_id
-
-    # If no session was opened even after all that, handle the error
-    LOGGER.error('Calculation failed to start!')
+    LOGGER.error('Calculation failed to start: %s', startup_error)
     messages.warning(
         request,
         f'Could not invoke command! {startup_error}.'

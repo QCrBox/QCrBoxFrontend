@@ -36,17 +36,13 @@ urlpatterns = [
     path('login', users.login_view, name='login'),
     path('logout', users.logout_view, name='logout'),
 
+    # Users and groups are managed in lldap; the frontend only mirrors them
+    # (read-only lists below; account/password views redirect under SSO).
     path('view_users', users.view_users, name='view_users'),
-    path('create_user', users.create_user, name='create_user'),
-    path('edit_user/<user_id>', users.update_user, name='edit_user'),
     path('edit_account/', users.edit_user, name='edit_account'),
     path('edit_password/', users.update_password, name='edit_password'),
-    path('delete_user/<user_id>', users.delete_user, name='delete_user'),
 
-    path('create_group', groups.create_group, name='create_group'),
     path('view_groups', groups.view_groups, name='view_groups'),
-    path('edit_group/<group_id>', groups.update_group, name='edit_group'),
-    path('delete_group/<group_id>', groups.delete_group, name='delete_group'),
 
     path('data_history/<dataset_id>', datasets.history_dashboard, name='dataset_history'),
     path('view_datasets', datasets.view_datasets, name='view_datasets'),

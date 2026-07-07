@@ -25,7 +25,6 @@
 
 <div class="container-fluid">
   <div class="row">
-    <div id="cached-interactive-session-id" title={{app_session_id}}></div>
     <table width=100%>
       <tr>
         <th width=40%><h3>Workflow</h3></th>
@@ -175,15 +174,22 @@
 
 {% if current_command.interactive %}
   <script>
-    let hostname = window.location.hostname;
-    let appSlug = "{{ current_command.app.slug }}".replace(/_/g, "-");
-    let domainPrefix = "{{ gui_domain_prefix }}";
-    let port = "{{ traefik_port }}";
-    let portSuffix = port ? ":" + port : "";
-    
-    let url = `${window.location.protocol}//${appSlug}${domainPrefix}${hostname}${portSuffix}/`;
+    // The session-specific GUI URL of the user's own container (set when the
+    // session runs on an on-demand spawned container with its own route).
+    let url = "{{ gui_url|default_if_none:'' }}";
 
-    document.getElementById("start-app-button").addEventListener("click", function(){ window.open(url, '_blank'); }); 
+    if (!url) {
+      // Static/pool containers are reachable via the per-application route.
+      let hostname = window.location.hostname;
+      let appSlug = "{{ current_command.app.slug }}".replace(/_/g, "-");
+      let domainPrefix = "{{ gui_domain_prefix }}";
+      let port = "{{ traefik_port }}";
+      let portSuffix = port ? ":" + port : "";
+
+      url = `${window.location.protocol}//${appSlug}${domainPrefix}${hostname}${portSuffix}/`;
+    }
+
+    document.getElementById("start-app-button").addEventListener("click", function(){ window.open(url, '_blank'); });
   </script>
 {% elif calculation_in_progress %}
   <script>

@@ -8,7 +8,6 @@ context arguments to generate interactive HTML forms.
 import json
 
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User, Group
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 
@@ -137,89 +136,10 @@ class SelectCommandForm(forms.Form):
 
 
 # User management forms
-
-class RegisterUserForm(UserCreationForm):
-    '''A Django form to facilitate registering a new user.  Based on the
-    inbuilt django UserCreationForm.
-
-    Has the following additional fields:
-        - email(EmailField): the email address for the new user
-        - first_name(CharField): the new user's first name
-        - last_name(CharField): the new user's last name
-        - user_groups(ModelMultipleChoiceField): allows the selection of one
-                or more groups to add the new user to upon creation.
-        - group_manager(BooleanField): whether the new user will be given the
-                'qcrbox.edit_users' permission.
-        - data_manager(BooleanField): whether the new user will be given the
-                'qcrbox.edit_data' permission.
-        - global_access(BooleanField): whether the new user will be given the
-                'qcrbox.global_access' permission.
-
-    '''
-
-    email = forms.EmailField(widget=forms.EmailInput(attrs={'class':'form-control'}))
-    first_name = forms.CharField(
-        max_length=30,
-        widget=forms.TextInput(attrs={'class':'form-control'}),
-    )
-    last_name = forms.CharField(
-        max_length=30,
-        widget=forms.TextInput(attrs={'class':'form-control'}),
-    )
-    user_groups = forms.ModelMultipleChoiceField(
-        queryset=Group.objects.none(),
-        widget=forms.SelectMultiple(attrs={'class': 'form-control'}),
-    )
-
-    # Add option to give new users the 'edit users' (group manager) and 'global access' permissions
-    group_manager = forms.BooleanField(required=False)
-    data_manager = forms.BooleanField(required=False)
-
-    # Disable the global_access checkbox by default
-    global_access = forms.BooleanField(required=False, disabled=True, widget=forms.HiddenInput())
-
-    def __init__(self, *args, user, **kwargs):
-
-        '''An additional form initialisation step.  Modifies which fields are
-        editable based on the permissions of the creating user, and populates
-        the user_groups field's choices with groups to which the creating user
-        has access.
-
-        Additional Parameters:
-        - user(User): a django.contrib.auth.models User instance, corresponding
-                to the currently logged in user, to determine which groups
-                should be given as selection options and which form fields if
-                any should be disabled.
-
-        '''
-
-        super().__init__(*args, **kwargs)
-
-        self.fields['username'].widget.attrs['class'] = 'form-control'
-        self.fields['password1'].widget.attrs['class'] = 'form-control'
-        self.fields['password2'].widget.attrs['class'] = 'form-control'
-
-        # Modify form based on whether creating user has global access
-        if user.has_perm('qcrbox.global_access'):
-            # Let user pick any group(s) for new user
-            self.fields['user_groups'].queryset = Group.objects.all()
-
-            # Unhide and enable the global_access field
-            self.fields['global_access'].disabled = False
-            self.fields['global_access'].widget = forms.CheckboxInput()
-
-        else:
-            # Let user pick groups for new user based on membership of creating user
-            self.fields['user_groups'].queryset = user.groups.all()
-
-class UpdateUserForm(forms.ModelForm):
-    '''A Django ModelForm for admin-level editing of User instances.'''
-
-    class Meta:                                            # pylint: disable=too-few-public-methods
-        '''Additional ModelForm config'''
-
-        model = User
-        fields = ['first_name', 'last_name', 'email', 'groups']
+#
+# Users and groups are managed in lldap (mirrored into Django on login by
+# core.auth_backends); only the self-service account form for the non-SSO
+# development fallback remains.
 
 class EditUserForm(forms.ModelForm):
     '''A Django ModelForm for user-level editing User instances.'''
@@ -229,18 +149,6 @@ class EditUserForm(forms.ModelForm):
 
         model = User
         fields = ['first_name', 'last_name', 'email']
-
-
-# Group management forms
-
-class GroupForm(forms.ModelForm):
-    '''A Django ModelForm for creating or editing Group instances.'''
-
-    class Meta:                                            # pylint: disable=too-few-public-methods
-        '''Additional ModelForm config'''
-
-        model = Group
-        fields = ['name']
 
 
 # Automatic form generation to get command parameters from user

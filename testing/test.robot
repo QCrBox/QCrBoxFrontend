@@ -51,50 +51,21 @@ Stop Django
   
 Create Initial Data
   Create Test Users
+  Create Test Groups
 
 Create Test Users
-  Start process  python  ${MANAGE}  create_robot_user  ${USERNAME}1  dummy@email.com  ${PASSWORD}  global manager
-  Start process  python  ${MANAGE}  create_robot_user  ${USERNAME}2  dummy@email.com  ${PASSWORD}  group manager
-  Start process  python  ${MANAGE}  create_robot_user  ${USERNAME}3  dummy@email.com  ${PASSWORD}  user
+  Run process  python  ${MANAGE}  create_robot_user  ${USERNAME}1  dummy@email.com  ${PASSWORD}  global manager
+  Run process  python  ${MANAGE}  create_robot_user  ${USERNAME}2  dummy@email.com  ${PASSWORD}  group manager
+  Run process  python  ${MANAGE}  create_robot_user  ${USERNAME}3  dummy@email.com  ${PASSWORD}  user
+
+Create Test Groups
+  # Group membership is managed in lldap in production (mirrored into Django
+  # on login); tests seed it via a management command instead of the UI.
+  Run process  python  ${MANAGE}  create_robot_group  ${GROUP}1  ${USERNAME}1  ${USERNAME}3
+  Run process  python  ${MANAGE}  create_robot_group  ${GROUP}2  ${USERNAME}2
 
 Cleanup Test Data
   Start process  python  ${MANAGE}  cleanup_robot_data
-
-Add Group
-  [Arguments]  ${group_name}
-  Go To  ${SERVER}/view_groups
-  Wait Until Page Contains Element  display-table
-  Click Button  create-new-button
-  Wait Until Page Contains Element  create-form
-  Input Text  name  ${group_name}
-  Click Button  submit-button
-  Wait Until Page Contains Element  message
-  
-Add User
-  [Arguments]  ${username}  ${group_name}
-  Go To  ${SERVER}/view_users
-  Wait Until Page Contains Element  display-table
-  Click Button  create-new-button
-  Wait Until Page Contains Element  create-form
-  Input Text  username  ${username}
-  Input Text  password1  ${PASSWORD}
-  Input Text  password2  ${PASSWORD}
-  Input Text  email  dummy@email.com
-  Input Text  first_name  first_name
-  Input Text  last_name  last_name
-  Select From List By Label  user_groups  ${group_name}
-  Click Button  submit-button
-  Wait Until Page Contains Element  message
-  
-Add Group to User
-  [Arguments]  ${username}  ${group_name}
-  Go To  ${SERVER}/view_users
-  Wait Until Page Contains Element  display-table
-  Click Link  edit-link-${username}
-  Wait Until Page Contains Element  edit-form
-  Select From List By Label  groups  ${group_name}
-  Click Button  submit-button
-  Wait Until Page Contains Element  message
 
 Log In As
   [Arguments]  ${username}  ${password}
@@ -193,99 +164,33 @@ As Any User: I should be able to change my password
   Click Button  submit-button
   Wait Until Page Contains Element  message
   
-As a Global Manager: I should be able to create new groups
-  Log Out
-  Log In As User  1
-  Go To  ${SERVER}/view_groups
-  Wait Until Page Contains Element  display-table
-  Element Should Not Contain  display-table  ${GROUP}test  
-  Add Group  ${GROUP}test
-  Page Should Contain  New Group "${GROUP}test" added
-  Go To  ${SERVER}/view_groups
-  Wait Until Page Contains Element  display-table
-  Element Should Contain  display-table  ${GROUP}test
-  
-As a Global Manager: I should be able to edit groups
-  Go To  ${SERVER}/view_groups
-  Wait Until Page Contains Element  display-table
-  Click Link  edit-link-${GROUP}test
-  Wait Until Page Contains Element  edit-form
-  Input Text  name  ${GROUP}edited
-  Click Button  submit-button
-  Wait Until Page Contains Element  message
-  Page Should Contain  Changes to "${GROUP}edited" saved!
-  Go To  ${SERVER}/view_groups
-  Wait Until Page Contains Element  display-table
-  Element Should Contain  display-table  ${GROUP}edited
-  Element Should Not Contain  display-table  ${GROUP}test
-  
-As a Global Manager: I should be able to delete groups
-  Go To  ${SERVER}/view_groups
-  Wait Until Page Contains Element  display-table
-  Click Link  delete-link-${GROUP}edited
-  Handle Alert  ACCEPT
-  Wait Until Page Contains Element  display-table
-  Element Should Not Contain  display-table  ${GROUP}edited
-
-As a Global Manager: I should be able to create a new user
-  Add Group  ${GROUP}1
-  Add Group  ${GROUP}2
-  Go To  ${SERVER}/view_users
-  Wait Until Page Contains Element  display-table
-  Element Should Not Contain  display-table  ${USERNAME}test  
-  Add User  ${USERNAME}test  ${GROUP}1
-  Page Should Contain  Registration Successful
-  Go To  ${SERVER}/view_users
-  Wait Until Page Contains Element  display-table
-  Element Should Contain  display-table  ${USERNAME}test
-  Element Should Contain  cell-Group(s)-${USERNAME}test  ${GROUP}1
-  Element Should Not Contain  cell-Group(s)-${USERNAME}test  ${GROUP}2
-  Log Out
-  Log In As  ${USERNAME}test  ${PASSWORD}
-  Page Should Not Contain  Login Failed
-  Page Should Contain  Login Successful
-  Log In As User  1
-
-As a Global Manager: I should be able to edit a user
-  Go To  ${SERVER}/view_users
-  Wait Until Page Contains Element  display-table
-  Click Link  edit-link-${USERNAME}test
-  Wait Until Page Contains Element  edit-form
-  Input Text  first_name  edited first name
-  Click Button  submit-button
-  Wait Until Page Contains Element  message
-  Page Should Contain  Changes to "${USERNAME}test" saved!
-  Go To  ${SERVER}/view_users
-  Wait Until Page Contains Element  display-table
-  Element Should Contain  display-table  edited first name
-
-As a Global Manager: I should be able to assign groups to an existing user
-  Add Group to User  ${USERNAME}1  ${GROUP}1
-  Page Should Contain  Changes to "${USERNAME}1" saved!
-  Add Group to User  ${USERNAME}2  ${GROUP}2
-  Add Group to User  ${USERNAME}3  ${GROUP}1
-  Go To  ${SERVER}/view_users
-  Wait Until Page Contains Element  display-table
-  Element Should Contain  cell-Group(s)-${USERNAME}1  ${GROUP}1
-  Element Should Contain  cell-Group(s)-${USERNAME}2  ${GROUP}2
-  Element Should Contain  cell-Group(s)-${USERNAME}3  ${GROUP}1
-  Element Should Not Contain  cell-Group(s)-${USERNAME}1  ${GROUP}2
-  Element Should Not Contain  cell-Group(s)-${USERNAME}2  ${GROUP}1
-  Element Should Not Contain  cell-Group(s)-${USERNAME}3  ${GROUP}2
-
-As a Global Manager: I should be able to delete a user
-  Go To  ${SERVER}/view_users
-  Wait Until Page Contains Element  display-table
-  Click Link  delete-link-${USERNAME}test
-  Handle Alert  ACCEPT
-  Wait Until Page Contains Element  display-table
-  Element Should Not Contain  display-table  ${USERNAME}test
-  
 As a Global Manager: I should be able to select any group when uploading data
+  Log Out
+  Log In As User  1
   Go to  ${SERVER}/workflow
   Element Should Contain  group  ${GROUP}1
   Element Should Contain  group  ${GROUP}2
-  
+
+As a Global Manager: I should see all users and groups in the read-only lists
+  Go To  ${SERVER}/view_users
+  Wait Until Page Contains Element  display-table
+  Element Should Contain  display-table  ${USERNAME}1
+  Element Should Contain  display-table  ${USERNAME}2
+  Element Should Contain  display-table  ${USERNAME}3
+  Element Should Contain  cell-Group(s)-${USERNAME}1  ${GROUP}1
+  Element Should Contain  cell-Group(s)-${USERNAME}2  ${GROUP}2
+  Element Should Contain  cell-Group(s)-${USERNAME}3  ${GROUP}1
+  Page Should Not Contain Element  create-new-button
+  Page Should Not Contain Element  edit-link-${USERNAME}2
+  Page Should Not Contain Element  delete-link-${USERNAME}2
+  Go To  ${SERVER}/view_groups
+  Wait Until Page Contains Element  display-table
+  Element Should Contain  display-table  ${GROUP}1
+  Element Should Contain  display-table  ${GROUP}2
+  Page Should Not Contain Element  create-new-button
+  Page Should Not Contain Element  edit-link-${GROUP}1
+  Page Should Not Contain Element  delete-link-${GROUP}1
+
 As a Group Manager: I should be able to view other users only in my group(s)
   Log Out
   Log In As User  2
@@ -294,50 +199,6 @@ As a Group Manager: I should be able to view other users only in my group(s)
   Element Should Not Contain  display-table  ${USERNAME}1
   Element Should Contain  display-table  ${USERNAME}2
   Element Should Not Contain  display-table  ${USERNAME}3
-  
-As a Group Manager: I should be able to add users to my group(s)
-  Go To  ${SERVER}/view_users
-  Wait Until Page Contains Element  display-table
-  Page Should Contain Element  create-new-button
-  Element Should Not Contain  display-table  ${USERNAME}manager_test
-  Click Button  create-new-button
-  Wait Until Page Contains Element  create-form
-  Input Text  username  ${USERNAME}manager_test
-  Input Text  password1  ${PASSWORD}
-  Input Text  password2  ${PASSWORD}
-  Input Text  email  dummy@email.com
-  Input Text  first_name  first_name
-  Input Text  last_name  last_name
-  Element Should Contain  user_groups  ${GROUP}2
-  Element Should Not Contain  user_groups  ${GROUP}1
-  Select From List By Label  user_groups  ${GROUP}2
-  Click Button  submit-button
-  Wait Until Page Contains Element  message
-  Page Should Contain  Registration Successful
-  Go To  ${SERVER}/view_users
-  Wait Until Page Contains Element  display-table
-  Element Should Contain  display-table  ${USERNAME}manager_test
-  
-As a Group Manager: I should be able to edit users in my group(s)
-  Go To  ${SERVER}/view_users
-  Wait Until Page Contains Element  display-table
-  Click Link  edit-link-${USERNAME}manager_test
-  Wait Until Page Contains Element  edit-form
-  Input Text  first_name  edited first name
-  Click Button  submit-button
-  Wait Until Page Contains Element  message
-  Page Should Contain  Changes to "${USERNAME}manager_test" saved!
-  Go To  ${SERVER}/view_users
-  Wait Until Page Contains Element  display-table
-  Element Should Contain  display-table  edited first name
-
-As a Group Manager: I should be able to delete a user in my group(s)
-  Go To  ${SERVER}/view_users
-  Wait Until Page Contains Element  display-table
-  Click Link  delete-link-${USERNAME}manager_test
-  Handle Alert  ACCEPT
-  Wait Until Page Contains Element  display-table
-  Element Should Not Contain  display-table  ${USERNAME}manager_test
 
 As a Group Manager: I should be able to view (but not edit) info on my own group(s) only
   Go To  ${SERVER}/view_groups

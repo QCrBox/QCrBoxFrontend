@@ -222,13 +222,15 @@ def workflow(request, file_id):
     # Populate the workflow diagram with all steps leading up to the current file
     context['prior_steps'] = wf.get_file_history(load_file)
 
-    # Fetch the interactive session ID to allow it to be shown on page
-    if 'app_session_id' in request.session:
-        context['app_session_id'] = request.session['app_session_id']
+    # For an open interactive session, fetch the per-instance GUI URL of the
+    # container the session runs on (None for static/pool containers, in which
+    # case the template falls back to the static per-application URL).
+    if context.get('session_in_progress'):
+        context['gui_url'] = wf.get_session_gui_url(request)
     else:
-        context['app_session_id'] = None
+        context['gui_url'] = None
 
-    # Pass Traefik config to template
+    # Pass Traefik config to template (used for the static-URL fallback)
     context['traefik_port'] = settings.TRAEFIK_HTTP_PORT
     context['gui_domain_prefix'] = settings.GUI_DOMAIN_PREFIX
 

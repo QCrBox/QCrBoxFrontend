@@ -8,39 +8,39 @@
 
 # Group and User Management
 
+Users and groups are managed in lldap (the QCrBox user directory); the
+frontend mirrors membership on login and only shows read-only lists. For a
+standalone frontend test (no SSO), seed the same setup with management
+commands:
+
+```sh
+python manage.py create_robot_user user1 u1@example.com <password> "global manager"
+python manage.py create_robot_user user2 u2@example.com <password> "group manager"
+python manage.py create_robot_user user3 u3@example.com <password> user
+python manage.py create_robot_group group1 user1 user3
+python manage.py create_robot_group group2 user2
+```
+
+(With SSO, instead create the users in the lldap UI, add them to `group1`/
+`group2` and to the role groups `qcrbox_global_managers` /
+`qcrbox_group_managers`, and log in via Authelia.)
+
 - Log in as the automatically created admin user (hereafter referred to as `admin`) by filling out the form on the login page with the username and password you set as environment variables.
-- Navigate to `Account > Edit Account`.  Edit one or more user details and click save.  Return to `Account > Edit Account` and verify that the relevant detail has been changed.
-- Edit one or more user details and click cancel.  Return to `Account > Edit Account` and verify that the change was not saved.
-- Navigate to `Account > Change Password`, fill out matching valid passwords using the form and save.
+- Navigate to `Account > Edit Account`.  Edit one or more user details and click save.  Return to `Account > Edit Account` and verify that the relevant detail has been changed.  (Non-SSO mode only; with SSO these pages redirect to the home page.)
+- Navigate to `Account > Change Password`, fill out matching valid passwords using the form and save.  (Non-SSO mode only.)
 - Navigate to `Account > Log out`.  Verify that you are returned to the login screen and no options are available on the navbar.
-- Log in as `admin` user using the username set as an environment variable and the password entered two steps ago.
-- Navigate to `Groups`
-- Click `Create New Group`, fill out the form and save the new group as `group1`.
-- Repeat this process two more times to create groups `group2` and `group3`.
-- Click the `Edit` button in the row for group `group3`.
-- Edit one or more details for the group `group3`, save, and verify the changes have been saved.
-- Click the `Delete` button in the row for group `group3`, click `ok` on the pop-up dialogue box, and verify that `group3` has been deleted.
-- Navigate to `Users`.  Check that there is a single entry in the user list corresponding to `admin`.  The `Group(s)` field should be blank, the `Role` field should list `Admin, Data Manager, Group Manager`.
-- Click `Create New User`.  Enter username as `user1`, Select the group `group1` from the groups list.  Click the checkboxes next to `Group Manager`, `Data Manager` and `Global Access`.  Enter valid values for all other fields, making sure you keep a note of the password used.  Save `user1`.
-- Click `Create New User`.  Enter username as `user2`, Select the group `group2` from the groups list.  Click the checkboxes next to `Group Manager` and `Data Manager`.  Enter valid values for all other fields, making sure you keep a note of the password used.  Save `user2`.
-- Click `Create New User`.  Enter username as `user3`, Select the group `group1` from the groups list.  Enter valid values for all other fields, making sure you keep a note of the password used.  Save `user3`.
-- Navigate back to `Users`.  Verify the new users are all present, and all have the correct groups and roles shown:
-   - `user1` should have `group1` in the `Group(s)` column and `Admin, Data Manager, Group Manager` in the `Role` column.
+- Log in using the details for `user1`.
+- Navigate to `Users`.  Verify all three users are listed with the correct groups and roles, and that no `Create New`, `Edit` or `Delete` controls are shown.
+   - `user1` should have `group1` in the `Group(s)` column and `Data Manager, Group Manager` (plus global access) in the `Role` column.
    - `user2` should have `group2` in the `Group(s)` column and `Data Manager, Group Manager` in the `Role` column.
    - `user3` should have `group1` in the `Group(s)` column and `User` in the `Role` column.
-- Navigate back to `Groups` and check the Groups have been properly updated with the new users.
-   - Check that `group1` now has `user1` in the `Owner(s)` column and `2` in the `# Members` column.
-   - Check that `group2` now has `user2` in the `Owner(s)` column and `1` in the `# Members` column.
-- Navigate to `Account > Log out`.
-- Log in using the details for `user1`.
+- Navigate to `Groups`.  Verify both groups are listed with the correct member counts and no editing controls.
 - In the `Upload New File` form on the home page, ensure that both `group1` and `group2` are given as options in the drop-down `Group` field.
-- Navigate to `Groups`.  Verify that `user1` can see and succesfully edit details for ANY Group.
-- Navigate to `Users`.  Verify that `user1` can see and succesfully edit details for ANY User.
 - Navigate to `Account > Log out`.
 - Log in using the details for `user2`.
 - In the `Upload New File` form on the home page, ensure that ONLY `group2` is given as options in the drop-down `Group` field.
 - Navigate to `Groups`.  Verify that `user2` can see details ONLY for `group2`, and cannot edit or delete it.
-- Navigate to `Users`.  Verify that `user2` can see and succesfully edit details ONLY for themself.
+- Navigate to `Users`.  Verify that `user2` can see ONLY themself, with no editing controls.
 - Navigate to `Account > Log out`.
 - Log in using the details for `user3`.
 - In the `Upload New File` form on the home page, ensure that ONLY `group1` is given as options in the drop-down `Group` field.

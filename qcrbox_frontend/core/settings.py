@@ -43,6 +43,11 @@ AUTHELIA_SSO = os.environ.get('AUTHELIA_SSO', 'False').lower() in ('true', '1', 
 # (e.g. https://auth.example.com/logout). Empty disables the redirect.
 AUTHELIA_LOGOUT_URL = os.environ.get('AUTHELIA_LOGOUT_URL', '')
 
+# The lldap web UI where users and groups are managed
+# (e.g. https://users.example.com). Shown to group managers in the navbar;
+# empty hides the link.
+LLDAP_ADMIN_URL = os.environ.get('LLDAP_ADMIN_URL', '')
+
 
 # Application definition
 
@@ -78,8 +83,11 @@ if AUTHELIA_SSO:
     )
     AUTHENTICATION_BACKENDS = [
         # Creates Django users for authenticated Authelia usernames on first
-        # visit; group membership is still assigned within Django.
-        'django.contrib.auth.backends.RemoteUserBackend',
+        # visit and mirrors their group membership (and role permissions for
+        # the reserved qcrbox_* groups) from the Remote-Groups header. lldap
+        # is the single source of truth for users and groups; management
+        # happens in its web UI, not in the frontend.
+        'core.auth_backends.AutheliaRemoteUserBackend',
         # Keep the model backend so existing local accounts (e.g. the
         # superuser) can still authenticate via the admin login form.
         'django.contrib.auth.backends.ModelBackend',
@@ -138,6 +146,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.qcrbox_auth',
             ],
         },
     },
