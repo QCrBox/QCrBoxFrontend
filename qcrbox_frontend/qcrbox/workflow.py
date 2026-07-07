@@ -196,9 +196,13 @@ def get_session_gui_url(request, max_attempts=3, retry_delay=1.0):
         if not sessions:
             continue
         session_info = sessions[0]
-        # `gui_url` is newer than the pinned API client, so it surfaces via the
-        # generated model's additional_properties rather than a typed attribute.
-        gui_url = session_info.additional_properties.get('gui_url')
+        # API clients regenerated after the field was added expose `gui_url`
+        # as a typed attribute; the pinned 0.1.0 client surfaces it via the
+        # generated model's additional_properties instead. UNSET (falsy) means
+        # the field is absent from the response.
+        gui_url = getattr(session_info, 'gui_url', None)
+        if not isinstance(gui_url, str):
+            gui_url = session_info.additional_properties.get('gui_url')
         if gui_url:
             return gui_url
 

@@ -80,6 +80,17 @@ class GetSessionGuiUrlTests(TestCase):
             url = workflow.get_session_gui_url(self._request_with_session('qcrbox_calc_0x1'))
         self.assertEqual(url, 'https://dummy-gui-abc.gui.example.com/')
 
+    def test_returns_typed_gui_url_of_newer_api_clients(self):
+        # API clients regenerated after the field was added expose gui_url as
+        # a typed attribute instead of via additional_properties.
+        response = self._api_response(None)
+        session_info = response.body.payload.interactive_sessions[0]
+        session_info.gui_url = 'https://dummy-gui-typed.gui.example.com/'
+        with mock.patch('qcrbox.workflow.api.get_session') as get_session:
+            get_session.return_value = response
+            url = workflow.get_session_gui_url(self._request_with_session('qcrbox_calc_0x1'))
+        self.assertEqual(url, 'https://dummy-gui-typed.gui.example.com/')
+
     def test_returns_none_for_static_containers(self):
         with mock.patch('qcrbox.workflow.api.get_session') as get_session:
             get_session.return_value = self._api_response(None)
