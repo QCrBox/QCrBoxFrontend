@@ -23,6 +23,9 @@ from qcrbox.views import datasets, debug, groups, users, workflows
 urlpatterns = [
     path('', workflows.landing, name='landing'),
     path('workflow', workflows.initialise_workflow, name='initialise_workflow'),
+    # Before workflow/<file_id>, which would otherwise swallow these paths
+    path('workflow/gui-wait', workflows.session_gui_wait, name='session-gui-wait'),
+    path('workflow/gui-status', workflows.session_gui_status, name='session-gui-status'),
     path('workflow/<file_id>', workflows.workflow, name='workflow'),
     path(
         'workflow/<file_id>/pending/<command_id>',

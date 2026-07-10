@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Starting Application{% endblock %}
+
+{% block content %}
+
+<center>
+  <br/>
+  <div class="card" style="max-width: 30em;">
+    <div class="card-body">
+      <h4 id="wait-heading">Starting application session &hellip;</h4>
+      <div class="spinner-border" role="status" id="wait-spinner"></div>
+      <p id="wait-message">
+        This page will open the application automatically once its container
+        is ready. This can take a little while if a new container is being
+        started for you.
+      </p>
+    </div>
+  </div>
+</center>
+
+<script>
+  // The session is being started by the originating tab; poll until its GUI
+  // URL is known, then redirect this tab there.
+  const statusUrl = "{% url 'session-gui-status' %}?prev={{ prev_session_id|urlencode }}";
+
+  // Static/pool containers have no per-session URL; they are served on the
+  // fixed per-application route instead.
+  const appSlug = "{{ app_slug|escapejs }}".replace(/_/g, "-");
+  const domainPrefix = "{{ gui_domain_prefix|escapejs }}";
+  const port = "{{ traefik_port|escapejs }}";
+  const portSuffix = port ? ":" + port : "";
+  const staticUrl =
+    `${window.location.protocol}//${appSlug}${domainPrefix}${window.location.hostname}${portSuffix}/`;
+
+  // The registry waits up to its spawn timeout (90s) for a fresh container,
+  // so give the whole launch a little longer than that before giving up.
+  const maxAttempts = 120;
+  let attempts = 0;
+
+  function giveUp() {
+    document.getElementById("wait-spinner").style.display = "none";
+    document.getElementById("wait-heading").textContent = "The session did not start in time.";
+    document.getElementById("wait-message").textContent =
+      "Please close this tab and check the workflow page for error messages.";
+  }
+
+  function poll() {
+    fetch(statusUrl, {credentials: "same-origin"})
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.status === "ready") {
+          window.location.replace(data.gui_url);
+        } else if (data.status === "static") {
+          window.location.replace(staticUrl);
+        } else if (++attempts < maxAttempts) {
+          setTimeout(poll, 1000);
+        } else {
+          giveUp();
+        }
+      })
+      .catch(() => {
+        if (++attempts < maxAttempts) {
+          setTimeout(poll, 2000);
+        } else {
+          giveUp();
+        }
+      });
+  }
+
+  poll();
+</script>
+
+{% endblock %}

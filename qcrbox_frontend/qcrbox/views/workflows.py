@@ -16,6 +16,7 @@ from django.contrib import messages
 from django.contrib.auth.models import Group
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.http import JsonResponse
 
 from qcrbox import api, forms, models, utility
 from qcrbox import workflow as wf
@@ -234,7 +235,66 @@ def workflow(request, file_id):
     context['traefik_port'] = settings.TRAEFIK_HTTP_PORT
     context['gui_domain_prefix'] = settings.GUI_DOMAIN_PREFIX
 
+    # The launch button opens the GUI tab at click time, before the session
+    # (and hence its per-instance URL) exists; the tab shows the waiting page,
+    # which polls until the session cookie changes away from this value.
+    context['prev_session_id'] = request.session.get('session_id') or ''
+
     return render(request, 'workflow.html', context)
+
+
+@login_required(login_url='login')
+def session_gui_wait(request):
+    '''A view serving the holding page shown in the tab opened when launching
+    an interactive session. The session is started by a parallel request in
+    the originating tab; this page polls `session_gui_status` until the
+    session's GUI URL is known, then redirects to it.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to this view. Query parameters: `slug` (application
+            slug, for the static-URL fallback) and `prev` (the session_id
+            known when the launch was initiated, if any).
+
+    Returns:
+    - response(HttpResponse): the http response served to the user on
+            accessing this view's associated url.
+
+    '''
+
+    context = {
+        'app_slug': request.GET.get('slug', ''),
+        'prev_session_id': request.GET.get('prev', ''),
+        'traefik_port': settings.TRAEFIK_HTTP_PORT,
+        'gui_domain_prefix': settings.GUI_DOMAIN_PREFIX,
+    }
+    return render(request, 'gui_wait.html', context)
+
+
+@login_required(login_url='login')
+def session_gui_status(request):
+    '''A JSON endpoint polled by the launch holding page: reports whether the
+    GUI URL of the newly started interactive session is known yet.
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to this view. Query parameter: `prev` (the session_id
+            known when the launch was initiated, if any).
+
+    Returns:
+    - response(JsonResponse): `{"status": "pending"}` while the session is
+            still starting, `{"status": "ready", "gui_url": ...}` once the
+            per-instance GUI URL is known, or `{"status": "static"}` when the
+            session runs on a static/pool container.
+
+    '''
+
+    prev = request.GET.get('prev') or None
+    status, gui_url = wf.get_session_gui_status(request, prev_session_id=prev)
+    payload = {'status': status}
+    if gui_url:
+        payload['gui_url'] = gui_url
+    return JsonResponse(payload)
 
 
 # A separate view to handle the auto-refreshing page when waiting for calc to finish

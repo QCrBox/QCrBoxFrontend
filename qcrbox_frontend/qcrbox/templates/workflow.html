@@ -112,6 +112,9 @@
                 <li>Website: <a href="{{current_command.app.url}}" id="external-app-link">{{ current_command.app.name }}</a>
               </ul>
               {% if session_in_progress %}
+                <button type="button" class="btn btn-secondary" id="reopen-app-button">
+                  Reopen Application
+                </button>
                 <form action="" method="POST" enctype="multipart/form-data">
                   {% csrf_token %}
                   <input type="hidden" id="end_session" name="end_session" value=True>
@@ -132,7 +135,7 @@
                   </button>
                 </form>
               {% else %}
-                <form action="" method="POST" enctype="multipart/form-data">
+                <form action="" method="POST" enctype="multipart/form-data" id="launch-form">
                   {% csrf_token %}
                   <input type="hidden" id="startup" name="startup" value=True>
                   <input type="hidden" id="command" name="command" value={{ current_command.pk }}>
@@ -174,22 +177,38 @@
 
 {% if current_command.interactive %}
   <script>
-    // The session-specific GUI URL of the user's own container (set when the
-    // session runs on an on-demand spawned container with its own route).
-    let url = "{{ gui_url|default_if_none:'' }}";
-
-    if (!url) {
-      // Static/pool containers are reachable via the per-application route.
-      let hostname = window.location.hostname;
-      let appSlug = "{{ current_command.app.slug }}".replace(/_/g, "-");
-      let domainPrefix = "{{ gui_domain_prefix }}";
-      let port = "{{ traefik_port }}";
-      let portSuffix = port ? ":" + port : "";
-
-      url = `${window.location.protocol}//${appSlug}${domainPrefix}${hostname}${portSuffix}/`;
+    // Launching: the session (and hence its per-instance GUI URL) does not
+    // exist yet when the tab must be opened (popup blockers require opening
+    // within the user gesture), so the tab shows a holding page that polls
+    // for the URL and redirects. Bound to the form's submit event so it only
+    // fires when validation passes.
+    const launchForm = document.getElementById("launch-form");
+    if (launchForm) {
+      const waitUrl = "{% url 'session-gui-wait' %}" +
+        "?slug={{ current_command.app.slug|urlencode }}" +
+        "&prev={{ prev_session_id|urlencode }}";
+      launchForm.addEventListener("submit", function(){ window.open(waitUrl, '_blank'); });
     }
 
-    document.getElementById("start-app-button").addEventListener("click", function(){ window.open(url, '_blank'); });
+    // Reopening an already-running session: its GUI URL is known here — the
+    // session-specific URL of the user's own container, or the static
+    // per-application route for pool containers.
+    const reopenButton = document.getElementById("reopen-app-button");
+    if (reopenButton) {
+      let url = "{{ gui_url|default_if_none:'' }}";
+
+      if (!url) {
+        let hostname = window.location.hostname;
+        let appSlug = "{{ current_command.app.slug }}".replace(/_/g, "-");
+        let domainPrefix = "{{ gui_domain_prefix }}";
+        let port = "{{ traefik_port }}";
+        let portSuffix = port ? ":" + port : "";
+
+        url = `${window.location.protocol}//${appSlug}${domainPrefix}${hostname}${portSuffix}/`;
+      }
+
+      reopenButton.addEventListener("click", function(){ window.open(url, '_blank'); });
+    }
   </script>
 {% elif calculation_in_progress %}
   <script>

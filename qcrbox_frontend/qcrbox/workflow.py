@@ -161,6 +161,71 @@ def clear_session_references(request, session_id):
     session.delete()
 
 
+def extract_gui_url(session_info):
+    '''Read the per-instance GUI URL off an interactive session info model.
+
+    API clients regenerated after the field was added expose `gui_url` as a
+    typed attribute; the pinned 0.1.0 client surfaces it via the generated
+    model's additional_properties instead. Returns None when the session runs
+    on a static/pool container (which has no per-instance route).
+
+    Parameters:
+    - session_info(InteractiveSessionInfoResponse): one entry of a session
+            info API response.
+
+    Returns:
+    - gui_url(str or None): the session-specific GUI URL, if any.
+
+    '''
+
+    gui_url = getattr(session_info, 'gui_url', None)
+    if not isinstance(gui_url, str):
+        gui_url = session_info.additional_properties.get('gui_url')
+    return gui_url or None
+
+
+def get_session_gui_status(request, prev_session_id=None):
+    '''Single-shot check whether the open session's GUI URL is known yet.
+
+    Used by the launch waiting page, which polls this from the browser while
+    the session is being started in a parallel request. `prev_session_id`
+    guards the race with that request: until the session cookie changes to a
+    *new* value, the launch is still pending (or failed).
+
+    Parameters:
+    - request(WSGIRequest): the request from a user which triggers a url
+            associated to the view containing this workflow.
+    - prev_session_id(str or None): the session_id the browser knew when the
+            launch was initiated (empty/None if there was none).
+
+    Returns:
+    - status(str): 'pending' while the session record is not available yet,
+            'ready' once a per-instance GUI URL is known, or 'static' when
+            the session runs on a static/pool container (use the
+            per-application URL).
+    - gui_url(str or None): the session-specific GUI URL when 'ready'.
+
+    '''
+
+    session_id = request.session.get('session_id')
+    if not session_id or session_id == prev_session_id:
+        return 'pending', None
+
+    api_response = api.get_session(session_id)
+    if not api_response.is_valid:
+        return 'pending', None
+    sessions = api_response.body.payload.interactive_sessions
+    if not sessions:
+        return 'pending', None
+
+    gui_url = extract_gui_url(sessions[0])
+    if gui_url:
+        return 'ready', gui_url
+    # The record exists but carries no per-instance URL: the session runs on
+    # a static/pool container, so the per-application URL is the right one.
+    return 'static', None
+
+
 def get_session_gui_url(request, max_attempts=3, retry_delay=1.0):
     '''Fetch the per-instance GUI URL of the user's open interactive session.
 
@@ -195,14 +260,7 @@ def get_session_gui_url(request, max_attempts=3, retry_delay=1.0):
         sessions = api_response.body.payload.interactive_sessions
         if not sessions:
             continue
-        session_info = sessions[0]
-        # API clients regenerated after the field was added expose `gui_url`
-        # as a typed attribute; the pinned 0.1.0 client surfaces it via the
-        # generated model's additional_properties instead. UNSET (falsy) means
-        # the field is absent from the response.
-        gui_url = getattr(session_info, 'gui_url', None)
-        if not isinstance(gui_url, str):
-            gui_url = session_info.additional_properties.get('gui_url')
+        gui_url = extract_gui_url(sessions[0])
         if gui_url:
             return gui_url
 

@@ -114,3 +114,67 @@ class GetSessionGuiUrlTests(TestCase):
             )
         self.assertEqual(url, 'https://x.gui.example.com/')
         self.assertEqual(get_session.call_count, 2)
+
+
+class GetSessionGuiStatusTests(TestCase):
+    '''Tests for the single-shot GUI status check behind the launch waiting
+    page (which polls it from the browser while the session starts in a
+    parallel request).'''
+
+    _request_with_session = GetSessionGuiUrlTests._request_with_session
+    _api_response = staticmethod(GetSessionGuiUrlTests._api_response)
+
+    def test_pending_without_session_cookie(self):
+        request = mock.Mock()
+        request.session = {}
+        self.assertEqual(workflow.get_session_gui_status(request), ('pending', None))
+
+    def test_pending_while_session_cookie_unchanged_from_launch(self):
+        # The launch request has not finished yet: the cookie still holds the
+        # id known when the launch was initiated (possibly of an old session).
+        request = self._request_with_session('qcrbox_calc_0xold')
+        status, _ = workflow.get_session_gui_status(request, prev_session_id='qcrbox_calc_0xold')
+        self.assertEqual(status, 'pending')
+
+    def test_pending_while_session_record_unavailable(self):
+        invalid = mock.Mock()
+        invalid.is_valid = False
+        with mock.patch('qcrbox.workflow.api.get_session') as get_session:
+            get_session.return_value = invalid
+            status, _ = workflow.get_session_gui_status(
+                self._request_with_session('qcrbox_calc_0x1'), prev_session_id='qcrbox_calc_0xold'
+            )
+        self.assertEqual(status, 'pending')
+
+    def test_ready_with_gui_url(self):
+        with mock.patch('qcrbox.workflow.api.get_session') as get_session:
+            get_session.return_value = self._api_response('https://dummy-gui-abc.gui.example.com/')
+            status, url = workflow.get_session_gui_status(
+                self._request_with_session('qcrbox_calc_0x1')
+            )
+        self.assertEqual(status, 'ready')
+        self.assertEqual(url, 'https://dummy-gui-abc.gui.example.com/')
+
+    def test_static_for_pool_containers(self):
+        with mock.patch('qcrbox.workflow.api.get_session') as get_session:
+            get_session.return_value = self._api_response(None)
+            status, url = workflow.get_session_gui_status(
+                self._request_with_session('qcrbox_calc_0x1')
+            )
+        self.assertEqual(status, 'static')
+        self.assertIsNone(url)
+
+    def test_status_endpoint_returns_json(self):
+        user = User.objects.create_user(username='alice', password='pw')
+        self.client.force_login(user)
+        session = self.client.session
+        session['session_id'] = 'qcrbox_calc_0x1'
+        session.save()
+        with mock.patch('qcrbox.workflow.api.get_session') as get_session:
+            get_session.return_value = self._api_response('https://dummy-gui-abc.gui.example.com/')
+            response = self.client.get('/workflow/gui-status', {'prev': ''})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {'status': 'ready', 'gui_url': 'https://dummy-gui-abc.gui.example.com/'},
+        )
