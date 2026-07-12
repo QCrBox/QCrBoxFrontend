@@ -185,8 +185,11 @@ def workflow(request, file_id):
     if not (request.POST and 'application' in request.POST):
         wf.update_apps(request)
 
-    # Fetch the app selection form for session selection
-    context['select_command_form'] = forms.SelectCommandForm()
+    # Fetch the app selection form for session selection. Commands whose CIF
+    # entry requirements the loaded file does not satisfy are greyed out.
+    context['select_command_form'] = forms.SelectCommandForm(
+        disabled_commands=wf.get_disabled_commands(load_file),
+    )
 
     # Check if user submitted a form
     if request.method == 'POST':

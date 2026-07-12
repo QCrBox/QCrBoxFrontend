@@ -1,11 +1,14 @@
 '''Unit tests for the QCrBox frontend's identity sync and workflow helpers.'''
 
+from types import SimpleNamespace
 from unittest import mock
 
 from django.contrib.auth.models import Group, User
 from django.test import TestCase
 
 from core.auth_backends import sync_user_groups
+from qcrbox import forms
+from qcrbox import models
 from qcrbox import workflow
 
 
@@ -178,3 +181,125 @@ class GetSessionGuiStatusTests(TestCase):
             response.json(),
             {'status': 'ready', 'gui_url': 'https://dummy-gui-abc.gui.example.com/'},
         )
+
+
+class DisableableSelectTests(TestCase):
+    '''Tests for greying out unusable commands in the command dropdown.'''
+
+    def setUp(self):
+        self.app = models.Application.objects.create(          # pylint: disable=no-member
+            name='Dummy', url='http://x', version='0.1.0', slug='dummy_cli', port=0, active=True,
+        )
+        self.runnable = models.AppCommand.objects.create(     # pylint: disable=no-member
+            app=self.app, name='runnable_command', interactive=True,
+        )
+        self.blocked = models.AppCommand.objects.create(      # pylint: disable=no-member
+            app=self.app, name='blocked_command', interactive=True,
+        )
+
+    def test_disabled_options_render_with_tooltip(self):
+        form = forms.SelectCommandForm(
+            disabled_commands={self.blocked.pk: 'Missing CIF entries: _cell.length_a'},
+        )
+        html = str(form)
+        self.assertIn('disabled', html)
+        self.assertIn('Missing CIF entries: _cell.length_a', html)
+        # The runnable command's option is not disabled
+        runnable_option = [line for line in html.split('<option') if f'value="{self.runnable.pk}"' in line][0]
+        self.assertNotIn('disabled', runnable_option)
+
+    def test_form_without_disabled_commands_is_unchanged(self):
+        html = str(forms.SelectCommandForm())
+        self.assertNotIn('disabled', html)
+
+
+class GetDisabledCommandsTests(TestCase):
+    '''Tests for mapping the registry's can-run response to frontend commands.'''
+
+    def setUp(self):
+        self.app = models.Application.objects.create(          # pylint: disable=no-member
+            name='Dummy', url='http://x', version='0.1.0', slug='dummy_cli', port=0, active=True,
+        )
+        self.command = models.AppCommand.objects.create(      # pylint: disable=no-member
+            app=self.app, name='change_cif_name', interactive=False,
+        )
+        self.load_file = mock.Mock()
+        self.load_file.backend_uuid = 'qcrbox_ds_0x1'
+        self.load_file.filename = 'test.cif'
+
+    @staticmethod
+    def _dataset_response(datafile_id):
+        data_file = mock.Mock()
+        data_file.qcrbox_file_id = datafile_id
+        dataset = mock.Mock()
+        dataset.data_files = {'test.cif': data_file}
+        response = mock.Mock()
+        response.is_valid = True
+        response.body.payload.datasets = [dataset]
+        return response
+
+    @staticmethod
+    def _runnable_response(commands):
+        response = mock.Mock()
+        response.is_valid = True
+        response.body.payload.commands = commands
+        return response
+
+    def test_blocked_commands_are_mapped_to_pks_with_tooltips(self):
+        status = SimpleNamespace(
+            application_slug='dummy_cli', application_version='0.1.0',
+            command_name='change_cif_name', can_run=False,
+            missing_entries=['_cell.length_a'], reason=None,
+        )
+        with mock.patch('qcrbox.workflow.api.get_dataset') as get_dataset, \
+             mock.patch('qcrbox.workflow.api.get_runnable_commands') as get_runnable:
+            get_dataset.return_value = self._dataset_response('qcrbox_df_0x1')
+            get_runnable.return_value = self._runnable_response([status])
+            disabled = workflow.get_disabled_commands(self.load_file)
+        self.assertEqual(disabled, {self.command.pk: 'Missing CIF entries: _cell.length_a'})
+        get_runnable.assert_called_once_with('qcrbox_df_0x1')
+
+    def test_runnable_and_unknown_commands_are_not_disabled(self):
+        statuses = [
+            SimpleNamespace(
+                application_slug='dummy_cli', application_version='0.1.0',
+                command_name='change_cif_name', can_run=True,
+                missing_entries=[], reason=None,
+            ),
+            SimpleNamespace(
+                application_slug='not_synced_app', application_version='9.9',
+                command_name='whatever', can_run=False,
+                missing_entries=['_x.y'], reason=None,
+            ),
+        ]
+        with mock.patch('qcrbox.workflow.api.get_dataset') as get_dataset, \
+             mock.patch('qcrbox.workflow.api.get_runnable_commands') as get_runnable:
+            get_dataset.return_value = self._dataset_response('qcrbox_df_0x1')
+            get_runnable.return_value = self._runnable_response(statuses)
+            self.assertEqual(workflow.get_disabled_commands(self.load_file), {})
+
+    def test_api_failures_fail_open(self):
+        invalid = mock.Mock()
+        invalid.is_valid = False
+        with mock.patch('qcrbox.workflow.api.get_dataset') as get_dataset:
+            get_dataset.return_value = invalid
+            self.assertEqual(workflow.get_disabled_commands(self.load_file), {})
+
+        with mock.patch('qcrbox.workflow.api.get_dataset') as get_dataset, \
+             mock.patch('qcrbox.workflow.api.get_runnable_commands') as get_runnable:
+            get_dataset.return_value = self._dataset_response('qcrbox_df_0x1')
+            get_runnable.return_value = invalid
+            self.assertEqual(workflow.get_disabled_commands(self.load_file), {})
+
+    def test_reason_is_used_as_tooltip_when_no_missing_entries(self):
+        status = SimpleNamespace(
+            application_slug='dummy_cli', application_version='0.1.0',
+            command_name='change_cif_name', can_run=False,
+            missing_entries=[], reason='not a parseable CIF file',
+        )
+        with mock.patch('qcrbox.workflow.api.get_dataset') as get_dataset, \
+             mock.patch('qcrbox.workflow.api.get_runnable_commands') as get_runnable:
+            get_dataset.return_value = self._dataset_response('qcrbox_df_0x1')
+            get_runnable.return_value = self._runnable_response([status])
+            disabled = workflow.get_disabled_commands(self.load_file)
+        self.assertEqual(disabled, {self.command.pk: 'not a parseable CIF file'})

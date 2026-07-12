@@ -267,6 +267,57 @@ def get_session_gui_url(request, max_attempts=3, retry_delay=1.0):
     return None
 
 
+def get_disabled_commands(load_file):
+    '''Determine which commands cannot run on the loaded file, based on the
+    registry's can-run check of the file's CIF content against each command's
+    required CIF entries.
+
+    Fails open: any API or lookup problem yields an empty dict, so commands
+    are never greyed out because of plumbing errors.
+
+    Parameters:
+    - load_file(FileMetaData): the dataset metadata of the loaded file.
+
+    Returns:
+    - disabled(dict): maps AppCommand pks to a tooltip explaining why the
+            command cannot run on this file.
+
+    '''
+
+    try:
+        dataset_response = api.get_dataset(load_file.backend_uuid)
+        if not dataset_response.is_valid:
+            return {}
+        dataset = dataset_response.body.payload.datasets[0]
+        datafile_id = dataset.data_files[load_file.filename].qcrbox_file_id
+
+        api_response = api.get_runnable_commands(datafile_id)
+        if not api_response.is_valid:
+            return {}
+
+        disabled = {}
+        for command_status in api_response.body.payload.commands:
+            if command_status.can_run:
+                continue
+            frontend_command = models.AppCommand.objects.filter(    # pylint: disable=no-member
+                app__slug=command_status.application_slug,
+                app__version=command_status.application_version,
+                name=command_status.command_name,
+            ).first()
+            if frontend_command is None:
+                continue
+            if command_status.missing_entries:
+                tooltip = 'Missing CIF entries: ' + ', '.join(command_status.missing_entries)
+            else:
+                tooltip = command_status.reason or 'This command cannot run on the loaded file'
+            disabled[frontend_command.pk] = tooltip
+        return disabled
+
+    except Exception:                                               # pylint: disable=broad-exception-caught
+        LOGGER.exception('Failed to determine runnable commands; leaving all commands enabled')
+        return {}
+
+
 def start_session(request, command, arguments):
     '''Given a command and an input FileMetaData object, attempt to start
     a new Interactive Session, handling errors, messaging and logging as

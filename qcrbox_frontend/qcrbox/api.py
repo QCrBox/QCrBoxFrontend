@@ -14,6 +14,9 @@ import logging
 from qcrboxapiclient.api.applications import (
     list_applications,
 )
+from qcrboxapiclient.api.data_files import (
+    list_runnable_commands_for_data_file,
+)
 from qcrboxapiclient.api.calculations import (
     get_calculation_by_id,
     stop_running_calculation,
@@ -383,6 +386,29 @@ def cancel_calculation(calc_id):
         calc_id,
     )
     raw_response = stop_running_calculation.sync(client=client, id=calc_id)
+
+    return Response(raw_response)
+
+
+# ----- Command availability -----
+
+def get_runnable_commands(data_file_id):
+    '''Query the backend for the can-run status of every registered command
+    with respect to a stored data file (based on the file's CIF content and
+    each command's required CIF entries).
+
+    Parameters:
+    - data_file_id(str): the backend ID of the data file to check.
+
+    '''
+
+    client = get_client()
+
+    LOGGER.info(
+        'API call: list_runnable_commands_for_data_file, id=%s',
+        data_file_id,
+    )
+    raw_response = list_runnable_commands_for_data_file.sync(client=client, id=data_file_id)
 
     return Response(raw_response)
 

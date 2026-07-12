@@ -109,6 +109,29 @@ class LoadFileForm(forms.Form):
 
 # Workflow Forms
 
+class DisableableSelect(forms.Select):
+    '''A Select widget which renders some options as disabled (greyed out),
+    with a tooltip explaining why.'''
+
+    def __init__(self, *args, disabled_choices=None, **kwargs):
+        '''Additional Parameters:
+        - disabled_choices(dict): maps option values (as strings) to the
+                tooltip text shown for the disabled option.
+
+        '''
+
+        self.disabled_choices = disabled_choices or {}
+        super().__init__(*args, **kwargs)
+
+    def create_option(self, name, value, *args, **kwargs):
+        option = super().create_option(name, value, *args, **kwargs)
+        tooltip = self.disabled_choices.get(str(value))
+        if tooltip is not None:
+            option['attrs']['disabled'] = True
+            option['attrs']['title'] = tooltip
+        return option
+
+
 class SelectCommandForm(forms.Form):
     '''A Django form to allow selecting an Application as part of initialising
     an Interactive Session.
@@ -120,10 +143,15 @@ class SelectCommandForm(forms.Form):
 
     command = forms.ChoiceField(choices=[])
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, disabled_commands=None, **kwargs):
         '''An additional form initialisation step to populate the choices in
         the application field by running a db query to fetch known active
         QCrBox Applications.
+
+        Additional Parameters:
+        - disabled_commands(dict): maps AppCommand pks to a tooltip; the
+                corresponding options are rendered disabled (commands which
+                cannot run on the loaded file).
 
         '''
 
@@ -133,6 +161,11 @@ class SelectCommandForm(forms.Form):
         choices = [(c.pk, ut.sanitize_command_name(c)) for c in qset.filter(app__active=True)]
 
         self.fields['command'].choices = choices
+        if disabled_commands:
+            self.fields['command'].widget = DisableableSelect(
+                choices=choices,
+                disabled_choices={str(pk): tooltip for pk, tooltip in disabled_commands.items()},
+            )
 
 
 # User management forms
