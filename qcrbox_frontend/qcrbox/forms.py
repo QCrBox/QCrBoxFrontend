@@ -308,28 +308,10 @@ class CommandForm(forms.Form):
                         choices=[(a.backend_uuid, a.display_filename) for a in ancestors[::-1]]
                     )
 
-            elif param.dtype in ('QCrBox.output_path', 'QCrBox.output_cif'):
-
-                filepath = dataset.filename.split('.')[0]
-
-                # Guess the intended extension from the name and dtype of the param
-
-                parsed_param_name = param.name.split('_')
-
-                if (
-                    len(parsed_param_name)==3 and
-                    parsed_param_name[0]=='output' and
-                    parsed_param_name[-1]=='path'
-                ):
-                    ext = parsed_param_name[1]
-                else:
-                    ext = 'cif'
-
-                filepath = filepath + f'.{ext}'
-
-                self.fields[param.name] = forms.CharField(
-                    initial=filepath,
-                )
+            # Note: command outputs (QCrBox.output_cif and the QCrBox.output_*
+            # artifact types) are declared in the command spec's outputs
+            # section, not as parameters, and their filenames are fixed by the
+            # spec - so no form fields are needed for them.
 
             elif param.dtype == 'QCrBox.data_file':
 

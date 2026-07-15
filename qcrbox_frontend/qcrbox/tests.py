@@ -303,3 +303,88 @@ class GetDisabledCommandsTests(TestCase):
             get_runnable.return_value = self._runnable_response([status])
             disabled = workflow.get_disabled_commands(self.load_file)
         self.assertEqual(disabled, {self.command.pk: 'not a parseable CIF file'})
+
+
+class SaveDatasetMetadataTests(TestCase):
+    '''Tests for typed-output capture in workflow.save_dataset_metadata.'''
+
+    def setUp(self):
+        self.user = User.objects.create(username='alice')
+        self.group = Group.objects.create(name='TestGroup')
+        self.app = models.Application.objects.create(          # pylint: disable=no-member
+            name='Dummy', url='http://x', version='0.1.0', slug='dummy_cli', port=0, active=True,
+        )
+        self.command = models.AppCommand.objects.create(       # pylint: disable=no-member
+            app=self.app, name='generate_report_artifacts', interactive=False,
+        )
+        self.infile = models.FileMetaData.objects.create(      # pylint: disable=no-member
+            filename='in.cif', display_filename='in.cif', user=self.user,
+            group=self.group, backend_uuid='qcrbox_ds_0xin', filetype='cif',
+        )
+        self.request = mock.Mock()
+        self.request.user = self.user
+
+    @staticmethod
+    def _data_file(file_id, filename, filetype='cif', kind=None):
+        data_file = mock.Mock()
+        data_file.qcrbox_file_id = file_id
+        data_file.filename = filename
+        data_file.filetype = filetype
+        data_file.kind = kind
+        return data_file
+
+    @classmethod
+    def _dataset_response(cls, data_files):
+        dataset = mock.Mock()
+        dataset.qcrbox_dataset_id = 'qcrbox_ds_0xout'
+        dataset.data_files.additional_properties = {df.filename: df for df in data_files}
+        response = mock.Mock()
+        response.is_valid = True
+        response.body.payload.datasets = [dataset]
+        return response
+
+    def test_primary_is_the_kindless_file_not_the_first(self):
+        response = self._dataset_response([
+            self._data_file('df1', 'report.txt', 'txt', kind='text'),
+            self._data_file('df2', 'result.cif', 'cif', kind=None),
+        ])
+        newfile, step = workflow.save_dataset_metadata(
+            self.request, response, self.group, infile=self.infile, command=self.command,
+        )
+        self.assertEqual(newfile.filename, 'result.cif')
+        self.assertEqual(step.outfile, newfile)
+        artifacts = list(step.artifacts.all())
+        self.assertEqual([(a.kind, a.filename, a.data_file_id) for a in artifacts],
+                         [('text', 'report.txt', 'df1')])
+
+    def test_artifact_only_dataset_creates_step_without_outfile(self):
+        response = self._dataset_response([
+            self._data_file('df1', 'report.txt', 'txt', kind='text'),
+            self._data_file('df2', 'graph.json', 'json', kind='interactive_graph'),
+        ])
+        newfile, step = workflow.save_dataset_metadata(
+            self.request, response, self.group, infile=self.infile, command=self.command,
+        )
+        self.assertIsNone(newfile)
+        self.assertIsNone(step.outfile)
+        self.assertEqual(step.infile, self.infile)
+        self.assertEqual(step.artifacts.count(), 2)
+
+    def test_plain_upload_returns_file_and_no_step(self):
+        response = self._dataset_response([self._data_file('df1', 'upload.cif')])
+        newfile, step = workflow.save_dataset_metadata(self.request, response, self.group)
+        self.assertEqual(newfile.filename, 'upload.cif')
+        self.assertIsNone(step)
+
+    def test_kind_from_additional_properties_fallback(self):
+        legacy_file = mock.Mock(spec=['qcrbox_file_id', 'filename', 'filetype', 'additional_properties'])
+        legacy_file.qcrbox_file_id = 'df1'
+        legacy_file.filename = 'report.txt'
+        legacy_file.filetype = 'txt'
+        legacy_file.additional_properties = {'kind': 'text'}
+        response = self._dataset_response([legacy_file])
+        newfile, step = workflow.save_dataset_metadata(
+            self.request, response, self.group, infile=self.infile, command=self.command,
+        )
+        self.assertIsNone(newfile)
+        self.assertEqual(step.artifacts.first().kind, 'text')

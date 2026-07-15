@@ -11,6 +11,7 @@ views.
 import logging
 
 from django.shortcuts import render, redirect
+from django.urls import reverse
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import Group
@@ -133,7 +134,7 @@ def initialise_workflow(request):
             group = Group.objects.get(pk=request.POST['group'])
 
             # Save the file's FileMetaData
-            newfile = wf.save_dataset_metadata(
+            newfile, _ = wf.save_dataset_metadata(
                 request,
                 api_response,
                 group,
@@ -213,7 +214,11 @@ def workflow(request, file_id):
             work_status = wf.handle_command(request, current_command, load_file)
 
             if work_status.outfile_id:
-                return redirect('workflow', file_id=work_status.outfile_id)
+                redirect_url = reverse('workflow', args=[work_status.outfile_id])
+                if work_status.result_step_id:
+                    # Show the run's result artifacts on the workflow page
+                    redirect_url += f'?results={work_status.result_step_id}'
+                return redirect(redirect_url)
 
             if work_status.session_is_open:
                 context['session_in_progress'] = True
@@ -222,9 +227,30 @@ def workflow(request, file_id):
                 context['calculation_in_progress'] = True
                 context['refresh_time'] = settings.AUTO_REFRESH_TIME
 
+    # Load the result artifacts of a process step selected via ?results=
+    result_step_pk = request.GET.get('results')
+    if result_step_pk:
+        try:
+            result_step = models.ProcessStep.objects.get(pk=result_step_pk)  # pylint: disable=no-member
+        except (models.ProcessStep.DoesNotExist, ValueError):                # pylint: disable=no-member
+            result_step = None
+        if result_step is not None:
+            # Permission: the step must belong to a file the user may view
+            step_file = result_step.outfile or result_step.infile
+            if step_file is not None:
+                utility.check_user_view_file_permission(request.user, step_file)
+                context['result_step'] = result_step
+                context['result_artifacts'] = result_step.artifacts.all()
 
     # Populate the workflow diagram with all steps leading up to the current file
     context['prior_steps'] = wf.get_file_history(load_file)
+
+    # Artifact-only runs on this file ("report rows" under the current file)
+    context['report_steps'] = load_file.processed_to.filter(outfile__isnull=True)
+
+    # Base path under which the registry API is reachable from the browser
+    # (same-origin via Traefik), used by the artifact renderers
+    context['api_prefix'] = settings.API_PUBLIC_PREFIX
 
     # For an open interactive session, fetch the per-instance GUI URL of the
     # container the session runs on (None for static/pool containers, in which

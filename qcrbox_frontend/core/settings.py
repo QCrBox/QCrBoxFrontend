@@ -265,6 +265,11 @@ logging.config.dictConfig(LOGGING)
 # API settings
 API_BASE_URL = os.environ.get('API_BASE_URL', 'http://127.0.0.1:11000')
 
+# Base path under which the registry API is reachable from the user's BROWSER
+# (same-origin via Traefik with the Authelia session cookie); used for inline
+# artifact content (images, reports, viewer data) rendered on the workflow page
+API_PUBLIC_PREFIX = os.environ.get('QCRBOX_API_PUBLIC_PREFIX', '/api')
+
 # Shared secret authorising the frontend to act on behalf of its users when
 # calling the registry API (sent as X-QCrBox-Service-Token alongside
 # X-QCrBox-User). Must match QCRBOX_SERVICE_TOKEN on the QCrBox side; when

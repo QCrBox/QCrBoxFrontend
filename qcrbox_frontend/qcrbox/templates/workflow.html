@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load artifact_icons %}
 
 {% block title %}QCrBox Workflow{% endblock %}
 
@@ -70,6 +71,13 @@
                 <td align='left'>
                   <i>{{prior_step.command.app.name}}: {{prior_step.command}}</i>
                 </td>
+                <td align='left'>
+                  {% for artifact in prior_step.artifacts.all %}
+                    <span title="{{ artifact.filename }}"><a href="{% url 'workflow' file.pk %}?results={{ prior_step.pk }}" id="artifact-link-{{ artifact.pk }}">
+                      <i class="{{ artifact.kind|artifact_icon }}"></i>
+                    </a></span>&nbsp
+                  {% endfor %}
+                </td>
               </tr>
             {% endfor %}
             <tr id="current-row">
@@ -91,17 +99,39 @@
                 </a></span>
               </td>
             </tr>
+            {% for report_step in report_steps %}
+              <tr id="report-row">
+                <td align='right'>
+                  <i class="fa-solid fa-angles-right"></i>
+                </td>
+                <td align='left'>
+                  <i>{{report_step.command.app.name}}: {{report_step.command}} (report)</i>
+                </td>
+                <td align='left'>
+                  {% for artifact in report_step.artifacts.all %}
+                    <span title="{{ artifact.filename }}"><a href="{% url 'workflow' file.pk %}?results={{ report_step.pk }}" id="artifact-link-{{ artifact.pk }}">
+                      <i class="{{ artifact.kind|artifact_icon }}"></i>
+                    </a></span>&nbsp
+                  {% endfor %}
+                </td>
+              </tr>
+            {% endfor %}
           </table>
         </td>
         <td vertical-align="top">
+          {% if result_step and not session_in_progress and not calculation_in_progress %}
+            {% include 'artifacts/results_panel.html' %}
+          {% endif %}
           <div class="card">
             <div class="card-body">
             {% if not current_command %}
+              {% if not result_step %}
               <h4>Dataset Metadata</h4>
               <ul>
                 <li>Filename: {{file.display_filename}}</li>
                 <li>Filetype: {{file.filetype}}</li>
               </ul>
+              {% endif %}
               <i>Please select a command from the workflow to continue processing.</i>
             {% else %}
               <h4>{{current_command.app.name}} : {{current_command}}</h4>

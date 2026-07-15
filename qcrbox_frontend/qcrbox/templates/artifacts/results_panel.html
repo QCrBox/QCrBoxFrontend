@@ -1,0 +1,113 @@
+{% comment %}
+Renders the typed result artifacts of a ProcessStep (context: result_step,
+result_artifacts, api_prefix). Artifact content is fetched by the BROWSER
+directly from the registry API (same-origin via Traefik, Authelia session
+cookie sent automatically): {{ api_prefix }}/data-files/<id>/content serves
+each file inline with a media type derived from its artifact kind.
+
+Security note for the html kind: the iframe is sandboxed WITHOUT
+allow-same-origin, so app-provided pages run in an opaque origin and cannot
+read the session cookie or call the API with credentials (the backend
+additionally serves them with a CSP sandbox header).
+{% endcomment %}
+
+<h4>Results: {{ result_step.command.app.name }} : {{ result_step.command }}</h4>
+
+{% for artifact in result_artifacts %}
+  <div class="card" style="margin-bottom: 12px;">
+    <div class="card-body">
+      <h5>
+        {{ artifact.filename }}
+        <small>
+          <a href="{{ api_prefix }}/data-files/{{ artifact.data_file_id }}/download" title="Download {{ artifact.filename }}">
+            <i class="fas fa-download"></i>
+          </a>
+        </small>
+      </h5>
+
+      {% if artifact.kind == 'text' %}
+        <pre class="artifact-text" id="artifact-{{ artifact.pk }}"
+             data-content-url="{{ api_prefix }}/data-files/{{ artifact.data_file_id }}/content"
+             style="max-height: 24em; overflow: auto; background: #f8f9fa; padding: 8px;">Loading&hellip;</pre>
+
+      {% elif artifact.kind == 'image' %}
+        <img src="{{ api_prefix }}/data-files/{{ artifact.data_file_id }}/content"
+             alt="{{ artifact.filename }}" style="max-width: 100%;">
+
+      {% elif artifact.kind == 'html' %}
+        <iframe sandbox="allow-scripts"
+                src="{{ api_prefix }}/data-files/{{ artifact.data_file_id }}/content"
+                title="{{ artifact.filename }}"
+                style="width: 100%; height: 30em; border: 1px solid #dee2e6;"></iframe>
+
+      {% elif artifact.kind == 'interactive_structure' %}
+        <div class="artifact-structure" id="artifact-{{ artifact.pk }}"
+             data-content-url="{{ api_prefix }}/data-files/{{ artifact.data_file_id }}/content"
+             style="width: 100%; height: 30em;"></div>
+
+      {% elif artifact.kind == 'interactive_graph' %}
+        <div class="artifact-graph" id="artifact-{{ artifact.pk }}"
+             data-content-url="{{ api_prefix }}/data-files/{{ artifact.data_file_id }}/content"
+             style="width: 100%; min-height: 24em;"></div>
+
+      {% else %}
+        <i>Unknown artifact kind "{{ artifact.kind }}" &mdash; use the download link above.</i>
+      {% endif %}
+    </div>
+  </div>
+{% endfor %}
+
+<script type="module">
+  // Text reports: fetch into the <pre>, capped so huge files don't lock the page
+  const TEXT_CAP = 512 * 1024;
+  document.querySelectorAll('pre.artifact-text').forEach(async (el) => {
+    try {
+      const resp = await fetch(el.dataset.contentUrl);
+      let text = await resp.text();
+      if (text.length > TEXT_CAP) {
+        text = text.slice(0, TEXT_CAP) + '\n… (truncated, use the download link for the full file)';
+      }
+      el.textContent = text;
+    } catch (err) {
+      el.textContent = 'Failed to load: ' + err;
+    }
+  });
+
+  // Interactive graphs: Plotly figure JSON rendered client-side
+  const graphs = document.querySelectorAll('div.artifact-graph');
+  if (graphs.length > 0) {
+    const plotly = document.createElement('script');
+    plotly.src = 'https://cdn.plot.ly/plotly-2.35.2.min.js';
+    plotly.onload = () => {
+      graphs.forEach(async (el) => {
+        try {
+          const fig = await (await fetch(el.dataset.contentUrl)).json();
+          window.Plotly.newPlot(el, fig.data, fig.layout || {}, {responsive: true});
+        } catch (err) {
+          el.textContent = 'Failed to load graph: ' + err;
+        }
+      });
+    };
+    document.head.appendChild(plotly);
+  }
+
+  // Interactive structures: cifvis 3D viewer fed with the CIF text
+  // (same embed as the qcrbox_quality ortep view)
+  const structures = document.querySelectorAll('div.artifact-structure');
+  if (structures.length > 0) {
+    await import('https://niolon.github.io/cifvis/dist/cifvis.alldeps.js');
+    structures.forEach(async (el) => {
+      try {
+        const cifText = await (await fetch(el.dataset.contentUrl)).text();
+        const widget = document.createElement('cifview-widget');
+        widget.style.width = '100%';
+        widget.style.height = '100%';
+        el.appendChild(widget);
+        await customElements.whenDefined('cifview-widget');
+        widget.loadFromString(cifText);
+      } catch (err) {
+        el.textContent = 'Failed to load structure: ' + err;
+      }
+    });
+  }
+</script>

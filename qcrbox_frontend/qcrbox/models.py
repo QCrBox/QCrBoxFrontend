@@ -223,6 +223,32 @@ class ProcessStep(models.Model):
     )
 
 
+class ResultArtifact(models.Model):
+    '''A typed (non-CIF) output artifact of a ProcessStep, e.g. a text or
+    HTML report, an image, or data for the interactive structure/graph
+    viewers. The file contents live in the backend data store; this model
+    records the backend file id and the artifact kind so the workflow page
+    can render it.
+
+    Contains the following attributes:
+    - process_step(ProcessStep): the process which produced this artifact.
+    - data_file_id(str): the backend qcrbox_file_id of the artifact file.
+    - kind(str): the artifact kind (text, image, html, interactive_structure,
+            interactive_graph); determines which renderer is used.
+    - filename(str): the artifact's filename, for display.
+
+    '''
+
+    process_step = models.ForeignKey(
+        ProcessStep,
+        on_delete=models.CASCADE,
+        related_name='artifacts',
+    )
+    data_file_id = models.CharField(max_length=255)
+    kind = models.CharField(max_length=32)
+    filename = models.CharField(max_length=255)
+
+
 class SessionReference(models.Model):
     '''A model which stores temporary records on any currently active
     sessions.  Allows for these sessions to be accessed and closed in the

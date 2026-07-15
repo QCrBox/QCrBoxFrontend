@@ -48,6 +48,83 @@ class DisplayField():
         self.is_special = is_special
 
 
+def sync_app_commands(app_model, backend_app):
+    '''Synchronise the AppCommand (and CommandParameter) records of a Frontend
+    Application with the command list reported by the backend: add commands
+    which are new, update changed descriptions, and remove commands which no
+    longer exist in the backend. Protected commands (names starting with
+    "__") are ignored.
+
+    Parameters:
+    - app_model(Application): the Frontend Application db instance.
+    - backend_app: the application spec returned by the API.
+
+    Returns:
+    None
+
+    '''
+
+    backend_commands = {
+        command.name: command for command in backend_app.commands if command.name[:2] != '__'
+    }
+    local_commands = {command.name: command for command in app_model.commands.all()}
+
+    # Remove commands which no longer exist in the backend
+    for name, local_command in local_commands.items():
+        if name not in backend_commands:
+            local_command.delete()
+
+    for name, command in backend_commands.items():
+
+        if name in local_commands:
+            local_command = local_commands[name]
+            if local_command.description != command.description:
+                local_command.description = command.description
+                local_command.save()
+            continue
+
+        new_command = models.AppCommand(
+            name=command.name,
+            app=app_model,
+            description=command.description,
+            interactive=command.name=='interactive_session',
+        )
+
+        new_command.save()
+
+        # Add information on the parameters to attach to the new command
+        for param_key in command.parameters.additional_properties:
+            parameter = command.parameters[param_key]
+
+            if parameter['default_value']:
+                default_value = parameter['default_value']
+            else:
+                default_value = None
+
+            new_param = models.CommandParameter(
+                command = new_command,
+                name = param_key,
+                dtype = parameter['dtype'],
+                description = parameter['description'],
+                required = parameter['required'],
+                default = default_value
+            )
+
+            # Add any validation to the new parameter object as needed
+            validation = parameter['valid_value']
+
+            if validation:
+
+                # Get the highest priority validation type and save it
+                for validation_type in ('choices', 'numeric_range', 'regex'):
+                    if validation_type in validation and validation[validation_type]:
+                        new_param.validation_type = validation_type
+                        new_param.validation_value = validation[validation_type]
+                        break
+
+            new_param.save()
+
+
 def update_applications():
     '''Obtain a list of installed QCrBox Applications from the API, and update
     the Frontend Applications database accordingly.  Applications present in
@@ -95,7 +172,7 @@ def update_applications():
 
         backend_appset = backend_appset | set([(app.name, app.version),])
 
-        # If frontend already knows about the app, reactivate or skip
+        # If frontend already knows about the app, reactivate and sync commands
         if (app.name, app.version) in local_appset:
 
             # Handle reactivating an app which was temporarily unavailable
@@ -111,6 +188,10 @@ def update_applications():
                 current_app.port = app.gui_port
                 current_app.save()
 
+            # Sync the command list (commands may have been added or removed
+            # since the app was first registered)
+            sync_app_commands(current_app, app)
+
             continue
 
         new_app = models.Application(
@@ -125,53 +206,7 @@ def update_applications():
         new_app.save()
 
         # Add commands to the new app
-
-        for command in app.commands:
-
-            # Ignore protected commands
-            if command.name[:2] == '__':
-                continue
-
-            new_command = models.AppCommand(
-                name=command.name,
-                app=new_app,
-                description=command.description,
-                interactive=command.name=='interactive_session',
-            )
-
-            new_command.save()
-
-            # Add information on the parameters to attach to the new command
-            for param_key in command.parameters.additional_properties:
-                parameter = command.parameters[param_key]
-
-                if parameter['default_value']:
-                    default_value = parameter['default_value']
-                else:
-                    default_value = None
-
-                new_param = models.CommandParameter(
-                    command = new_command,
-                    name = param_key,
-                    dtype = parameter['dtype'],
-                    description = parameter['description'],
-                    required = parameter['required'],
-                    default = default_value
-                )
-
-                # Add any validation to the new parameter object as needed
-                validation = parameter['valid_value']
-
-                if validation:
-
-                    # Get the highest priority validation type and save it
-                    for validation_type in ('choices', 'numeric_range', 'regex'):
-                        if validation_type in validation and validation[validation_type]:
-                            new_param.validation_type = validation_type
-                            new_param.validation_value = validation[validation_type]
-                            break
-
-                new_param.save()
+        sync_app_commands(new_app, app)
 
         response['new_apps'].append(new_app.pk)
 

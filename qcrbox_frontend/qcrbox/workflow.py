@@ -22,24 +22,45 @@ class WorkStatus():
 
     '''
 
-    def __init__(self, session_is_open=False, calc_is_pending=False, outfile_id=None):
+    def __init__(self, session_is_open=False, calc_is_pending=False, outfile_id=None, result_step_id=None):
         '''Store whether the command has an associated active session,
-        whether a calculation is pending, and whether an outfile has been
-        created.
+        whether a calculation is pending, whether an outfile has been
+        created, and the ProcessStep whose result artifacts (if any) should
+        be shown on the workflow page.
 
         '''
 
         self.session_is_open = session_is_open
         self.calc_is_pending = calc_is_pending
         self.outfile_id = outfile_id
+        self.result_step_id = result_step_id
+
+
+def _data_file_kind(data_file):
+    '''Read the artifact kind of a backend data file, tolerating API client
+    versions from before the field existed (getattr + additional_properties
+    fallback, cf. extract_gui_url).'''
+
+    kind = getattr(data_file, 'kind', None)
+    if kind is None and hasattr(data_file, 'additional_properties'):
+        kind = data_file.additional_properties.get('kind')
+    # The generated client may model absent values as UNSET; normalise to None
+    if kind is not None and not isinstance(kind, str):
+        kind = None
+    return kind
 
 
 def save_dataset_metadata(request, api_response, group, infile=None, command=None, params='{}'):
     '''Given a succesful upload of data to the backend, take the API response
     returned from that upload and create a Frontend FileMetaData object to
     refer to the uploaded dataset.  If the new file is the output of an
-    Interactive Session, also save information on the session as a ProcessStep
-    instance.
+    Interactive Session or command, also save information on the process as a
+    ProcessStep instance, and record any typed output artifacts (files with an
+    artifact kind) as ResultArtifact instances attached to that step.
+
+    The dataset's kind-less file (the pipeline CIF) becomes the new
+    FileMetaData; a dataset containing only typed artifacts creates no new
+    pipeline entry (the ProcessStep then has outfile=None).
 
     Parameters:
     - request(WSGIRequest): the request from a user which triggers a url
@@ -57,57 +78,78 @@ def save_dataset_metadata(request, api_response, group, infile=None, command=Non
             this dataset, if applicable.
 
     Returns:
-    - newfile(FileMetaData): the newly created FileMetaData object.
+    - newfile(FileMetaData or None): the newly created FileMetaData object,
+            or None if the dataset contains no pipeline file.
+    - process_step(ProcessStep or None): the newly created ProcessStep, if
+            command and infile were given and there was anything to record.
 
     '''
 
     outset_meta = api_response.body.payload.datasets[0]
-    outfile_meta = next(iter(outset_meta.data_files.additional_properties.values()))
+    data_files = list(outset_meta.data_files.additional_properties.values())
+    primary_meta = next((df for df in data_files if _data_file_kind(df) is None), None)
+    artifact_metas = [df for df in data_files if _data_file_kind(df) is not None]
 
-    # Append disambiguation number to the end of a display filename if needed
-    curr_files = models.FileMetaData.objects.filter(active=True)        # pylint: disable=no-member
-    curr_filenames = curr_files.values_list('display_filename', flat=True)
+    newfile = None
+    if primary_meta is not None:
+        # Append disambiguation number to the end of a display filename if needed
+        curr_files = models.FileMetaData.objects.filter(active=True)        # pylint: disable=no-member
+        curr_filenames = curr_files.values_list('display_filename', flat=True)
 
-    if outfile_meta.filename in curr_filenames:
-        i = 2
-        [new_filename_lead, new_filename_ext] = outfile_meta.filename.split('.')
-        while f'{new_filename_lead}({i}).{new_filename_ext}' in curr_filenames:
-            i += 1
-        display_filename = f'{new_filename_lead}({i}).{new_filename_ext}'
+        if primary_meta.filename in curr_filenames:
+            i = 2
+            [new_filename_lead, new_filename_ext] = primary_meta.filename.split('.')
+            while f'{new_filename_lead}({i}).{new_filename_ext}' in curr_filenames:
+                i += 1
+            display_filename = f'{new_filename_lead}({i}).{new_filename_ext}'
 
-    else:
+        else:
 
-        display_filename = outfile_meta.filename
+            display_filename = primary_meta.filename
 
-    # Create record for new file's metadata
-    newfile = models.FileMetaData(
-        filename=outfile_meta.filename,
-        display_filename=display_filename,
-        user=request.user,
-        group=group,
-        backend_uuid=outset_meta.qcrbox_dataset_id,
-        filetype=outfile_meta.filetype,
-    )
-    newfile.save()
+        # Create record for new file's metadata
+        newfile = models.FileMetaData(
+            filename=primary_meta.filename,
+            display_filename=display_filename,
+            user=request.user,
+            group=group,
+            backend_uuid=outset_meta.qcrbox_dataset_id,
+            filetype=primary_meta.filetype,
+        )
+        newfile.save()
 
-    LOGGER.info(
-        'Metadata for file %s saved, backend_uuid=%s',
-        display_filename,
-        outset_meta.qcrbox_dataset_id,
-    )
+        LOGGER.info(
+            'Metadata for file %s saved, backend_uuid=%s',
+            display_filename,
+            outset_meta.qcrbox_dataset_id,
+        )
 
-    if command and infile:
-        # Create record for workflow step
-        newprocessstep = models.ProcessStep(
+    process_step = None
+    if command and infile and (newfile or artifact_metas):
+        # Create record for workflow step (outfile=None for artifact-only runs)
+        process_step = models.ProcessStep(
             command=command,
             infile=infile,
             outfile=newfile,
             parameters=params,
         )
-        newprocessstep.save()
+        process_step.save()
 
-    # Return the new file instance
-    return newfile
+        for artifact_meta in artifact_metas:
+            models.ResultArtifact(
+                process_step=process_step,
+                data_file_id=artifact_meta.qcrbox_file_id,
+                kind=_data_file_kind(artifact_meta),
+                filename=artifact_meta.filename,
+            ).save()
+        if artifact_metas:
+            LOGGER.info(
+                'Recorded %d result artifact(s) for process step %s',
+                len(artifact_metas),
+                process_step.pk,
+            )
+
+    return newfile, process_step
 
 
 def create_session_references(request, api_response, command):
@@ -432,7 +474,7 @@ def close_session(request, infile, command):
 
         if api_response.is_valid:
 
-            newfile = save_dataset_metadata(
+            newfile, process_step = save_dataset_metadata(
                 request,
                 api_response,
                 infile.group,
@@ -440,7 +482,8 @@ def close_session(request, infile, command):
                 command=command,
             )
 
-            return newfile
+            if newfile or process_step:
+                return newfile, process_step
 
     # If session did not produce output file, issue a warning
     LOGGER.info('No outfile associated with the session was found.')
@@ -610,7 +653,7 @@ def fetch_calculation_result(request, infile, command):
 
         if api_response.is_valid:
 
-            newfile = save_dataset_metadata(
+            newfile, process_step = save_dataset_metadata(
                 request,
                 api_response,
                 infile.group,
@@ -619,7 +662,8 @@ def fetch_calculation_result(request, infile, command):
                 params=calculation.command_arguments.additional_properties,
             )
 
-            return newfile
+            if newfile or process_step:
+                return newfile, process_step
 
         messages.info(
             request,
@@ -662,17 +706,23 @@ def poll_calculation(request, infile, command):
 
     '''
 
-    outfile = fetch_calculation_result(
+    result = fetch_calculation_result(
         request,
         infile,
         command,
     )
 
-    if outfile == 'PENDING':
+    if result == 'PENDING':
         return WorkStatus(calc_is_pending=True)
-    if outfile is None:
+    if result is None:
         return WorkStatus(calc_is_pending=False)
-    return WorkStatus(outfile_id=outfile.pk)
+
+    newfile, process_step = result
+    # Artifact-only results keep the user on the input file
+    return WorkStatus(
+        outfile_id=(newfile or infile).pk,
+        result_step_id=process_step.pk if process_step else None,
+    )
 
 
 def handle_command(request, command, infile):
@@ -747,13 +797,9 @@ def handle_command(request, command, infile):
                 messages.warning(request, f'No file provided for "{i}"')
                 return WorkStatus()
 
-        # Sanitise any arguments which dictate output filenames on the file system
-        output_dtypes = ('QCrBox.output_path','QCrBox.output_cif')
-        for i in cps.filter(dtype__in=output_dtypes).values_list('name',flat=True):
-            params[i] = params[i].replace('/','_')
-            print(params[i])
-            params[i] = utility.get_next_valid_filename(params[i])
-            print(params[i])
+        # Note: output filenames are fixed by the command spec's outputs
+        # section (backend-side) and are not invocation arguments, so no
+        # output-filename sanitisation is needed here.
 
         # If the command corresponds to an interactive session, launch it
         if command.interactive:
@@ -791,15 +837,20 @@ def handle_command(request, command, infile):
     # Check if user submitted using the 'end session' form
     elif 'end_session' in request.POST:
 
-        outfile = close_session(
+        result = close_session(
             request,
             infile,
             command,
         )
 
-        if not outfile:
+        if not result:
             return WorkStatus(session_is_open=True)
-        if outfile != 'NO_OUTPUT':
-            return WorkStatus(outfile_id=outfile.pk)
+        if result != 'NO_OUTPUT':
+            newfile, process_step = result
+            # Artifact-only results keep the user on the input file
+            return WorkStatus(
+                outfile_id=(newfile or infile).pk,
+                result_step_id=process_step.pk if process_step else None,
+            )
 
     return WorkStatus()
