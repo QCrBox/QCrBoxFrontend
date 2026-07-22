@@ -44,6 +44,12 @@ def sync_user_groups(user, remote_groups_header):
     group_names = [name.strip() for name in (remote_groups_header or '').split(',') if name.strip()]
     mirrored_names = [name for name in group_names if not name.startswith(EXCLUDED_GROUP_PREFIXES)]
 
+    # A user with no data-sharing lldap groups (e.g. admin, whose only group
+    # is the excluded lldap_admin) would otherwise have nowhere to attach
+    # uploads to; fall back to a personal default group in that case.
+    if not mirrored_names:
+        mirrored_names = [f'{user.username}_default']
+
     groups = []
     for name in mirrored_names:
         group, _created = Group.objects.get_or_create(name=name)

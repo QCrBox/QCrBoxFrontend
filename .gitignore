@@ -184,3 +184,7 @@ testing/output.xml
 testing/*.png
 test (*).cif
 
+# Local-only vendored copy of QCrBoxAPIClient for testing unreleased versions.
+# Never commit/push this - see docker/Dockerfile and requirements.txt.
+/QCrBoxAPIClient/
+

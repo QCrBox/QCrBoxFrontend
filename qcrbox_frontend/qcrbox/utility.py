@@ -81,6 +81,11 @@ def sync_app_commands(app_model, backend_app):
             if local_command.description != command.description:
                 local_command.description = command.description
                 local_command.save()
+            # Parameters may have changed shape since this command was first
+            # synced (e.g. a dtype fixed upstream); drop and re-add them so
+            # stale rows don't linger indefinitely.
+            local_command.parameters.all().delete()
+            _sync_command_parameters(local_command, command)
             continue
 
         new_command = models.AppCommand(
@@ -91,38 +96,53 @@ def sync_app_commands(app_model, backend_app):
         )
 
         new_command.save()
+        _sync_command_parameters(new_command, command)
 
-        # Add information on the parameters to attach to the new command
-        for param_key in command.parameters.additional_properties:
-            parameter = command.parameters[param_key]
 
-            if parameter['default_value']:
-                default_value = parameter['default_value']
-            else:
-                default_value = None
+def _sync_command_parameters(command_model, backend_command):
+    '''Create CommandParameter records on `command_model` from the parameter
+    list reported by the backend for `backend_command`.
 
-            new_param = models.CommandParameter(
-                command = new_command,
-                name = param_key,
-                dtype = parameter['dtype'],
-                description = parameter['description'],
-                required = parameter['required'],
-                default = default_value
-            )
+    Parameters:
+    - command_model(AppCommand): the Frontend AppCommand db instance to
+            attach parameters to.
+    - backend_command: the command spec returned by the API.
 
-            # Add any validation to the new parameter object as needed
-            validation = parameter['valid_value']
+    Returns:
+    None
 
-            if validation:
+    '''
 
-                # Get the highest priority validation type and save it
-                for validation_type in ('choices', 'numeric_range', 'regex'):
-                    if validation_type in validation and validation[validation_type]:
-                        new_param.validation_type = validation_type
-                        new_param.validation_value = validation[validation_type]
-                        break
+    for param_key in backend_command.parameters.additional_properties:
+        parameter = backend_command.parameters[param_key]
 
-            new_param.save()
+        if parameter['default_value']:
+            default_value = parameter['default_value']
+        else:
+            default_value = None
+
+        new_param = models.CommandParameter(
+            command = command_model,
+            name = param_key,
+            dtype = parameter['dtype'],
+            description = parameter['description'],
+            required = parameter['required'],
+            default = default_value
+        )
+
+        # Add any validation to the new parameter object as needed
+        validation = parameter['valid_value']
+
+        if validation:
+
+            # Get the highest priority validation type and save it
+            for validation_type in ('choices', 'numeric_range', 'regex'):
+                if validation_type in validation and validation[validation_type]:
+                    new_param.validation_type = validation_type
+                    new_param.validation_value = validation[validation_type]
+                    break
+
+        new_param.save()
 
 
 def update_applications():

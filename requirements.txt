@@ -48,9 +48,8 @@ pylint==3.3.7
 PySocks==1.7.1
 python-dateutil==2.9.0.post0
 pytz==2025.2
-# NOTE: tag 0.4.0 must exist on the QCrBoxAPIClient repo (create it when
-# committing the regenerated client that includes runnable-commands support).
-QCrBoxAPIClient @ git+https://github.com/QCrBox/QCrBoxAPIClient.git@0.4.0
+# NOTE: local testing only — installed separately in the Dockerfile from
+# ../QCrBoxAPIClient. Restore the git+https pin once 0.4.0 is tagged/pushed.
 requests==2.32.4
 retrying==1.3.4
 robotframework==7.3.2

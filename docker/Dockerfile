@@ -16,6 +16,8 @@ WORKDIR /app
 
 RUN pip install --upgrade pip
 COPY ./requirements.txt /app/requirements.txt
+COPY ./QCrBoxAPIClient /app/QCrBoxAPIClient
+RUN pip install ./QCrBoxAPIClient
 RUN pip install -r requirements.txt
 
 COPY ./qcrbox_frontend /app/qcrbox_frontend
